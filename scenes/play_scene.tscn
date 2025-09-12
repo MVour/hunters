@@ -4939,28 +4939,28 @@ visible = false
 layout_mode = 2
 
 [node name="DicesContainer" type="Panel" parent="."]
-offset_left = 870.0
-offset_top = 19.0
-offset_right = 1239.0
-offset_bottom = 292.0
+offset_left = 926.0
+offset_top = 27.0
+offset_right = 1176.0
+offset_bottom = 227.0
 script = ExtResource("10_mu42g")
 metadata/_edit_use_anchors_ = true
 
 [node name="Dice6Sided" parent="DicesContainer" instance=ExtResource("10_eenv0")]
-position = Vector2(79.9376, 89.875)
-scale = Vector2(2.31908, 2.26974)
+position = Vector2(68, 51)
+scale = Vector2(1.58059, 1.58224)
 
 [node name="Dice4Sided" parent="DicesContainer" instance=ExtResource("11_rx4br")]
-position = Vector2(265, 97)
-scale = Vector2(2.29573, 2.47368)
+position = Vector2(178, 56)
+scale = Vector2(1.5426, 1.57895)
 
 [node name="RollButton" type="Button" parent="DicesContainer"]
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.238482
-anchor_top = 0.663004
-anchor_right = 0.746862
-anchor_bottom = 0.882784
+anchor_left = 0.084
+anchor_top = 0.575
+anchor_right = 0.888
+anchor_bottom = 0.795
 text = "Roll
 "
 metadata/_edit_use_anchors_ = true
@@ -4976,6 +4976,7 @@ theme_override_font_sizes/font_size = 30
 text = "Playing ..."
 horizontal_alignment = 1
 vertical_alignment = 1
+metadata/_edit_use_anchors_ = true
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {
@@ -4992,6 +4993,7 @@ offset_top = 995.0
 offset_right = 1526.0
 offset_bottom = 1037.0
 text = "End Turn"
+metadata/_edit_use_anchors_ = true
 
 [connection signal="toggled" from="Hud/ToggleHudButton" to="Hud" method="_on_toggle_hud_button_toggled"]
 [connection signal="pressed" from="Hud/ToggleInfoButton" to="Hud" method="_on_toggle_info_button_pressed"]
