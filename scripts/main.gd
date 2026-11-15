@@ -17,6 +17,7 @@ func _ready()->void :
 	SignalBus.connect("_new_game", _on_new_game)
 	SignalBus.connect("_return_to_main_menu", _on_main_menu)
 	SignalBus.connect("_start_game", _on_start_game)
+	Network.host_disconnected.connect(_on_host_disconnected)
 	set_main_screen()
 
 
@@ -39,6 +40,14 @@ func _on_start_game(id):
 	main_menu.hide()
 	multiplayer_controller.hide()
 	#create_player.show()
+
+func _on_host_disconnected():
+	if play_scene:
+		canvas_layer.remove_child(play_scene)
+		play_scene.queue_free()
+		play_scene = null
+		set_main_screen()
+
 
 func _on_exit_game():
 	get_tree().quit()

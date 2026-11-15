@@ -19,8 +19,7 @@ func init(pl_name, species, goal, ability, health, damage):
 	player_health.text = str(health)
 	player_damage.text = str(damage)
 	
-	if species == "vampire":
-		character_sprite.play("vampire")
-	elif species == "warewolf":
-		character_sprite.play("warewolf")
+	# Portrait animations are named after the species.
+	if character_sprite.sprite_frames.has_animation(species):
+		character_sprite.play(species)
 	

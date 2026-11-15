@@ -115,51 +115,41 @@ func _on_button_up() -> void:
 	if Engine.is_editor_hint(): return
 	picked_up = false
 	set_process(false)
-	var dist: float = abs(original_position.y - global_position.y)
-	#print("Distance: ", dist)
-	
+	var thrown: bool
 	if use_speed:
-		if last_speed <= -threshold_speed:
-			# Go to new position
-			put_back.emit()
-			if tween_movement and tween_movement.is_running():
-				tween_movement.kill()
-			tween_movement = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-			if is_3D:
-				tween_movement.tween_method(set_3D_rotation_x, 0.0, 360.0, 0.5)
-			else:
-				tween_movement.tween_property(self, "rotation_degrees", 360.0, 0.4).from(0.0)
-		else:
-			if tween_grab and tween_grab.is_running():
-				tween_grab.kill()
-			tween_grab = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-			tween_grab.tween_property(self, "scale", Vector2.ONE, 0.15)
-			
-			if tween_movement and tween_movement.is_running():
-				tween_movement.kill()
-			tween_movement = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-			tween_movement.tween_property(self, "global_position", original_position, 0.3)
+		thrown = last_speed <= -threshold_speed
 	else:
-		if dist > threshold:
-			# Go to new position
-			put_back.emit()
-			if tween_movement and tween_movement.is_running():
-				tween_movement.kill()
-			tween_movement = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-			if is_3D:
-				tween_movement.tween_method(set_3D_rotation_x, 0.0, 360.0, 0.5)
-			else:
-				tween_movement.tween_property(self, "rotation_degrees", 360.0, 0.4).from(0.0)
-		else:
-			if tween_grab and tween_grab.is_running():
-				tween_grab.kill()
-			tween_grab = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-			tween_grab.tween_property(self, "scale", Vector2.ONE, 0.15)
-			
-			if tween_movement and tween_movement.is_running():
-				tween_movement.kill()
-			tween_movement = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-			tween_movement.tween_property(self, "global_position", original_position, 0.3)
+		thrown = abs(original_position.y - global_position.y) > threshold
+
+	if thrown:
+		_send_to_back()
+	else:
+		_return_to_place()
+
+
+## Flicked away: spin and go to the bottom of the deck.
+func _send_to_back() -> void:
+	put_back.emit()
+	if tween_movement and tween_movement.is_running():
+		tween_movement.kill()
+	tween_movement = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	if is_3D:
+		tween_movement.tween_method(set_3D_rotation_x, 0.0, 360.0, 0.5)
+	else:
+		tween_movement.tween_property(self, "rotation_degrees", 360.0, 0.4).from(0.0)
+
+
+## Let go gently: shrink back and slide home.
+func _return_to_place() -> void:
+	if tween_grab and tween_grab.is_running():
+		tween_grab.kill()
+	tween_grab = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween_grab.tween_property(self, "scale", Vector2.ONE, 0.15)
+
+	if tween_movement and tween_movement.is_running():
+		tween_movement.kill()
+	tween_movement = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween_movement.tween_property(self, "global_position", original_position, 0.3)
 
 #func _on_gui_input(event: InputEvent) -> void:
 	#if not picked_up: return

@@ -1,237 +1,160 @@
 class_name GameManager extends Node
+## Runs the match.
+##
+## Rules of the road:
+## - Only the server (peer 1) decides anything. Functions starting with _
+##   that change game state only run there.
+## - Clients ask via request_* RPCs. The server checks WHO sent it with
+##   Network.sender_id() (never trust an id passed as an argument).
+## - The server tells peers what happened via "authority" RPCs.
 
+enum TurnPhase { ROLL, ACTION }  # MOVE will go between these
 
-@onready var game_started : bool = false
-@onready var game_inited : bool = false
-@onready var game_finished : bool = false
 @onready var players_slots: PlayersSlots = $"../PlayersSlots"
-
 @onready var dices_container: DiceManager = $"../DicesContainer"
 
-@onready var current_turn : Dictionary = {
+var game_started := false
+var game_finished := false
+
+## Server only: peers that have finished loading the play scene.
+var _loaded_peers := {}
+
+var current_turn := {
 	"turn_count": 0,
 	"playing_id": 0,
-	"roll": { "val6": 0, "val4": 0	},
-	"finished": false
+	"phase": TurnPhase.ROLL,
+	"roll": {"val6": 0, "val4": 0},
 }
 
-func _process(delta: float) -> void:
-	if game_inited and not game_started:
-		start_game()
+
+# --- Starting the match ------------------------------------------------------
+
+## Every peer calls this once its play scene is ready. The server starts the
+## match when all players have loaded, so no RPC hits a scene that isn't
+## there yet.
+@rpc("any_peer", "call_local", "reliable")
+func report_loaded() -> void:
+	if not multiplayer.is_server():
+		return
+	_loaded_peers[Network.sender_id()] = true
 	if game_started:
-		if current_turn.finished:
-			start_turn()
-		
-	
+		return
+	for id in GameState.players:
+		if not _loaded_peers.has(id):
+			return
+	_start_game()
 
-func start_game():
-	
+
+func _start_game() -> void:
 	game_started = true
-	start_turn()
-
-func init_game():
 	game_finished = false
-	suffle_deck_all.rpc_id(1)
-	build_decks.rpc_id(1)
-	deal_cards_characters.rpc_id(1)
-	deal_cards_locations.rpc_id(1)
-	
-	
-	decide_players_turn.rpc_id(1)
+	GameState.prepare_deck()
+	_deal_characters()
+	_send_decks()
+	set_locations.rpc(GameState.locations)
+	_decide_turn_order()
 	players_slots.sit_players.rpc(GameState.game_info.players_turn)
-	
-	#SignalBus._start_game.emit()
-	game_inited = true
+	_start_turn()
 
 
+## Deals each player a secret character. Only the owner is told which one.
+func _deal_characters() -> void:
+	var chosen := []
+	for settings_key in Global.SPECIES:
+		var list_name: String = Global.SPECIES[settings_key].list
+		var count: int = GameState.game_settings[settings_key]
+		chosen.append_array(GameState.deck.characters[list_name].slice(0, count))
+	chosen.shuffle()
 
-@rpc("authority", "call_local")
-func start_turn():
-	if not multiplayer.is_server(): return
-	var playing_id = decide_current_player_turn_id()
-	
-	current_turn.turn_count += 1
-	current_turn.playing_id = playing_id
-	current_turn.finished = false
-	
-	print("Starting turn: ", current_turn.turn_count,  ", pl_id: ", current_turn.playing_id)
-	players_lock.rpc(playing_id, true)
-	
-	
-	#player_roll(playing_id)
-	#player_action(playing_id)
-	#end_turn(playing_id)
-
-
-@rpc("authority", "call_local")
-func deal_cards_characters():
-	if not multiplayer.is_server():
+	if chosen.size() < GameState.players.size():
+		push_error("Not enough characters for %d players (lobby should have blocked this)." % GameState.players.size())
 		return
-	var all_chars : Array = GameState.deck.characters.vampires
-	all_chars.append_array(GameState.deck.characters.warewolves)
-	all_chars.append_array(GameState.deck.characters.humans)
-	all_chars.shuffle()
-	var created_vamps = 0
-	var created_ware = 0
-	var created_humans = 0
-	for pl in GameState.players:
-		var character = all_chars.pop_front()
-		while true && character != null:
-			if character.species == "vampire":
-				if created_vamps < GameState.game_settings.vampires_count:
-					created_vamps += 1
-					break
-			elif character.species == "warewolf":
-				if created_ware < GameState.game_settings.warewolves_count:
-					created_ware += 1
-					break
-			elif character.species == "human":
-				if created_humans < GameState.game_settings.humans_count:
-					created_humans += 1
-					break
-			character = all_chars.pop_front()
-		set_character.rpc(GameState.players[pl].id, character)
-		GameState.players[pl].character = character
+
+	var i := 0
+	for id in GameState.players:
+		GameState.players[id].character = chosen[i]
+		set_character.rpc_id(id, chosen[i])
+		i += 1
 
 
-@rpc("authority", "call_local")
-func set_character(pl_id, character):
-	print("SETTING CHARACTER: ", character)
-	if GameState.active_player.id == pl_id:
-		GameState.active_player.character = character
-		SignalBus._set_character.emit(pl_id, character)
-	GameState.players[pl_id].character = character
-	
-
-@rpc("call_local")
-func build_decks():
-	if not multiplayer.is_server(): return
-	for pl in GameState.players.values():
-		print("pl: ", pl)
-		rearrange_decks.rpc_id(pl.id, "red_cards",Global.deck["red_cards"])
-		rearrange_decks.rpc_id(pl.id, "green_cards",Global.deck["green_cards"])
-		rearrange_decks.rpc_id(pl.id, "blue_cards",Global.deck["blue_cards"])
-	SignalBus._attach_deck.emit("red_cards")
-	SignalBus._attach_deck.emit("green_cards")
-	SignalBus._attach_deck.emit("blue_cards")
-	
+@rpc("authority", "call_local", "reliable")
+func set_character(character: Dictionary) -> void:
+	GameState.local_player.character = character
+	SignalBus._set_character.emit(GameState.local_id, character)
 
 
-@rpc("any_peer", "call_remote")
-func rearrange_decks(card_type : String , playing_deck : Array):
-	if multiplayer.is_server(): return
-	Global.deck[card_type] = playing_deck
-	SignalBus._attach_deck.emit(card_type)
-	
-	
+## Clients only learn how many cards each deck has, not their order.
+func _send_decks() -> void:
+	for card_type in Global.CARD_TYPES:
+		attach_deck.rpc(card_type, GameState.deck[card_type].size())
 
 
-
-@rpc("authority", "call_local")
-func suffle_deck_all():
-	if multiplayer.is_server():
-		suffle_deck_cards("red_cards")
-		suffle_deck_cards("blue_cards")
-		suffle_deck_cards("green_cards")
-		suffle_deck_cards("locations")
-		suffle_deck_characters()
+@rpc("authority", "call_local", "reliable")
+func attach_deck(card_type: String, count: int) -> void:
+	SignalBus._attach_deck.emit(card_type, count)
 
 
-func suffle_deck_cards(card_type):
-	GameState.deck[card_type] = Global.deck[card_type]
-	GameState.deck[card_type].shuffle()
-
-
-func suffle_deck_characters():
-	GameState.deck["characters"] = Global.deck["characters"]
-	GameState.deck["characters"].vampires.shuffle()
-	GameState.deck["characters"].warewolves.shuffle()
-	GameState.deck["characters"].humans.shuffle()
-	
-@rpc("authority", "call_local")
-func decide_players_turn():
-	if not multiplayer.is_server():
-		return
-	for pl in GameState.players:
-		GameState.game_info.players_turn.append(GameState.players[pl].id)
-	GameState.game_info.players_turn.shuffle()
-
-
-
-
-@rpc("authority", "call_local")
-func deal_cards_locations():
-	if not multiplayer.is_server(): return
-	set_locations.rpc(GameState.deck["locations"])
-	#set_locations(, GameState.dec)
-
-@rpc("authority", "call_local")
-func set_locations(locations):
-	GameState.deck["locations"] = locations
+@rpc("authority", "call_local", "reliable")
+func set_locations(locations: Array) -> void:
+	GameState.locations = locations
 	SignalBus.set_locations.emit(locations)
 
 
-func broadcast_to_peers(func_callable: Callable, args: Array, target_id = null):
-	if not multiplayer.is_server(): return
-	
-	if target_id:
-		func_callable.rpc_id.callv([target_id] + args)
-	else:
-		func_callable.rpc.callv(args)
+func _decide_turn_order() -> void:
+	var order: Array = GameState.players.keys()
+	order.shuffle()
+	GameState.game_info.players_turn = order
 
 
+# --- Turns -------------------------------------------------------------------
+
+func _start_turn() -> void:
+	var order: Array = GameState.game_info.players_turn
+	var playing_id: int = order[current_turn.turn_count % order.size()]
+	current_turn.turn_count += 1
+	current_turn.playing_id = playing_id
+	current_turn.phase = TurnPhase.ROLL
+	@warning_ignore("integer_division")
+	GameState.game_info.round = (current_turn.turn_count - 1) / order.size() + 1
+
+	print("Starting turn %d (round %d), player %d" % [current_turn.turn_count, GameState.game_info.round, playing_id])
+	players_lock.rpc(playing_id, true)
 
 
-func decide_current_player_turn_id():
-	var all_players_count = GameState.players.size()
-	if current_turn.turn_count < all_players_count:
-		return GameState.game_info.players_turn[current_turn.turn_count-1]
-	else:
-		return GameState.game_info.players_turn[(current_turn.turn_count%all_players_count)-1]
-	
+func _is_current_player(id: int) -> bool:
+	return game_started and not game_finished and id == current_turn.playing_id
 
 
-@rpc("any_peer", "call_local")
-func end_turn(playing_id):
-	current_turn.finished = true
-	players_lock.rpc(playing_id, false)
-	print("in end turn")
+@rpc("any_peer", "call_local", "reliable")
+func request_roll() -> void:
+	if not multiplayer.is_server():
+		return
+	if not _is_current_player(Network.sender_id()) or current_turn.phase != TurnPhase.ROLL:
+		return
 
-@rpc("authority", "call_local")
-func players_lock(playing_id, val):
-	print("in players lock ..")
-	GameState.players[playing_id].playing = val
-	if playing_id == GameState.active_player.id:
-		GameState.active_player.playing = val
-		#if val: end_turn_button.show()
-		#else: end_turn_button.hide()
-	
-	if val: SignalBus.begin_turn.emit(playing_id)
-	else: SignalBus.end_turn.emit(playing_id)
-	
-
-func player_roll(playing_id):
-	pass
-	
-func player_action(playing_id):
-	pass
-
-@rpc("any_peer", "call_local")
-func player_end_turn(playing_id):
-	if not multiplayer.is_server(): return
-	GameState.players[playing_id].playing = false
-	
-	
-@rpc ("any_peer", "call_local")
-func roll_request(caller_id):
-	print("roll_request: ", caller_id)
-	if not multiplayer.is_server(): return
-	
-	if caller_id != current_turn.playing_id: return
-	
-	var roll = dices_container.throw_dices()
+	var roll := dices_container.throw_dices()
 	current_turn.roll = roll
-	#print("roll: " , roll)
+	current_turn.phase = TurnPhase.ACTION
 	dices_container.roll_dices.rpc(roll.val6, roll.val4)
-	
-	
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_end_turn() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	if not _is_current_player(sender):
+		return
+	players_lock.rpc(sender, false)
+	_start_turn()
+
+
+@rpc("authority", "call_local", "reliable")
+func players_lock(playing_id: int, val: bool) -> void:
+	if GameState.players.has(playing_id):
+		GameState.players[playing_id].playing = val
+
+	if val:
+		SignalBus.begin_turn.emit(playing_id)
+	else:
+		SignalBus.end_turn.emit(playing_id)

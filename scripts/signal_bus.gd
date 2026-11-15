@@ -16,11 +16,11 @@ signal _attach_deck
 signal set_locations
 
 ## Avatar Creation signals (might include avatar movement or actions as well)
-signal _avatar_reserved
-signal _avatar_released
 signal _avatar_created
+## Someone's pawn choice changed, so refresh which pawns are still free.
+signal pawns_changed
 
 
 # Navigation
 signal _return_to_main_menu
-signal _return_to_mulitplayer_menu
+signal _return_to_multiplayer_menu

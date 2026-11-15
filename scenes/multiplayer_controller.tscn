@@ -74,7 +74,7 @@ offset_right = 349.0
 offset_bottom = -22.5
 grow_vertical = 2
 theme_override_font_sizes/font_size = 40
-text = "Enter lobby ID"
+text = "Host's code"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -85,7 +85,7 @@ offset_top = 103.0
 offset_right = 944.0
 offset_bottom = 194.0
 theme_override_font_sizes/font_size = 40
-placeholder_text = "....."
+placeholder_text = "blank = this computer"
 alignment = 1
 
 [node name="ConnectLobbyButton" type="Button" parent="ConnectToLobby/Panel"]

@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://bju0vyee4sfvs"]
+[gd_scene load_steps=14 format=3 uid="uid://bju0vyee4sfvs"]
 
 [ext_resource type="Texture2D" uid="uid://c6vg4oagcsokc" path="res://assets/question_mark.png" id="1_krj8b"]
 [ext_resource type="Script" path="res://scripts/question_mark_sprite.gd" id="2_u2x53"]
@@ -71,14 +71,6 @@ _data = {
 "QMark": SubResource("Animation_fxlco"),
 "RESET": SubResource("Animation_1kctv")
 }
-
-[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_y6qnv"]
-properties/0/path = NodePath("Panel/QMark/AnimationPlayer:current_animation")
-properties/0/spawn = true
-properties/0/replication_mode = 1
-properties/1/path = NodePath("Panel/QMark:texture_repeat")
-properties/1/spawn = true
-properties/1/replication_mode = 1
 
 [node name="QuestionMarkSprite" type="VBoxContainer"]
 clip_contents = true
@@ -161,6 +153,3 @@ libraries = {
 "": SubResource("AnimationLibrary_p3rvk")
 }
 autoplay = "QMark"
-
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
-replication_config = SubResource("SceneReplicationConfig_y6qnv")

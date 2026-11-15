@@ -37,14 +37,21 @@ func _ready() -> void:
 	#for c in cards.get_children():
 		#c.original_position = c.global_position
 
-func add_cards(card_type: String):
-	for c in Global.deck[card_type]:
+## Adds face-down cards. What each card says is only revealed when drawn
+## (the server sends it then), so nobody can peek at the deck order.
+func add_cards(card_type: String, count: int):
+	# Drop the preview cards placed in the editor.
+	for c in cards.get_children():
+		cards.remove_child(c)
+		c.queue_free()
+	for i in count:
 		var new_card_scene = card_scn.instantiate()
 		cards.add_child(new_card_scene)
 		new_card_scene.card_set_type(card_type)
-		new_card_scene.card_set_info(c)
 	
 func init():
+	if cards.get_child_count() == 0:
+		return
 	for c in cards.get_children():
 		c.put_back.connect(on_card_put_back.bind(c))
 	
@@ -65,8 +72,11 @@ func init():
 func tween_bg_color(new_color: Color) -> void:
 	if tween_bg and tween_bg.is_running():
 		tween_bg.kill()
+	var bg := get_node_or_null("BG")  # optional ColorRect behind the deck
+	if bg == null:
+		return
 	tween_bg = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween_bg.tween_property($BG, "color", new_color, anim_duration*2.0)
+	tween_bg.tween_property(bg, "color", new_color, anim_duration*2.0)
 	
 func update_cards(thrown: bool = false, animated: bool = true) -> void:
 	if tween and tween.is_running():
@@ -108,7 +118,10 @@ func on_card_put_back(which: Button) -> void:
 	if tween_last_card and tween_last_card.is_running():
 		tween_last_card.kill()
 	tween_last_card = create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween_last_card.tween_property(which, "global_position", $TopPoint.global_position-(which.size/2.0), anim_duration/2.0)
+	# Where the flicked card flies before sliding under the deck.
+	var top_point = get_node_or_null("TopPoint")
+	var fly_to: Vector2 = top_point.global_position if top_point else global_position + Vector2(0, -250)
+	tween_last_card.tween_property(which, "global_position", fly_to - (which.size/2.0), anim_duration/2.0)
 	tween_last_card.parallel().tween_property(which, "scale", Vector2(0.8, 0.8), anim_duration/2.0)
 	
 	# Move card to back

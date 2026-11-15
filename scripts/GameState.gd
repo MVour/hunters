@@ -1,40 +1,82 @@
 extends Node
+## Everything that changes during a session (lobby + match).
+## Static data (card lists, pawn sprites, defaults) lives in Global.
+##
+## The server's copy is the truth. Clients hold what they've been told, and
+## for hidden roles that means: only their own character.
 
-enum GamePhase {
-	IN_LOBBY,
-	GAME_STARTED,
-	ENDED
-}
+enum Phase { LOBBY, PLAYING, ENDED }
 
-var game_phase_status
+var phase := Phase.LOBBY
 
-var deck = {
-	
-}
+## Peer id of the player sitting at this computer.
+var local_id := 0
 
-var players = {}
+## Public info about every player, keyed by peer id. See new_player().
+var players := {}
 
-var active_player = {
-	"id": 0,
-	"turn": 0,
-	"sprite_color": "",
-	"pawn": "",
-	"name": "",
-	"board_scene": "", 
-	"main_scene": "",
-	"character": "",
-	"hidden": true,
-	"playing": false,
-	"dmg": 0
-}
+## The player sitting at this computer.
+var local_player: Dictionary:
+	get:
+		return players.get(local_id, _no_player)
 
-var game_settings = {
-	"vampires_count": 0,
-	"warewolves_count": 0,
-	"humans_count"	: 0,
-}
+var game_settings := _empty_settings()
 
-var game_info = {
+var game_info := {
 	"players_turn": [],
-	"round" : 0,
+	"round": 0,
 }
+
+## The board's locations, in board order. Public, every peer has them.
+var locations := []
+
+## Server only: this match's shuffled copy of Global.deck.
+var deck := {}
+
+var _no_player := new_player(0)
+
+
+func reset_session(my_id := 0) -> void:
+	phase = Phase.LOBBY
+	local_id = my_id
+	players = {}
+	_no_player = new_player(my_id)
+	game_settings = _empty_settings()
+	game_info = {"players_turn": [], "round": 0}
+	locations = []
+	deck = {}
+
+
+func new_player(id: int) -> Dictionary:
+	return {
+		"id": id,
+		"name": "",
+		"pawn": "",
+		"character": {},  # on clients: only filled for yourself (until revealed)
+		"hidden": true,
+		"playing": false,
+		"dmg": 0,
+	}
+
+
+## Server only. Copies the master card lists so shuffling and dealing never
+## touch Global.deck.
+func prepare_deck() -> void:
+	deck = Global.deck.duplicate(true)
+	for card_type in Global.CARD_TYPES:
+		deck[card_type].shuffle()
+	for species_list in deck.characters.values():
+		species_list.shuffle()
+	deck.locations.shuffle()
+	locations = deck.locations
+
+
+func is_pawn_taken(pawn: String, except_id := 0) -> bool:
+	for player in players.values():
+		if player.id != except_id and player.pawn == pawn:
+			return true
+	return false
+
+
+func _empty_settings() -> Dictionary:
+	return {"vampires_count": 0, "werewolves_count": 0, "humans_count": 0}

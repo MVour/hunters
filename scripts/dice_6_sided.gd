@@ -1,7 +1,6 @@
 extends AnimatedSprite2D
 
 @onready var roll_button: Button = $RollButton
-@onready var dice_texture: TextureRect = $DiceTexture
 @onready var dice_right_side: AnimatedSprite2D = $DiceRightSide
 @onready var dice_bottom_side: AnimatedSprite2D = $DiceBottomSide
 
@@ -16,7 +15,7 @@ var roll_sets : Array = [
 var roll_tween
 
 func _ready():
-	self.animation = "idle"
+	self.animation = str(value)
 	#roll_tween = get_tree().create_tween()
 	#self.animation.frame
 

@@ -13,15 +13,12 @@ func _ready():
 	#if Global.active_player
 
 func init(player):
-	if player.pawn:
-		if player.pawn != "":
-			use_texture(player.pawn)
-			Global.pawns[player.pawn].available = false
-	if player.name:
-		if player.name != "":
-			set_sprite_name(player.name)
+	if player.pawn != "":
+		use_texture(player.pawn)
+	if player.name != "":
+		set_sprite_name(player.name)
 	pl_id = player.id
-	if GameState.active_player.id == player.id:
+	if GameState.local_id == player.id:
 		var themeBox : StyleBoxFlat = StyleBoxFlat.new()
 		themeBox.border_color = Color("#e73da7")
 		themeBox.bg_color = Color("#999a9300")

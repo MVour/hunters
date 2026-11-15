@@ -4508,7 +4508,7 @@ animations = [{
 "texture": SubResource("AtlasTexture_ualbj")
 }],
 "loop": true,
-"name": &"warewolf",
+"name": &"werewolf",
 "speed": 5.0
 }]
 
