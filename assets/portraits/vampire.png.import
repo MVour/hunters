@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b8p8svvbs52cv"
-path="res://.godot/imported/werewolf.png-cd66d9d2eeb080c649595c04f997f297.ctex"
+uid="uid://bbkr172x6dv1r"
+path="res://.godot/imported/vampire.png-2155810c39a1b1da4efc39cd6d4acb69.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/werewolf.png"
-dest_files=["res://.godot/imported/werewolf.png-cd66d9d2eeb080c649595c04f997f297.ctex"]
+source_file="res://assets/portraits/vampire.png"
+dest_files=["res://.godot/imported/vampire.png-2155810c39a1b1da4efc39cd6d4acb69.ctex"]
 
 [params]
 

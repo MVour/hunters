@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dg5c8au66bkgd"
-path="res://.godot/imported/vampire.png-75e317b00769805c9f848712e0d0cc88.ctex"
+uid="uid://dfmnbehg4b216"
+path="res://.godot/imported/Moonlit Werewolf and Crimson Vampire Sprite Sheet.png-84d0f04179ea8555c9cebc4962ea6de6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vampire.png"
-dest_files=["res://.godot/imported/vampire.png-75e317b00769805c9f848712e0d0cc88.ctex"]
+source_file="res://assets/Moonlit Werewolf and Crimson Vampire Sprite Sheet.png"
+dest_files=["res://.godot/imported/Moonlit Werewolf and Crimson Vampire Sprite Sheet.png-84d0f04179ea8555c9cebc4962ea6de6.ctex"]
 
 [params]
 

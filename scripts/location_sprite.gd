@@ -2,6 +2,13 @@ class_name LocationSprite extends Sprite2D
 ## One location on the board: its art, a badge showing which dice totals
 ## lead here and what you can do, and a tooltip explaining it on hover.
 
+## Where pawns stand, relative to the location's centre: a curve on the
+## ground in front of it, filled from the middle outward. Up to 8 players.
+const PAWN_SPOTS := [
+	Vector2(-25, 83), Vector2(25, 83), Vector2(-65, 77), Vector2(65, 77),
+	Vector2(-97, 67), Vector2(97, 67), Vector2(-118, 54), Vector2(118, 54),
+]
+
 var _size := Vector2(128, 128)  # art size, set from the texture
 
 @export var location := {}
@@ -14,13 +21,18 @@ func set_location(loc: Dictionary, terrain: Texture2D) -> void:
 	texture = terrain
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_size = terrain.get_size()
-	location_label.position = Vector2(-location_label.size.x / 2.0, _size.y / 2.0 - 10)
-	location_label.text = loc.label
+	# The name lives in the badge, keeping the ground in front free for pawns.
+	location_label.hide()
 	index_label.hide()
 
 	var action: Dictionary = Global.LOCATION_ACTIONS[loc.action]
-	_add_badge(loc.rolls, action)
+	_add_badge(loc, action)
 	_add_hover_area(loc, action)
+
+
+## Global position where the n-th pawn at this location stands (feet).
+func pawn_spot(n: int) -> Vector2:
+	return global_position + PAWN_SPOTS[n % PAWN_SPOTS.size()]
 
 
 static func rolls_text(rolls: Array, separator := " / ") -> String:
@@ -30,8 +42,8 @@ static func rolls_text(rolls: Array, separator := " / ") -> String:
 	return separator.join(parts)
 
 
-## "[ 4 / 5 | icon ]" floating above the tile, in the action's colour.
-func _add_badge(rolls: Array, action: Dictionary) -> void:
+## "[ Widow's River  4 / 5 | icon ]" floating above the art, in the action's colour.
+func _add_badge(loc: Dictionary, action: Dictionary) -> void:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.04, 0.04, 0.07, 0.88)
 	style.border_color = Color(action.color)
@@ -52,8 +64,14 @@ func _add_badge(rolls: Array, action: Dictionary) -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.add_child(row)
 
+	var name_label := Label.new()
+	name_label.text = loc.label
+	name_label.add_theme_font_size_override("font_size", 17)
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(name_label)
+
 	var label := Label.new()
-	label.text = rolls_text(rolls)
+	label.text = rolls_text(loc.rolls)
 	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", Color(action.color).lightened(0.35))
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

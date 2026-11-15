@@ -4,12 +4,12 @@
 [ext_resource type="Script" path="res://scripts/play_scene.gd" id="1_uvvkh"]
 [ext_resource type="Script" path="res://scripts/board/game_map.gd" id="2_bl4s0"]
 [ext_resource type="Script" path="res://scripts/game_manager.gd" id="2_kvevl"]
-[ext_resource type="Texture2D" path="res://assets/vampire.png" id="3_8w2fw"]
+[ext_resource type="Texture2D" path="res://assets/portraits/vampire.png" id="3_8w2fw"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="3_dot8f"]
 [ext_resource type="Script" path="res://scripts/player_hud.gd" id="3_kph0c"]
-[ext_resource type="Texture2D" path="res://assets/werewolf.png" id="6_ee57v"]
+[ext_resource type="Texture2D" path="res://assets/portraits/werewolf.png" id="6_ee57v"]
 [ext_resource type="Script" path="res://scripts/players_slots.gd" id="7_nceq5"]
-[ext_resource type="Texture2D" path="res://assets/cards/blue_card.png" id="8_hvili"]
+[ext_resource type="Texture2D" uid="uid://3l8ywfisy5tp" path="res://assets/cards/blue_card.png" id="8_hvili"]
 [ext_resource type="PackedScene" uid="uid://cg8cceqjwmtk4" path="res://scenes/card_deck.tscn" id="9_edp6p"]
 [ext_resource type="PackedScene" uid="uid://by6wb574urfni" path="res://scenes/dice_6_sided.tscn" id="10_eenv0"]
 [ext_resource type="Script" path="res://scripts/dices_container.gd" id="10_mu42g"]
@@ -184,28 +184,7 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_bqq6g")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_bs1hb")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_y0i5t")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_rpdox")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_3hvic")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_rpdox")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_y0i5t")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_bs1hb")
+"texture": ExtResource("3_8w2fw")
 }],
 "loop": true,
 "name": &"vampire",
@@ -213,22 +192,7 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_ydgpm")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_sesht")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_jangc")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_78o03")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_8oylf")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_ualbj")
+"texture": ExtResource("6_ee57v")
 }],
 "loop": true,
 "name": &"werewolf",

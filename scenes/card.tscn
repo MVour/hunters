@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/card.gd" id="1_jp7yq"]
 [ext_resource type="Shader" path="res://shaders/fake_3D.gdshader" id="2_q3e1r"]
 [ext_resource type="Texture2D" uid="uid://dygvses7xovyq" path="res://assets/cards/Designer(7).jpeg" id="4_6l0g7"]
-[ext_resource type="Texture2D" path="res://assets/cards/blue_card.png" id="4_sucrh"]
+[ext_resource type="Texture2D" uid="uid://3l8ywfisy5tp" path="res://assets/cards/blue_card.png" id="4_sucrh"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uptu3"]
 size = Vector2(106.5, 177)

@@ -39,6 +39,10 @@ var game_settings_default = {
 	}
 }
 
+## Rolling this total lets you move to any location except your current one.
+## Full rules: docs/RULES.md
+const ROLL_ANY_LOCATION := 7
+
 ## What each location lets you do: badge colour, icon, and hover text.
 const LOCATION_ACTIONS := {
 	"draw_green": {"color": "4fd08a", "icon": "res://assets/icons/icon_draw_green.png", "text": "Draw a green card."},
