@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bvrbw4eq3dt6b"
-path="res://.godot/imported/chappel.png-b14cec5f8103e950164cbddb38390858.ctex"
+path="res://.godot/imported/chapel_original.png-71380b6e564ab93d8035ce4b8042ccda.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/legacy/chapel_original.png"
-dest_files=["res://.godot/imported/chappel.png-b14cec5f8103e950164cbddb38390858.ctex"]
+dest_files=["res://.godot/imported/chapel_original.png-71380b6e564ab93d8035ce4b8042ccda.ctex"]
 
 [params]
 

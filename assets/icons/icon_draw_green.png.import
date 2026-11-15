@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ctd8tr24sy1i7"
-path="res://.godot/imported/red_card.webp-7232cb3699ffdbace7a9ef527ec2edd4.ctex"
+uid="uid://bfwd8jshmqfa2"
+path="res://.godot/imported/icon_draw_green.png-9e39d5013a1bad911da42e27e594c243.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/red_card.webp"
-dest_files=["res://.godot/imported/red_card.webp-7232cb3699ffdbace7a9ef527ec2edd4.ctex"]
+source_file="res://assets/icons/icon_draw_green.png"
+dest_files=["res://.godot/imported/icon_draw_green.png-9e39d5013a1bad911da42e27e594c243.ctex"]
 
 [params]
 

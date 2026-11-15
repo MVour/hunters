@@ -25,7 +25,7 @@ var card_types = {
 	#"green_cards" : preload("res://assets/cards/ffcard.webp"),
 	"red_cards" : preload("res://assets/cards/red_card.png"),
 	"green_cards" : preload("res://assets/cards/green_card.png"),
-	"blue_cards" : preload("res://assets/cards/blue_card.jpeg"),
+	"blue_cards" : preload("res://assets/cards/blue_card.png"),
 }
 
 @export var color:Color:

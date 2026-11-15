@@ -2,7 +2,7 @@ class_name LocationSprite extends Sprite2D
 ## One location on the board: its art, a badge showing which dice totals
 ## lead here and what you can do, and a tooltip explaining it on hover.
 
-const TILE_SIZE := 128.0
+var _size := Vector2(128, 128)  # art size, set from the texture
 
 @export var location := {}
 @onready var index_label: Label = $IndexLabel
@@ -12,6 +12,9 @@ const TILE_SIZE := 128.0
 func set_location(loc: Dictionary, terrain: Texture2D) -> void:
 	location = loc
 	texture = terrain
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_size = terrain.get_size()
+	location_label.position = Vector2(-location_label.size.x / 2.0, _size.y / 2.0 - 10)
 	location_label.text = loc.label
 	index_label.hide()
 
@@ -73,15 +76,15 @@ func _add_badge(rolls: Array, action: Dictionary) -> void:
 
 func _place_badge(badge: Control) -> void:
 	badge.reset_size()
-	badge.position = Vector2(-badge.size.x / 2.0, -TILE_SIZE / 2.0 - badge.size.y - 4)
+	badge.position = Vector2(-badge.size.x / 2.0, -_size.y / 2.0 - badge.size.y + 6)
 
 
 ## Invisible control over the tile that shows a tooltip on hover.
 func _add_hover_area(loc: Dictionary, action: Dictionary) -> void:
 	var area := Control.new()
 	area.name = "HoverArea"
-	area.position = Vector2(-TILE_SIZE / 2.0, -TILE_SIZE / 2.0)
-	area.size = Vector2(TILE_SIZE, TILE_SIZE)
+	area.position = -_size / 2.0
+	area.size = _size
 	area.mouse_filter = Control.MOUSE_FILTER_PASS
 	area.tooltip_text = "%s\nRoll %s to come here.\n%s" % [loc.label, rolls_text(loc.rolls, " or "), action.text]
 	add_child(area)
