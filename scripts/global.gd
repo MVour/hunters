@@ -26,13 +26,15 @@ var game_settings_default = {
 		7 : {"vampires_count": 2, "werewolves_count": 2, "humans_count": 3},
 		8 : {"vampires_count": 3, "werewolves_count": 3, "humans_count": 2}
 	},
+	## Seats around the clearing, clockwise from you (slot1, bottom-left):
+	## slot2-3 left, slot4-6 top, slot7-8 right.
 	"chairs_config" : {
-		2 : ["slot1", "slot4"],
-		3 : ["slot1", "slot4", "slot7"],
-		4 : ["slot1", "slot2", "slot4", "slot7"],
-		5 : ["slot1", "slot2", "slot4", "slot6", "slot8"],
+		2 : ["slot1", "slot5"],
+		3 : ["slot1", "slot4", "slot6"],
+		4 : ["slot1", "slot3", "slot5", "slot7"],
+		5 : ["slot1", "slot3", "slot4", "slot6", "slot7"],
 		6 : ["slot1", "slot2", "slot4", "slot5", "slot6", "slot8"],
-		7 : ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot8"],
+		7 : ["slot1", "slot2", "slot3", "slot4", "slot6", "slot7", "slot8"],
 		8 : ["slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot7", "slot8"],
 	}
 }

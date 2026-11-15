@@ -5,6 +5,11 @@ class_name DiceManager extends Panel
 @onready var game_manager: GameManager = $"../GameManager"
 
 
+func _ready() -> void:
+	# The dice sit on the ground by the campfire: no grey panel behind them.
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+
+
 ## Ask the server to roll; it ignores us if it's not our turn.
 func _on_roll_button_pressed() -> void:
 	game_manager.request_roll.rpc_id(1)

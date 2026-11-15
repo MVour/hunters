@@ -5,7 +5,7 @@ class_name PlayScene extends Node2D
 @onready var player_hud: PlayerHud = $Hud/PlayerHud
 @onready var decks_container: HBoxContainer = $DecksContainer
 @onready var deck_scn : PackedScene = preload("res://scenes/card_deck.tscn")
-@onready var tile_map_layer: GameMap = $TileMapLayer
+@onready var game_map: GameMap = $Locations
 @onready var end_turn_button: Button = $EndTurnButton
 @onready var game_manager: GameManager = $GameManager
 @onready var playing_label: Label = $PlayingLabel
@@ -33,7 +33,7 @@ func spawn_players(players):
 
 
 func _on_set_locations(_locations):
-	tile_map_layer.locations_spawn()
+	game_map.locations_spawn()
 
 
 func _on_attach_deck(card_type: String, count: int):
