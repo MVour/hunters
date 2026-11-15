@@ -23,8 +23,8 @@ var card_info : Dictionary
 var card_types = {
 	#"red_cards" : preload("res://assets/cards/Designer(7).jpeg"),
 	#"green_cards" : preload("res://assets/cards/ffcard.webp"),
-	"red_cards" : preload("res://assets/cards/red_card.webp"),
-	"green_cards" : preload("res://assets/cards/green_card.webp"),
+	"red_cards" : preload("res://assets/cards/red_card.png"),
+	"green_cards" : preload("res://assets/cards/green_card.png"),
 	"blue_cards" : preload("res://assets/cards/blue_card.jpeg"),
 }
 
