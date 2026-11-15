@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bcb4ik8mf2qyo"
-path="res://.godot/imported/chappel2.png-a0622e0cd9b14e4fd9eb6d9f65e32e3d.ctex"
+uid="uid://b8p8svvbs52cv"
+path="res://.godot/imported/werewolf.png-cd66d9d2eeb080c649595c04f997f297.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/background/chappel2.png"
-dest_files=["res://.godot/imported/chappel2.png-a0622e0cd9b14e4fd9eb6d9f65e32e3d.ctex"]
+source_file="res://assets/werewolf.png"
+dest_files=["res://.godot/imported/werewolf.png-cd66d9d2eeb080c649595c04f997f297.ctex"]
 
 [params]
 

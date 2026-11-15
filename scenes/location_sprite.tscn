@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://bxop7babawd3"]
 
-[ext_resource type="Texture2D" uid="uid://bcb4ik8mf2qyo" path="res://assets/background/chappel2.png" id="1_q58xc"]
+[ext_resource type="Texture2D" path="res://assets/locations/old_chapel.png" id="1_q58xc"]
 [ext_resource type="Script" path="res://scripts/location_sprite.gd" id="2_5kty7"]
 
 [node name="LocationSprite" type="Sprite2D"]

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bvrbw4eq3dt6b"
-path="res://.godot/imported/chappel.png-b14cec5f8103e950164cbddb38390858.ctex"
+uid="uid://bcb4ik8mf2qyo"
+path="res://.godot/imported/chappel2.png-a0622e0cd9b14e4fd9eb6d9f65e32e3d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/background/chappel.png"
-dest_files=["res://.godot/imported/chappel.png-b14cec5f8103e950164cbddb38390858.ctex"]
+source_file="res://assets/legacy/chapel_original2.png"
+dest_files=["res://.godot/imported/chappel2.png-a0622e0cd9b14e4fd9eb6d9f65e32e3d.ctex"]
 
 [params]
 

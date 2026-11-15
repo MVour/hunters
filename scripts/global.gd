@@ -39,6 +39,16 @@ var game_settings_default = {
 	}
 }
 
+## What each location lets you do: badge colour, icon, and hover text.
+const LOCATION_ACTIONS := {
+	"draw_green": {"color": "4fd08a", "icon": "res://assets/icons/icon_draw_green.png", "text": "Draw a green card."},
+	"draw_blue": {"color": "6a9af0", "icon": "res://assets/icons/icon_draw_blue.png", "text": "Draw a blue card."},
+	"draw_red": {"color": "e8402e", "icon": "res://assets/icons/icon_draw_red.png", "text": "Draw a red card."},
+	"draw_any": {"color": "e8c060", "icon": "res://assets/icons/icon_draw_any.png", "text": "Draw a card of any colour."},
+	"steal_equipment": {"color": "b07ae8", "icon": "res://assets/icons/icon_steal_equipment.png", "text": "Steal an equipment card from any player."},
+	"heal_or_damage": {"color": "4fe0d0", "icon": "res://assets/icons/icon_heal_or_damage.png", "text": "Heal 1 health on any player (yourself included), or deal 2 damage to any player."},
+}
+
 ## Maps the lobby's settings keys to character lists and species names.
 const SPECIES := {
 	"vampires_count": {"list": "vampires", "species": "vampire"},
@@ -62,13 +72,15 @@ var deck = {
 			{"id": "w2", "species": "werewolf", "name": "Gregor", "health": 14, "ability_code": "G:A/4Z", "ability": "Once per game can choose to attack with the 4 sided dice.", "goal": "No vampires standing"}
 		]
 	},
+	## Shuffled around the board every game. "rolls" = the dice totals
+	## (d6 + d4) that send you here; "action" keys into LOCATION_ACTIONS.
 	"locations" : [
-		{"id": "l1", "name": "old_chapel", "label": "Old Chapel", "effect": "Draw: Red, Blue", "position": 0, "players": []},
-		{"id": "l2", "name": "old_chapel", "label": "Old Chapel", "effect": "Draw: Red, Blue", "position": 0, "players": []},
-		{"id": "l3", "name": "old_chapel", "label": "Old Chapel", "effect": "Draw: Red, Blue", "position": 0, "players": []},
-		{"id": "l4", "name": "old_chapel", "label": "Old Chapel", "effect": "Draw: Red, Blue", "position": 0, "players": []},
-		{"id": "l5", "name": "old_chapel", "label": "Old Chapel", "effect": "Draw: Red, Blue", "position": 0, "players": []},
-		{"id": "l6", "name": "old_chapel", "label": "Old Chapel", "effect": "Draw: Red, Blue", "position": 0, "players": []},
+		{"id": "lone_cabin", "name": "lone_cabin", "label": "Lone Cabin", "rolls": [2, 3], "action": "draw_green"},
+		{"id": "widows_river", "name": "widows_river", "label": "Widow's River", "rolls": [4, 5], "action": "draw_any"},
+		{"id": "old_chapel", "name": "old_chapel", "label": "Old Chapel", "rolls": [6], "action": "draw_blue"},
+		{"id": "cemetery", "name": "cemetery", "label": "Cemetery", "rolls": [8], "action": "draw_red"},
+		{"id": "magic_forest", "name": "magic_forest", "label": "Magic Forest", "rolls": [9], "action": "heal_or_damage"},
+		{"id": "stone_circle", "name": "stone_circle", "label": "Stone Circle", "rolls": [10], "action": "steal_equipment"},
 	],
 	"blue_cards" : [
 		{"id": "bc1", "title": "Some Blue Card", "text": "Some BlueCard Text"},
