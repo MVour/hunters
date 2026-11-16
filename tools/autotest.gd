@@ -4,13 +4,12 @@ extends Node
 ## `-- --autotest=client`. See tools/run_autotest.sh.
 ##
 ## It goes through the real flow: host/join, pick an avatar, start, then on
-## its turns rolls, moves, draws, answers, attacks and ends the turn. Every
-## request goes through server_request(), the one place that knows how the
-## client talks to the server.
+## its turns rolls, moves, draws, answers, attacks and ends the turn, using
+## the same MatchNet / LobbyNet actions the UI uses.
 ##
 ## Prints "AUTOTEST PASS ..." and exits 0, or "AUTOTEST FAIL ..." and exits 1.
 
-const MAX_TURNS := 30           # host stops after this many turns in total
+var max_turns := 30             # host leaves after this many turns (--max-turns=N)
 const STALL_SECONDS := 40.0     # no new turn for this long = stuck
 const TIME_SCALE := 4.0
 const PORT := 18080            # not the default, so a running game is left alone
@@ -25,6 +24,9 @@ var _done := false
 
 func _init(p_role: String) -> void:
 	role = p_role
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--max-turns="):
+			max_turns = arg.get_slice("=", 1).to_int()
 	name = "Autotest"
 
 
@@ -59,15 +61,6 @@ func _process(_delta: float) -> void:
 		_finish(false, "stalled: no new turn for %ds" % STALL_SECONDS)
 
 
-# --- The one place that talks to the server ---------------------------------
-
-func server_request(method: String, args := []) -> void:
-	var gm := get_tree().root.find_child("GameManager", true, false)
-	if gm == null:
-		return
-	gm.rpc_id.callv([1, method] + args)
-
-
 func _start_match(mc: MultiplayerController) -> void:
 	mc.lobby._on_start_game_pressed()
 
@@ -77,20 +70,21 @@ func _start_match(mc: MultiplayerController) -> void:
 func _connect_signals() -> void:
 	SignalBus.begin_turn.connect(_on_begin_turn)
 	SignalBus.end_turn.connect(_on_end_turn)
-	# Answer like a person: a moment later, never in the same frame.
+	# Answers come either a moment later or instantly (same frame), to test
+	# that the server never loses an early answer.
 	SignalBus.choose_location.connect(func(options):
 		await _think()
-		server_request("request_choose_location", [options[randi() % options.size()]]))
+		MatchNet.choose_location(options[randi() % options.size()]))
 	SignalBus.location_action_offered.connect(_on_location_action)
 	SignalBus.choice_requested.connect(func(_prompt, options, _skip):
 		stats.choices += 1
 		await _think()
-		server_request("request_choice", [options[randi() % options.size()].value]))
+		MatchNet.choose(options[randi() % options.size()].value))
 	SignalBus.question_drawn.connect(_on_question_drawn)
 	SignalBus.question_asked.connect(func(_from, _card):
 		stats.questions += 1
 		await get_tree().create_timer(0.2).timeout
-		server_request("request_answer_question"))
+		MatchNet.answer_question())
 	SignalBus.pawn_moved.connect(func(_id, _loc): stats.moves += 1)
 	SignalBus.card_revealed.connect(func(_id, _card): stats.cards += 1)
 	SignalBus.card_drawn_secretly.connect(func(_id, _t): stats.cards += 1)
@@ -105,15 +99,15 @@ func _connect_signals() -> void:
 func _on_begin_turn(player_id: int) -> void:
 	stats.turns += 1
 	_last_progress = Time.get_ticks_msec()
-	if role == "host" and stats.turns > MAX_TURNS:
-		_finish(true, "played %d turns" % MAX_TURNS)
+	if role == "host" and stats.turns > max_turns:
+		_finish(true, "left after %d turns" % max_turns)
 		return
 	_my_turn = player_id == GameState.local_id
 	if not _my_turn:
 		return
 	stats.my_turns += 1
 	await get_tree().create_timer(0.3).timeout
-	server_request("request_roll")
+	MatchNet.roll()
 
 
 func _on_end_turn(player_id: int) -> void:
@@ -123,34 +117,35 @@ func _on_end_turn(player_id: int) -> void:
 
 func _on_location_action(action: String) -> void:
 	await get_tree().create_timer(0.3).timeout
-	var draws: Array = GameManager.DRAW_ACTIONS.get(action, [])
+	var draws: Array = Global.DRAW_ACTIONS.get(action, [])
 	if not draws.is_empty():
-		server_request("request_draw", [draws[randi() % draws.size()]])
+		MatchNet.draw(draws[randi() % draws.size()])
 	elif action in ["heal_or_damage", "steal_equipment"]:
-		server_request("request_location_action")
+		MatchNet.use_location()
 	else:
-		server_request("request_skip_action")
+		MatchNet.skip_action()
 	await get_tree().create_timer(1.0).timeout
 	if randf() < 0.6:
-		server_request("request_attack")
+		MatchNet.attack()
 	# Keep asking to end the turn; the server refuses while anything is pending.
 	while _my_turn and not _done:
 		await get_tree().create_timer(0.6).timeout
-		server_request("request_end_turn")
+		MatchNet.end_turn()
 
 
 func _on_question_drawn(_card: Dictionary) -> void:
 	await _think()
 	for id in GameState.game_info.players_turn:
 		if id != GameState.local_id and not GameState.players[id].dead:
-			server_request("request_give_question", [id])
+			MatchNet.give_question(id)
 			return
 
 
 # --- Helpers ------------------------------------------------------------------
 
 func _think() -> void:
-	await get_tree().create_timer(0.15).timeout
+	if randf() < 0.5:
+		await get_tree().create_timer(0.15).timeout
 
 
 func _until(condition: Callable) -> void:
@@ -167,6 +162,8 @@ func _finish(ok: bool, why: String, already_left := false) -> void:
 		print("AUTOTEST DEBUG ", _debug_state())
 	# Leave the match the normal way first: quitting with the match still
 	# running (paused coroutines, open connection) crashes Godot on exit.
+	# Not in the middle of a signal the UI is still handling (like a click would).
+	await get_tree().process_frame
 	if not already_left:
 		SignalBus.leave_match.emit()
 	await get_tree().create_timer(0.5, true, false, true).timeout
@@ -175,7 +172,7 @@ func _finish(ok: bool, why: String, already_left := false) -> void:
 
 ## What the server is waiting on (only meaningful on the host).
 func _debug_state() -> String:
-	var gm := get_tree().root.find_child("GameManager", true, false)
-	if gm == null or not multiplayer.is_server():
+	var s: MatchServer = MatchNet.server
+	if s == null:
 		return "my_turn=%s" % _my_turn
-	return "turn=%s busy=%s awaiting=%s" % [gm.current_turn, gm._busy, gm._awaiting]
+	return "turn=%s busy=%s awaiting=%s" % [s.turn, s._busy, s._awaiting]

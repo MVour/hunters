@@ -19,7 +19,7 @@ that sit open for more than ~2 weeks.
 
 ### BUG-003 — Leaving a match leaves server logic running
 - **Logged:** 2026-11-16
-- **Area:** `server/game_manager.gd` (functions that `await` choices/timers)
+- **Area:** the old `server/game_manager.gd` (functions that `await` choices/timers)
 - **What happens:** If the host leaves while the server is mid-effect (e.g.
   waiting for "take one of their equipment cards" after a kill), the paused
   function resumes after GameState is reset and throws script errors.
@@ -27,7 +27,10 @@ that sit open for more than ~2 weeks.
 - **Hypothesis:** Server functions never check the match still exists after an `await`.
 - **Impact:** Medium: errors on "Back to menu"; worse for a future dedicated
   server running several matches.
-- **Status:** open
+- **Status:** fix verified (2026-11-16, C004). The match now lives in a
+  `MatchServer` node that waits only on its own signals/timers;
+  `MatchNet.stop()` frees it on leave/disconnect, cancelling everything.
+  Verified with `MAX_TURNS=4/9/13 tools/run_autotest.sh` (host leaves mid-match: no errors).
 
 ### BUG-002 — GUIDE button in the main menu does nothing
 - **Logged:** 2026-11-16
@@ -39,10 +42,11 @@ that sit open for more than ~2 weeks.
 
 ### BUG-001 — A player leaving mid-match isn't handled
 - **Logged:** 2026-11-16
-- **Area:** `lobby/lobby.gd` `_on_peer_left`, `server/game_manager.gd` turn flow
+- **Area:** `network/lobby_net.gd` `_on_peer_left`, `server/match_server.gd` turn flow
 - **What happens:** The server only logs a warning. The player stays in the
   turn order, so when it's their turn nobody can act. The match likely stalls.
   (Not reproduced yet; read from code.)
-- **Hypothesis:** Only the lobby case was written (`# TODO` at `lobby.gd:96`).
+- **Hypothesis:** Only the lobby case was written (see `_on_peer_left`). Also: a pending
+  `ask()` to the missing player would wait forever.
 - **Impact:** High for online play: one dropped connection can end the game night.
 - **Status:** open

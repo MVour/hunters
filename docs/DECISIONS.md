@@ -12,6 +12,20 @@ in MANIFEST.md → Non-negotiable constraints.
 
 ---
 
+### D004 — Client store + network actions + separate server state (2026-11-16)
+- **Status:** active
+- **What:** Pinia-style. `GameState` = per-computer store of what that
+  player may know, written only by server messages. `LobbyNet`/`MatchNet`
+  autoloads = the only RPC code (actions → requests → messages).
+  `SignalBus` = subscriptions. Server truth lives apart from the store
+  (`LobbyNet` server fields, `MatchServer`/`ServerState`), so a host
+  sees no more than any player and a dedicated server needs no UI.
+- **Why:** User's request; clear data flow; ready for a headless server and
+  a lobby service.
+- **Rejected:** RPCs on scene nodes (fragile node paths, server tied to UI);
+  MultiplayerSynchronizer for state (no per-player secrecy); one shared
+  GameState for host and server (host could see secrets; no dedicated server).
+
 ### D003 — Organise by feature, verify headless (2026-11-16)
 - **Status:** active
 - **What:** Folders follow features (lobby/, match/, server/, network/…),

@@ -1,8 +1,9 @@
 class_name DiceManager extends Panel
+## The two dice by the campfire. Pure view: the server throws them (it
+## decides the result) and MatchNet tells everyone via SignalBus.dice_rolled.
 
 @onready var dice_6_sided: AnimatedSprite2D = $Dice6Sided
 @onready var dice_4_sided: AnimatedSprite2D = $Dice4Sided
-@onready var game_manager: GameManager = $"../GameManager"
 
 
 func _ready() -> void:
@@ -10,21 +11,16 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	# Don't block clicks on locations behind the (invisible) panel.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	SignalBus.dice_rolled.connect(_on_dice_rolled)
 
 
 ## Ask the server to roll; it ignores us if it's not our turn.
 func _on_roll_button_pressed() -> void:
 	$RollButton.hide()  # one roll per turn
-	game_manager.request_roll.rpc_id(1)
+	MatchNet.roll()
 
 
-## Server -> everyone: play the roll animation landing on these values.
-@rpc("authority", "call_local", "reliable")
-func roll_dices(val6: int, val4: int):
+## Play the roll animation landing on these values.
+func _on_dice_rolled(val6: int, val4: int) -> void:
 	dice_6_sided.roll(val6)
 	dice_4_sided.roll(val4)
-
-
-## Server only: decide the result.
-func throw_dices() -> Dictionary:
-	return {"val6": dice_6_sided.throw(), "val4": dice_4_sided.throw()}

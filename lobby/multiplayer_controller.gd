@@ -38,7 +38,7 @@ func _on_host_pressed(options := {}) -> void:
 	connect_to_lobby.hide()
 	_open_lobby(Network.get_invite_code())
 	if Network.server_is_player:
-		lobby.request_join.rpc_id(1)
+		LobbyNet.join()
 
 
 func _on_connect_lobby_button_pressed() -> void:
@@ -67,7 +67,7 @@ func _on_return_button_pressed() -> void:
 func _on_connected_to_host() -> void:
 	print("Connected to host!")
 	if lobby:
-		lobby.request_join.rpc_id(1)
+		LobbyNet.join()
 
 
 func _on_connection_failed(reason: String) -> void:
@@ -93,8 +93,6 @@ func _open_lobby(code: String) -> void:
 
 func _close_lobby() -> void:
 	if lobby:
-		# Remove right away so a new lobby gets the same node name (and path):
-		# RPCs find nodes by path, so it must match on every computer.
 		remove_child(lobby)
 		lobby.queue_free()
 		lobby = null

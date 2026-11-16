@@ -32,7 +32,7 @@ skill's setup step to re-sync this block if the skill's rules change.)
 | docs/BUGS.md | Status log | Sequential IDs (BUG-001, ...). Log area, root-cause hypothesis, impact. Update status field when addressed — distinguish fix implemented from fix verified. |
 | docs/IDEAS.md | Backlog | Reference pool, not a queue — implementing an entry only happens if the user asks. Remove on implementation + add a Log entry. |
 | docs/ARCHITECTURE.md | Living reference | Edit in place, same session as the invalidating change. No history kept — risk is drift, not bloat. |
-| docs/RULES.md, docs/CARDS.md | Living reference (game design spec) | Edit in place, same session as a rules/card change in code (`data/cards.gd`, `data/characters.gd`, `server/game_manager.gd`, `server/card_effects.gd`). |
+| docs/RULES.md, docs/CARDS.md | Living reference (game design spec) | Edit in place, same session as a rules/card change in code (`data/cards.gd`, `data/characters.gd`, `server/*.gd`). |
 | docs/FOLDER_STRUCTURE.md | Folder map | Update only when a folder's purpose changes, a top-level folder is added/removed, or a key-file-roles-table file moves/renames/is removed. Not on every file rename. |
 
 ### Approval gates — stop and ask before proceeding when:
@@ -46,6 +46,7 @@ skill's setup step to re-sync this block if the skill's rules change.)
 Everything else — routine implementation detail that doesn't touch a constraint, doesn't contradict a decision, isn't genuinely ambiguous — doesn't need a gate. Make the call, log it, move on.
 
 ### Before ending a task or session
+0. Code changed? Run `tools/check_project.tscn` and `tools/run_autotest.sh` headless (see ARCHITECTURE.md → Testing).
 1. Does STATE.md still match reality? Rewrite if this session's work made it stale.
 2. Any BUGS.md entry touched this session — is its status field actually updated?
 3. Any IDEAS.md entry implemented — removed, with a Log entry added?
@@ -53,9 +54,11 @@ Everything else — routine implementation detail that doesn't touch a constrain
 5. Rules or cards changed in code — are RULES.md / CARDS.md still true?
 
 ### Non-negotiable constraints
-1. **Server-authoritative.** Peer 1 decides everything. Clients only call `request_*` RPCs on
-   `GameManager`; the server validates and broadcasts. Hidden info (other players' characters)
-   is never sent to a client that shouldn't see it.
+1. **Server-authoritative, store pattern.** The server decides everything. All `@rpc` code lives
+   in `LobbyNet` / `MatchNet`; UI calls their actions and listens to `SignalBus`, never RPCs
+   directly, never writes `GameState`. Server truth stays in `LobbyNet`'s server fields and
+   `ServerState`, never in `GameState`. Hidden info (other players' characters) is never sent to a
+   client that shouldn't see it — the host's screen included.
 2. **Transport stays swappable.** Game code never touches ENet directly — only the `Network`
    autoload and a `NetworkTransport` (today `EnetTransport`). A lobby/matchmaking service
    should be able to replace it later.

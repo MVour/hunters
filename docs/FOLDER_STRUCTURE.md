@@ -9,11 +9,13 @@ moves/renames/is removed.
 ```
 Scenes sit next to their scripts, grouped by feature.
 
-project.godot        Godot 4.3 project; autoloads: SignalBus, Global, GameState, Network
-autoload/            global singletons: static data (global), session state (game_state), signals
-network/             owns: how peers connect (Network autoload + transports)
-server/              owns: match rules, server only (game_manager, card_effects)
-data/                card list and character list (EN + EL)
+project.godot        Godot 4.3 project; autoloads: SignalBus, Global, GameState, Network, LobbyNet, MatchNet
+autoload/            static data (global), the client store (game_state), events (signal_bus)
+network/             owns: everything sent over the network: connecting (network + transports),
+                     lobby and match actions/requests/messages (lobby_net, match_net)
+server/              owns: match rules, server only (match_server, card_flow, combat,
+                     card_effects, server_state)
+data/                card list, character list (EN + EL), shared board rules
 main/                entry scene (main.tscn) + main menu
 lobby/               host/join screen, waiting room, avatar picker, role settings
 match/               the match screen (play_scene) and its parts:
@@ -33,9 +35,11 @@ docs/                project docs (see MANIFEST.md)
 
 | File | Owns (sole owner) |
 |---|---|
-| `server/game_manager.gd` | All game logic on the server: turns, moves, draws, attacks, abilities, win checks. Every `request_*` RPC lands here. |
+| `network/match_net.gd` / `network/lobby_net.gd` | The only `@rpc` code. Every client action, server request and server message. |
+| `server/match_server.gd` | The match on the server: lifecycle, turns, moving, choices. Helpers: `card_flow.gd` (cards, questions, equipment), `combat.gd` (health, attacks, abilities, winning). |
+| `server/server_state.gd` | The server's full truth for a match (secret characters, deck order). |
 | `network/network.gd` | Hosting/joining/leaving; the only code that picks a transport. |
-| `autoload/game_state.gd` | Everything that changes during a session (players, locations, decks, turn order). |
+| `autoload/game_state.gd` | The client store: what this computer may know. Written only by LobbyNet/MatchNet messages. |
 | `autoload/global.gd` | Static data (pawns, locations, card colours, defaults) and the Classic art setting. |
 | `data/cards.gd` / `data/characters.gd` | The card list and the character list (EN + EL text). |
 | `server/card_effects.gd` | Applying card effects. |

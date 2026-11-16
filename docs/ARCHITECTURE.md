@@ -4,58 +4,95 @@ How the game is put together right now. Living reference: edit in place in
 the same session as a change that makes it wrong. No history here (that's
 CHANGELOG.md / DECISIONS.md).
 
-> Auto-derived from a manual code read on 2026-11-16 — please review for accuracy.
-
 ## Stack
 Godot 4.3, GDScript only, 1920×1080 canvas. No external plugins.
 
-## Autoloads
+## The big picture: store, actions, server
+
+Like a Pinia store (D004):
+
+```
+ UI (lobby/, match/)            reads GameState, listens to SignalBus,
+   │  calls actions              calls LobbyNet / MatchNet actions. No RPCs.
+   ▼
+ LobbyNet / MatchNet  ──request (rpc_id 1)──►  server side
+ (network/, autoloads)                         LobbyNet._players/_settings
+   ▲                                           MatchServer + ServerState
+   │  messages (rpc to all / one)  ◄───────────┘
+   ▼
+ GameState (store) ──► SignalBus ──► UI redraws
+```
+
+- **GameState** (`autoload/game_state.gd`): what *this* computer knows: the
+  players' public info, your own character, locations, turn order, role
+  counts. The UI never writes it; only LobbyNet/MatchNet messages do.
+- **LobbyNet / MatchNet** (`network/`): the only code with `@rpc`.
+  *Actions* (`MatchNet.roll()`, `LobbyNet.choose_avatar()`…) send a request to
+  the server. *Requests* run on the server with the real sender id
+  (`Network.sender_id()`). *Messages* run on every (or one) computer: they
+  update GameState and emit a SignalBus event. They're autoloads, so their
+  node path is the same everywhere, whatever scene is open.
+- **Server truth** never lives in GameState. Lobby: `LobbyNet._players`,
+  `_settings`. Match: `MatchServer.state` (a `ServerState`: everyone's
+  characters, deck order, discards). The host's own screen only gets what
+  any other player would.
+
+## Autoloads (load order)
 | Name | Script | Role |
 |---|---|---|
-| `SignalBus` | `autoload/signal_bus.gd` | Cross-scene signals (turns, moves, cards, attacks, game over…). |
-| `Global` | `autoload/global.gd` | Static data + the Classic art setting (`user://settings.cfg`). |
-| `GameState` | `autoload/game_state.gd` | Session state. The server's copy is the truth. |
-| `Network` | `network/network.gd` | Host / join / leave through a `NetworkTransport`. |
+| `SignalBus` | `autoload/signal_bus.gd` | Every cross-scene event (store subscriptions). |
+| `Global` | `autoload/global.gd` | Static data (cards, characters, locations, pawns, `DRAW_ACTIONS`) + the Classic art setting. |
+| `GameState` | `autoload/game_state.gd` | The client store (see above). |
+| `Network` | `network/network.gd` | Connect/host/leave through a `NetworkTransport`; emits `session_closed`, `host_disconnected`, `peer_joined/left`. |
+| `LobbyNet` | `network/lobby_net.gd` | Lobby actions/requests/messages + the lobby's server truth. |
+| `MatchNet` | `network/match_net.gd` | Match actions/requests/messages; owns the `MatchServer` on the server. |
 
 ## Networking
-- Listen server: the host is peer 1 and also a player (`Network.server_is_player`).
-- Transport: `EnetTransport` behind the `NetworkTransport` interface, so a
-  lobby service can replace it without touching game code.
-- **Server-authoritative.** Clients call `GameManager.request_*` RPCs with
-  `rpc_id(1, ...)`. The server checks them (`_can_act`, `_is_current_player`)
-  and answers with `@rpc("authority")` calls that fire `SignalBus` signals
-  on every peer.
-- Hidden roles: each client is only sent its own character
-  (`set_character`), plus whatever cards reveal to it (`private_character`).
+- Listen server today: the host is peer 1 and a player (`Network.server_is_player`).
+- Transport: `EnetTransport` behind `NetworkTransport` (invite code = `address:port`,
+  default port 8080), so a lobby service can replace it without touching game code.
+- The lobby's owner is the first player to join (the host today); only they
+  change role counts and start.
 
-## Scene flow
-`main.tscn` → `MainMenu` → `MultiplayerController` (lobby: host/join, pick
-name + pawn, game settings) → `play_scene.tscn` (instanced by `main.gd` on
-`_start_game`). Leaving or host disconnect frees the play scene and goes back
-to the menu.
+## Match server (`server/`, server only)
+- `MatchNet.create_server()` (called by `LobbyNet` on start) makes a
+  `MatchServer` child of MatchNet with a `ServerState` copied from the lobby.
+  The match begins when every player's screen reports `loaded`.
+- `MatchServer` (`match_server.gd`): lifecycle, turns
+  (roll → move → location action → optional attack → end turn), server-side
+  dice, the choice system (`ask()` → `present_choice` → `choice()`; an early
+  answer is kept, never lost), `wait()`.
+- `CardFlow` (`card_flow.gd`): drawing, green questions, equipment, protection.
+- `Combat` (`combat.gd`): damage/heal/death, attacks, reveal, abilities, winning.
+- `CardEffects` (`card_effects.gd`): runs a card's effect steps (spec in docs/CARDS.md).
+- Everything that waits does so on signals/timers owned by `MatchServer`, so
+  `MatchNet.stop()` (on leave, host disconnect, new session) frees it and
+  cancels all of it.
 
-## Match (play_scene.tscn)
-- `GameManager` (`server/game_manager.gd`): server-side rules. Deals
-  characters, shuffles locations and decks, runs turns
-  (roll → move → location action → optional attack → end turn), resolves
-  cards through `server/card_effects.gd`, checks wins.
-- Board: `ForestBoard` (code-drawn night clearing) or, with Classic art on,
-  `ClassicBoard` (`match/board/classic_board.tscn`, the original tile map).
-  `Locations` (`GameMap`) places the six `LocationSprite`s; `PawnLayer`
-  animates pawns (hop, attack lunge, death).
-- UI: `Hud/PlayerHud` (portrait, goal, ability, health), `DamageBoard`
-  (life track), `PlayersSlots` (seats around the table), `DecksContainer`,
-  `DicesContainer`, `CardView` (big card popup), plus prompt/action/choice
-  panels built in `play_scene.gd`.
+## Scenes
+`main/main.tscn` → `MainMenu` → `MultiplayerController` (host/join) →
+`lobby/lobby.tscn` (players, avatar picker, role counts) → on `start_game`,
+`main.gd` instances `match/play_scene.tscn`. Leaving or a host disconnect
+frees the play scene and returns to the menu.
+
+Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
+(`ForestBoard` or, with Classic art, `ClassicBoard`), `Locations` (`GameMap`),
+`PawnLayer`, `Hud/PlayerHud`, `DamageBoard` (life track), `PlayersSlots`
+(seats), `DecksContainer`, `DicesContainer`, `CardView` popups, and the
+prompt/action/choice panels built in `play_scene.gd`.
 
 ## Data
-- Cards: `data/cards.gd` (spec in docs/CARDS.md). Each card names its
-  effect; `card_effects.gd` applies it.
-- Characters: `data/characters.gd` (species, health, goal, ability, timing).
-- Locations and actions: `Global.deck.locations`, `Global.LOCATION_ACTIONS`.
+- Cards: `data/cards.gd` (spec in docs/CARDS.md). Characters: `data/characters.gd`.
+- Board rules shared by client and server: `data/board.gd` (`Board`).
+
+## Testing (headless, Godot 4.3 console build)
+- `tools/check_project.tscn`: loads and compiles every script/scene/resource.
+- `tools/run_autotest.sh`: a host bot and a client bot play a match over
+  localhost (port 18080) through the same actions as the UI; fails on any
+  script error. `MAX_TURNS=N` makes the host leave mid-match.
 
 ## Art switch
-`Global.classic_art` picks between the current art and the original Feb 2025
-art (board, chapels, pawns, portraits, card backs). Read at match start.
-Pawn textures are swapped centrally in `Global.pawns`; card backs come from
-`Global.card_back()`; classic portraits are `assets/legacy/portraits/classic_portraits.tres`.
+`Global.classic_art` picks the current art or the original Feb 2025 art (for
+the user to look at past work). Pawn textures swap in `Global.pawns`; card
+backs come from `Global.card_back()`; classic portraits are
+`assets/legacy/portraits/classic_portraits.tres`.

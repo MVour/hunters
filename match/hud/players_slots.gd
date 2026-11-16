@@ -7,9 +7,12 @@ class_name PlayersSlots extends Node2D
 var active_chairs : Array
 
 
-@rpc("authority", "call_local", "reliable")
-func sit_players(decided_turn: Array):
-	GameState.game_info.players_turn = decided_turn
+func _ready() -> void:
+	SignalBus.turn_order_set.connect(sit_players)
+
+
+## The turn order is known (MatchNet already stored it in GameState).
+func sit_players(_order: Array) -> void:
 	decide_chairs()
 	assign_chairs()
 

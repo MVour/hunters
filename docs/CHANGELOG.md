@@ -7,6 +7,26 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C004 — Network & state as a store; game manager split (2026-11-16)
+- **What:** New autoloads `LobbyNet` and `MatchNet` hold every `@rpc`:
+  actions (UI calls), requests (server checks the sender), messages (update
+  `GameState`, emit `SignalBus`). UI files (lobby, game settings, avatar
+  picker, play scene, dice, seats) have no network code left. Removed both
+  `MultiplayerSynchronizer`s; role counts are now real messages, not copied
+  label text. `GameState` is the client store only; server truth moved to
+  `LobbyNet` (lobby) and `ServerState` (match: secret characters, decks).
+  The 895-line `game_manager.gd` became `MatchServer` + `CardFlow` +
+  `Combat` (+ `CardEffects`), created by MatchNet on the server only.
+  Dice are thrown server-side. The choice system keeps an answer that arrives
+  before the server starts waiting. Shared board rules in `data/board.gd`.
+- **Why:** The user asked for state/network to work "like a Pinia store";
+  the next goal (deployment, lobby service) needs server logic that doesn't
+  live inside a UI scene. Fixes BUG-003. See D004.
+- **Rejected:** Keeping RPCs on scene nodes (paths must match on every
+  computer, and server logic would stay tied to the play screen); replicating
+  state with MultiplayerSynchronizer (hard to keep secrets per player).
+- **Verified:** check_project 63/63; run_autotest 8 full games + 3 mid-match leaves, all pass.
+
 ### C003 — Restructure by feature; dead code out; test tools (2026-11-16)
 - **What:** Moved every scene and script into feature folders (autoload/,
   network/, server/, data/, main/, lobby/, match/{board,hud,cards,dice,legacy}),

@@ -1,9 +1,8 @@
-[gd_scene load_steps=33 format=3 uid="uid://buama3fol0eb6"]
+[gd_scene load_steps=31 format=3 uid="uid://buama3fol0eb6"]
 
 [ext_resource type="PackedScene" uid="uid://d3ev876e5fbof" path="res://match/hud/health_board.tscn" id="1_2f02m"]
 [ext_resource type="Script" path="res://match/play_scene.gd" id="1_uvvkh"]
 [ext_resource type="Script" path="res://match/board/game_map.gd" id="2_bl4s0"]
-[ext_resource type="Script" path="res://server/game_manager.gd" id="2_kvevl"]
 [ext_resource type="Texture2D" uid="uid://bbkr172x6dv1r" path="res://assets/portraits/vampire.png" id="3_8w2fw"]
 [ext_resource type="Script" path="res://match/hud.gd" id="3_dot8f"]
 [ext_resource type="Script" path="res://match/hud/player_hud.gd" id="3_kph0c"]
@@ -201,13 +200,8 @@ _data = {
 "RESET": SubResource("Animation_uxo7j")
 }
 
-[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_pi85q"]
-
 [node name="PlayScene" type="Node2D"]
 script = ExtResource("1_uvvkh")
-
-[node name="GameManager" type="Node" parent="."]
-script = ExtResource("2_kvevl")
 
 [node name="ForestBoard" type="Node2D" parent="."]
 script = ExtResource("20_forest")
@@ -608,9 +602,6 @@ libraries = {
 "": SubResource("AnimationLibrary_tdqul")
 }
 autoplay = "PlayingNotification"
-
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
-replication_config = SubResource("SceneReplicationConfig_pi85q")
 
 [node name="EndTurnButton" type="Button" parent="."]
 offset_left = 863.0

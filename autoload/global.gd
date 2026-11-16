@@ -1,7 +1,7 @@
 extends Node
 ## Static game data that never changes while playing: sprites, defaults,
 ## and the master card lists. Never modify these at runtime; the server
-## copies them into GameState.deck for each match.
+## copies them into its ServerState for each match.
 
 const CARD_TYPES := ["red_cards", "green_cards", "blue_cards"]
 
@@ -44,6 +44,14 @@ var game_settings_default = {
 const ROLL_ANY_LOCATION := 7
 
 ## What each location lets you do: badge colour, icon, and hover text.
+## Which decks a location action lets you draw from.
+const DRAW_ACTIONS := {
+	"draw_green": ["green_cards"],
+	"draw_red": ["red_cards"],
+	"draw_blue": ["blue_cards"],
+	"draw_any": ["green_cards", "red_cards", "blue_cards"],
+}
+
 const LOCATION_ACTIONS := {
 	"draw_green": {"color": "4fd08a", "icon": "res://assets/icons/icon_draw_green.png", "text": "Draw a green card."},
 	"draw_blue": {"color": "6a9af0", "icon": "res://assets/icons/icon_draw_blue.png", "text": "Draw a blue card."},

@@ -16,6 +16,7 @@ var buttons := {}
 func _ready():
 	SignalBus._new_game.connect(reset_buttons)
 	SignalBus.pawns_changed.connect(refresh_buttons)
+	SignalBus.avatar_rejected.connect(on_avatar_rejected)
 	reset_buttons()
 
 

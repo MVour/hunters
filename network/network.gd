@@ -10,6 +10,8 @@ signal connection_failed(reason: String)
 signal host_disconnected
 signal peer_joined(id: int)
 signal peer_left(id: int)
+## We left a session on purpose (or started a new one). Session state resets.
+signal session_closed
 
 ## Swap this for a lobby-service transport later.
 var transport: NetworkTransport = EnetTransport.new()
@@ -44,9 +46,12 @@ func join(invite_code: String) -> Error:
 
 
 func leave() -> void:
-	if is_online():
+	var was_online := is_online()
+	if was_online:
 		multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	if was_online:
+		session_closed.emit()
 
 
 func is_online() -> bool:

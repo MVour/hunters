@@ -8,7 +8,6 @@ class_name PlayScene extends Node2D
 @onready var game_map: GameMap = $Locations
 @onready var end_turn_button: Button = $EndTurnButton
 @onready var roll_button: Button = $DicesContainer/RollButton
-@onready var game_manager: GameManager = $GameManager
 @onready var playing_label: Label = $PlayingLabel
 
 var game_finished := false
@@ -142,19 +141,19 @@ func _ready():
 	attack_button.pressed.connect(func():
 		attack_used_this_turn = true
 		attack_button.hide()
-		game_manager.request_attack.rpc_id(1))
+		MatchNet.attack())
 	add_child(attack_button)
 
 	# HUD: Use Ability + Reveal.
 	var ability_button: Button = $Hud/PlayerHud/AbilityButton
 	ability_button.text = "Use Ability\nΙκανότητα"
-	ability_button.pressed.connect(func(): game_manager.request_ability.rpc_id(1))
+	ability_button.pressed.connect(MatchNet.use_ability)
 	reveal_button = Button.new()
 	reveal_button.text = "Reveal · Αποκάλυψη"
 	reveal_button.tooltip_text = "Show everyone your character card. Passive abilities only work once you're revealed."
 	reveal_button.position = ability_button.position + Vector2(0, -44)
 	reveal_button.custom_minimum_size = Vector2(ability_button.size.x, 36)
-	reveal_button.pressed.connect(func(): game_manager.request_reveal.rpc_id(1))
+	reveal_button.pressed.connect(MatchNet.reveal)
 	ability_button.get_parent().add_child(reveal_button)
 
 	SignalBus.character_revealed.connect(func(pl_id, _c):
@@ -166,7 +165,7 @@ func _ready():
 	SignalBus.attack_happened.connect(_on_attack_happened)
 	SignalBus.game_over.connect(_on_game_over)
 
-	game_manager.report_loaded.rpc_id(1)
+	MatchNet.loaded()
 
 
 func _on_set_locations(_locations):
@@ -241,11 +240,11 @@ func _on_location_chosen(location_id: String) -> void:
 	choice_options = []
 	prompt_label.hide()
 	game_map.set_choosable([])
-	game_manager.request_choose_location.rpc_id(1, location_id)
+	MatchNet.choose_location(location_id)
 
 
 func _on_end_turn_button_pressed() -> void:
-	game_manager.request_end_turn.rpc_id(1)
+	MatchNet.end_turn()
 
 
 # --- Location actions & cards ------------------------------------------------
@@ -306,17 +305,17 @@ func _on_location_action_offered(action: String) -> void:
 	prompt_label.text = "%s: %s" % [loc_label, Global.LOCATION_ACTIONS[action].text]
 	prompt_label.show()
 
-	var draws: Array = GameManager.DRAW_ACTIONS.get(action, [])
+	var draws: Array = Global.DRAW_ACTIONS.get(action, [])
 	for card_type in draws:
 		var info: Dictionary = Global.CARD_COLORS[card_type]
 		_add_action_button("Draw %s" % info.label, Color(info.color).lightened(0.3),
-			func(): game_manager.request_draw.rpc_id(1, card_type))
+			func(): MatchNet.draw(card_type))
 		decks[card_type].set_highlight(true)
 	if draws.is_empty():
 		_add_action_button("Use", Color(Global.LOCATION_ACTIONS[action].color).lightened(0.3),
-			func(): game_manager.request_location_action.rpc_id(1))
+			MatchNet.use_location)
 	_add_action_button("Skip", Color(0.8, 0.8, 0.8),
-		func(): game_manager.request_skip_action.rpc_id(1))
+		MatchNet.skip_action)
 
 
 func _on_deck_count_changed(card_type: String, count: int) -> void:
@@ -330,14 +329,14 @@ func _on_question_drawn(card: Dictionary) -> void:
 	for id in GameState.game_info.players_turn:
 		var player: Dictionary = GameState.players[id]
 		if id != GameState.local_id and not player.dead:
-			buttons.append([player.name, func(): game_manager.request_give_question.rpc_id(1, id), _player_color(id)])
+			buttons.append([player.name, func(): MatchNet.give_question(id), _player_color(id)])
 	CardView.open(self, card, "Your question. Who do you ask?  ·  Σε ποιον τη δίνεις;", buttons)
 
 
 ## Someone asked you a question.
 func _on_question_asked(from_id: int, card: Dictionary) -> void:
 	CardView.open(self, card, "%s asks you:  ·  Σε ρωτάει:" % _player_name(from_id),
-		[["Answer", func(): game_manager.request_answer_question.rpc_id(1)]])
+		[["Answer", MatchNet.answer_question]])
 
 
 func _on_question_passed(from_id: int, to_id: int) -> void:
@@ -365,7 +364,7 @@ func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
 ## The server asks you to pick (a player, a deck, a piece of equipment...).
 func _on_choice_requested(prompt: String, options: Array, allow_skip: bool) -> void:
 	_open_choice(prompt, options, allow_skip,
-		func(value): game_manager.request_choice.rpc_id(1, value))
+		MatchNet.choose)
 
 
 func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Callable) -> void:

@@ -1,6 +1,6 @@
 extends Node
-
-#Test
+## Every cross-scene event. UI listens here; LobbyNet/MatchNet emit after
+## updating GameState. (Like store subscriptions.)
 
 # Game Function signals
 signal _exit_game
@@ -13,6 +13,10 @@ signal _end_game
 signal _set_character
 signal _attach_deck
 signal set_locations
+## The match's turn order is known: (player ids)
+signal turn_order_set
+## The dice were thrown: (val6, val4)
+signal dice_rolled
 ## A player's pawn moved to a location: (player_id, location_id)
 signal pawn_moved
 ## You rolled a 7: pick one of these location ids. (options: Array)
@@ -52,8 +56,19 @@ signal private_info
 ## You get to see someone's character: (player_id, character)
 signal private_character
 
-## Avatar Creation signals (might include avatar movement or actions as well)
+# Lobby
+## The local player picked a name + pawn in the avatar picker: (name, pawn)
 signal _avatar_created
+## A lobby player joined or changed: (player)
+signal lobby_player_updated
+## A lobby player left: (player_id)
+signal lobby_player_removed
+## The role counts changed: (settings)
+signal lobby_settings_changed
+## The server refused your pawn (someone took it first): (pawn)
+signal avatar_rejected
+## The server refused to start: (reason)
+signal lobby_start_refused
 ## Someone's pawn choice changed, so refresh which pawns are still free.
 signal pawns_changed
 

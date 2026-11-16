@@ -1,9 +1,11 @@
 extends Node
-## Everything that changes during a session (lobby + match).
+## The store: what THIS computer knows about the session (lobby + match).
+## Like a Pinia store's state:
+## - The UI reads it freely but never writes it.
+## - Only messages from the server (LobbyNet / MatchNet) write it.
+## - It holds only what this player may know: their own character, public
+##   info about everyone else. The server's full truth is ServerState.
 ## Static data (card lists, pawn sprites, defaults) lives in Global.
-##
-## The server's copy is the truth. Clients hold what they've been told, and
-## for hidden roles that means: only their own character.
 
 enum Phase { LOBBY, PLAYING, ENDED }
 
@@ -30,10 +32,6 @@ var game_info := {
 ## The board's locations, in board order. Public, every peer has them.
 var locations := []
 
-## Server only: this match's shuffled copy of Global.deck.
-var deck := {}
-## Server only: used cards per deck, reshuffled when a deck runs out.
-var discards := {}
 
 var _no_player := new_player(0)
 
@@ -46,8 +44,6 @@ func reset_session(my_id := 0) -> void:
 	game_settings = _empty_settings()
 	game_info = {"players_turn": [], "round": 0}
 	locations = []
-	deck = {}
-	discards = {}
 
 
 func new_player(id: int) -> Dictionary:
@@ -65,63 +61,16 @@ func new_player(id: int) -> Dictionary:
 	}
 
 
-## Which location a dice total sends you to ("" for 7 = your choice).
 func location_for_total(total: int) -> String:
-	for loc in locations:
-		if total in loc.rolls:
-			return loc.id
-	return ""
+	return Board.location_for_total(locations, total)
 
 
-## Board position (0-5) of a location, or -1 if unknown.
 func location_index(location_id: String) -> int:
-	for i in locations.size():
-		if locations[i].id == location_id:
-			return i
-	return -1
+	return Board.location_index(locations, location_id)
 
 
-## Reach: every location is grouped with the next one clockwise
-## (1->2, 2->3, ... 6->1). From a location you reach players there and at
-## the next location. Attacks use this; equipment may extend it later.
 func can_reach(from_id: String, to_id: String) -> bool:
-	var from := location_index(from_id)
-	var to := location_index(to_id)
-	if from == -1 or to == -1:
-		return false
-	return to == from or to == (from + 1) % locations.size()
-
-
-## Server only. Copies the master card lists so shuffling and dealing never
-## touch Global.deck.
-func prepare_deck() -> void:
-	deck = Global.deck.duplicate(true)
-	discards = {}
-	for card_type in Global.CARD_TYPES:
-		for card in deck[card_type]:
-			card.deck = card_type
-		deck[card_type].shuffle()
-		discards[card_type] = []
-	for species_list in deck.characters.values():
-		species_list.shuffle()
-	deck.locations.shuffle()
-	locations = deck.locations
-
-
-## Server only. Top card of a deck; reshuffles the discards when empty.
-func draw_card(card_type: String) -> Dictionary:
-	if deck[card_type].is_empty():
-		deck[card_type] = discards[card_type]
-		discards[card_type] = []
-		deck[card_type].shuffle()
-	if deck[card_type].is_empty():
-		return {}
-	return deck[card_type].pop_back()
-
-
-## Server only.
-func discard(card: Dictionary) -> void:
-	discards[card.deck].append(card)
+	return Board.can_reach(locations, from_id, to_id)
 
 
 func is_pawn_taken(pawn: String, except_id := 0) -> bool:
