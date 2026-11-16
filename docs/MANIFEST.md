@@ -69,8 +69,9 @@ Everything else — routine implementation detail that doesn't touch a constrain
    remasters of them). No code-drawn replacements. Archive originals in `assets/legacy/`
    before replacing anything, and keep old art usable (see the Classic art toggle).
 5. **Bilingual.** Every player-facing text exists in English and Greek; the player sees one,
-   chosen with the language button (`Global.t(en, el)`, `Global.field(data, key)`; data uses
-   `key` / `key_el`). Never show both side by side (D005).
+   chosen with the language button. UI text is a key in `i18n/strings.csv` (`Global.text(key)`);
+   the server sends `Msg` keys, never sentences; card/character data uses `name` / `name_el`
+   (`Global.field`). No hard-coded player-facing strings in code. Never show both side by side (D006).
 
 ### Key-file roles
 Kept in docs/FOLDER_STRUCTURE.md (one place only).

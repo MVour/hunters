@@ -107,11 +107,26 @@ buttons hide until the pick ends.
   `AUTOTEST_ARGS=--ui` makes the bots pick players by clicking rows/pawns.
 
 ## Language
-`Global.lang` ("en"/"el", saved). Client text: `Global.t("en", "el")`;
-data fields: `Global.field(card, "name")` → `name_el` in Greek. Server-sent
-bilingual text is `"en  ·  el"`, split with `Global.pick()`. UI that sets
-text once listens to `Global.language_changed`. The main scene adds an
-overlay layer with the language button and the chat (`main/chat_box.gd`).
+Like a front-end i18n file (D006):
+- **`i18n/strings.csv`** (`keys,en,el`, sorted): every UI text. Godot imports
+  it as `strings.en/.el.translation` (generated, git-ignored); registered in
+  `project.godot` → internationalization.
+- **Code:** `Global.text("status.your_turn_roll")`, with `{named}` blanks:
+  `Global.text("notice.attack", {"attacker": name, ...})`. Some older texts
+  use `%s` and are formatted with `%` after the lookup.
+- **Scene files:** a Label/Button's text is its key (e.g. `"PLAY"`); Godot
+  translates it by itself when the language changes.
+- **Server:** sends `Msg` (`data/msg.gd`): `{"k": key, "p": params}`. Params
+  may be plain values, other Msgs, or `Msg.named(card/location/character)`
+  (both names + uid). Each computer renders it with `Global.msg()`, so the
+  host and a Greek client see the same event in their own language.
+- **Data** (cards, characters, locations, decks): `name` / `name_el` in the
+  data files, shown with `Global.field()`; species via `Global.species_name()`.
+- `Global.lang` ("en"/"el", saved) sets `TranslationServer`'s locale; code
+  that builds text listens to `Global.language_changed`. The main scene's
+  overlay layer has the language button and the chat (`main/chat_box.gd`).
+- `tools/check_project` fails on: a key used but missing, a missing language,
+  different placeholders in en/el, or a key nobody uses.
 
 ## The dialog
 `play_scene._open_choice()`: one black dialog for choices, info and the

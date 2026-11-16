@@ -31,7 +31,7 @@ func _init(card_type: String, count: int) -> void:
 		add_child(card)
 
 	var label := Label.new()
-	label.text = "%s · %d" % [Global.t("Draw", "Τράβα"), count]
+	label.text = "%s · %d" % [Global.text("pack.draw"), count]
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.position = Vector2(0, CARD.y + LAYERS * 3 + 6)
 	label.size = Vector2(custom_minimum_size.x, 22)

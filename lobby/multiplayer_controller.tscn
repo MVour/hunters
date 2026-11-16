@@ -31,8 +31,7 @@ layout_mode = 2
 [node name="Join" type="Button" parent="MultiplayerMenuContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
-text = "Join
-"
+text = "Join"
 
 [node name="HSeparator" type="HSeparator" parent="MultiplayerMenuContainer"]
 custom_minimum_size = Vector2(0, 100)
@@ -42,8 +41,7 @@ size_flags_vertical = 3
 [node name="Back" type="Button" parent="MultiplayerMenuContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
-text = "Back
-"
+text = "Back"
 
 [node name="ConnectToLobby" type="Node2D" parent="."]
 

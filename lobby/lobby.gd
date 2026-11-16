@@ -30,7 +30,7 @@ func _ready():
 	SignalBus._avatar_created.connect(LobbyNet.choose_avatar)
 	SignalBus.lobby_player_updated.connect(_on_player_updated)
 	SignalBus.lobby_player_removed.connect(_on_player_removed)
-	SignalBus.lobby_start_refused.connect(func(problem): start_error_label.text = problem)
+	SignalBus.lobby_start_refused.connect(func(problem): start_error_label.text = Global.msg(problem))
 	start_error_label.text = ""
 	# Players we already know about (messages can arrive before this screen).
 	for player in GameState.players.values():
@@ -81,7 +81,7 @@ func _on_button_pressed() -> void:
 
 func _on_copy_code_pressed() -> void:
 	DisplayServer.clipboard_set(lobby_code)
-	copy_code_button.text = "Copied!"
+	copy_code_button.text = Global.text("lobby.copied")
 	await get_tree().create_timer(1.5).timeout
 	if is_instance_valid(copy_code_button):
 		copy_code_button.text = "Copy"
@@ -90,6 +90,6 @@ func _on_copy_code_pressed() -> void:
 func _on_start_game_pressed() -> void:
 	# Show the problem right away; the server checks again either way.
 	var problem := LobbyNet.start_problem(GameState.players, GameState.game_settings)
-	start_error_label.text = problem
-	if problem == "":
+	start_error_label.text = Global.msg(problem)
+	if problem.is_empty():
 		LobbyNet.start_match()

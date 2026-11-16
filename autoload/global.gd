@@ -162,9 +162,13 @@ func _ready() -> void:
 	for color in pawns:
 		_current_pawn_sprites[color] = pawns[color].sprite
 	var config := ConfigFile.new()
+	var saving := persist_settings
+	persist_settings = false  # just loading: don't write the same values back
 	if config.load(SETTINGS_PATH) == OK:
 		classic_art = config.get_value("art", "classic", classic_art)
 		lang = config.get_value("ui", "lang", lang)
+	TranslationServer.set_locale(lang)
+	persist_settings = saving
 	_apply_pawn_art()
 
 
@@ -204,9 +208,16 @@ func _save_settings() -> void:
 
 
 # --- Language ------------------------------------------------------------
-## Everything player-facing exists in English and Greek; the player sees
-## one of them. Switched with the language button (bottom-left), saved in
-## user://settings.cfg. UI that shows text listens to language_changed.
+## Every player-facing text lives in i18n/strings.csv (keys,en,el), like a
+## front-end i18n file. Godot imports it as translations; the player sees
+## one language, switched with the language button (bottom-left) and saved
+## in user://settings.cfg.
+##   Global.text("status.your_turn_roll")                  a key
+##   Global.text("notice.attack", {"attacker": "Bob"})      {named} blanks
+##   Global.msg(m)          a message from the server: {"k": key, "p": params}
+##   Global.field(card, "name")    card/character data: name or name_el
+## Scene-file texts (Labels, Buttons) are keys too and switch by themselves.
+## UI that builds text in code listens to language_changed.
 
 signal language_changed
 
@@ -216,27 +227,45 @@ var lang := "en":
 		if value == lang or not value in ["en", "el"]:
 			return
 		lang = value
+		TranslationServer.set_locale(lang)
 		_save_settings()
 		language_changed.emit()
 
 
-## The text in the current language.
-func t(en: String, el: String) -> String:
-	return el if lang == "el" and el != "" else en
+## The text for a key, with {named} blanks filled in. Values may be plain,
+## a server message (see Msg) or a name dict (Msg.named), shown localized.
+func text(key: String, params := {}) -> String:
+	var s := TranslationServer.translate(key)
+	return s.format(_resolve(params)) if not params.is_empty() else s
+
+
+## A message from the server: {"k": key, "p": params}, a name dict
+## ({"name", "name_el"}), or plain text.
+func msg(m) -> String:
+	if m is Dictionary:
+		if m.has("k"):
+			return text(m.k, m.get("p", {}))
+		if m.has("name"):
+			return field(m, "name")
+		return ""
+	return str(m)
+
+
+func _resolve(params: Dictionary) -> Dictionary:
+	var out := {}
+	for key in params:
+		out[key] = msg(params[key])
+	return out
 
 
 ## A data field in the current language: field(card, "name") gives
 ## card.name_el in Greek (when it exists), else card.name.
+## A species id ("vampire") in the current language.
+func species_name(species_id: String) -> String:
+	return text("species." + species_id) if species_id != "" else "?"
+
+
 func field(data: Dictionary, key: String) -> String:
 	if lang == "el" and str(data.get(key + "_el", "")) != "":
 		return str(data[key + "_el"])
 	return str(data.get(key, ""))
-
-
-## For bilingual text from the server, written "English  ·  Ελληνικά":
-## returns the side for the current language (or the text as it is).
-func pick(text: String) -> String:
-	var parts := text.split("  ·  ")
-	if parts.size() != 2:
-		return text
-	return parts[1] if lang == "el" else parts[0]

@@ -108,7 +108,7 @@ func request_start() -> void:
 	if sender != _owner_id or _in_match:
 		return
 	var problem := start_problem(_players, _settings)
-	if problem != "":
+	if not problem.is_empty():
 		start_refused.rpc_id(sender, problem)
 		return
 	_in_match = true
@@ -151,24 +151,25 @@ func _pawn_taken(pawn: String, except_id: int) -> bool:
 	return false
 
 
-## Why a match with these players and role counts can't start, or "".
-## The lobby screen shows it too; the server always re-checks.
-static func start_problem(players: Dictionary, settings: Dictionary) -> String:
+## Why a match with these players and role counts can't start, as a Msg
+## ({} = it can). The lobby screen shows it too; the server always re-checks.
+static func start_problem(players: Dictionary, settings: Dictionary) -> Dictionary:
 	if players.size() < 2:
-		return "Need at least 2 players."
+		return Msg.make("lobby.need_two")
 	for player in players.values():
 		if player.pawn == "":
-			return "Waiting for %s to pick an avatar." % player.name
+			return Msg.make("lobby.waiting_avatar", {"player": player.name})
 	var total := 0
 	for key in Global.SPECIES:
 		var wanted: int = settings.get(key, 0)
 		var available: int = Global.deck.characters[Global.SPECIES[key].list].size()
 		if wanted > available:
-			return "Only %d %s characters exist. Design more, or lower the count!" % [available, Global.SPECIES[key].species]
+			return Msg.make("lobby.not_enough_characters", {"count": available,
+				"species": Msg.species(Global.SPECIES[key].species)})
 		total += wanted
 	if total != players.size():
-		return "Roles add up to %d, but there are %d players." % [total, players.size()]
-	return ""
+		return Msg.make("lobby.roles_mismatch", {"roles": total, "players": players.size()})
+	return {}
 
 
 # =============================================================================
@@ -199,7 +200,7 @@ func avatar_rejected(pawn: String) -> void:
 
 
 @rpc("authority", "call_local", "reliable")
-func start_refused(problem: String) -> void:
+func start_refused(problem: Dictionary) -> void:
 	SignalBus.lobby_start_refused.emit(problem)
 
 

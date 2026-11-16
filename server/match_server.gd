@@ -168,19 +168,19 @@ func roll(sender: int) -> void:
 	# Old Map: may roll a second time and pick either result.
 	if total != Global.ROLL_ANY_LOCATION and effects.mods(sender).get("reroll_move", false):
 		busy_begin()
-		var first_label := state.location_label(destination)
-		var again = await ask(sender, "Old Map: go to %s, or roll again?" % first_label, [
-			{"value": "keep", "label": "Go to %s" % first_label},
-			{"value": "reroll", "label": "Roll again"}], false)
+		var first := _location_name(destination)
+		var again = await ask(sender, Msg.make("prompt.old_map_keep", {"location": first}), [
+			{"value": "keep", "label": Msg.make("option.go_to", {"location": first})},
+			{"value": "reroll", "label": Msg.make("option.roll_again")}], false)
 		if again == "reroll":
 			await wait(1.0)  # let the first roll land
 			var second := _roll_move(here)
 			if second.total == Global.ROLL_ANY_LOCATION:
 				total = second.total
 			elif second.destination != destination:
-				destination = await ask(sender, "Old Map: pick where you go", [
-					{"value": destination, "label": first_label},
-					{"value": second.destination, "label": state.location_label(second.destination)}], false)
+				destination = await ask(sender, Msg.make("prompt.old_map_pick"), [
+					{"value": destination, "label": first},
+					{"value": second.destination, "label": _location_name(second.destination)}], false)
 		busy_end()
 
 	if total == Global.ROLL_ANY_LOCATION:
@@ -267,9 +267,9 @@ func location_action(sender: int) -> void:
 	var steps := []
 	match _location_action_of(sender):
 		"heal_or_damage":
-			var mode = await ask(sender, "Magic Forest: heal or harm?", [
-				{"value": "heal", "label": "Heal 1", "color": "4fe0d0"},
-				{"value": "damage", "label": "Deal 2", "color": "e8402e"}])
+			var mode = await ask(sender, Msg.make("prompt.magic_forest"), [
+				{"value": "heal", "label": Msg.make("option.heal_1"), "color": "4fe0d0"},
+				{"value": "damage", "label": Msg.make("option.deal_2"), "color": "e8402e"}])
 			if mode == null:
 				return
 			steps = [{"do": "heal", "amount": 1, "target": "chosen_any"}] if mode == "heal" \
@@ -279,8 +279,9 @@ func location_action(sender: int) -> void:
 		_:
 			return
 	turn.action_used = true
-	var label := state.location_label(state.players[sender].location)
-	await resolve({"name": label, "deck": "", "kind": "location", "effect": steps}, {"actor": sender})
+	var here: Dictionary = state.locations[state.location_index(state.players[sender].location)]
+	await resolve({"name": here.label, "name_el": here.get("label_el", ""), "deck": "", "kind": "location",
+		"effect": steps}, {"actor": sender})
 
 
 ## Runs a card effect while marking the game busy (no ending the turn meanwhile).
@@ -325,7 +326,9 @@ func busy_end() -> void:
 
 ## Ask a player to pick one option; returns its value, or null if they skip.
 ## options: [{"value", "label", "color" (hex, optional)}]. Always `await` it.
-func ask(player_id: int, prompt: String, options: Array, allow_skip := true):
+## prompt and option labels are Msg dicts (or names): each screen shows
+## them in its own language.
+func ask(player_id: int, prompt: Dictionary, options: Array, allow_skip := true):
 	var ask_id := _next_ask_id
 	_next_ask_id += 1
 	_awaiting[player_id] = {"id": ask_id, "values": options.map(func(o): return o.value), "skip": allow_skip}
@@ -371,12 +374,19 @@ func wait(seconds: float) -> void:
 
 # --- Messages used by every helper -----------------------------------------------
 
-func notice(text: String) -> void:
-	MatchNet.notice.rpc(text)
+## A Msg everyone sees as an announcement.
+func notice(message: Dictionary) -> void:
+	MatchNet.notice.rpc(message)
 
 
-func private_info(player_id: int, title: String, text: String) -> void:
+func private_info(player_id: int, title: Dictionary, text: Dictionary) -> void:
 	MatchNet.private_info.rpc_id(player_id, title, text)
+
+
+## A location's name, shown in each player's language.
+func _location_name(location_id: String) -> Dictionary:
+	var i := state.location_index(location_id)
+	return Msg.named(state.locations[i]) if i != -1 else Msg.named({"name": "?"})
 
 
 func player_option(id: int) -> Dictionary:

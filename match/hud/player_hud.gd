@@ -26,7 +26,7 @@ func _ready() -> void:
 
 func init(pl_name, species, goal, ability, health, damage):
 	player_name.text = pl_name
-	player_scpecies.text = species
+	player_scpecies.text = Global.species_name(species)
 	player_goal.text = goal
 	player_ability.text = ability
 	for label in [player_goal, player_ability]:

@@ -44,7 +44,7 @@ func _add_overlay() -> void:
 	var update := func():
 		# Shows the language you'd switch TO.
 		lang_button.text = "Ελληνικά" if Global.lang == "en" else "English"
-		lang_button.tooltip_text = Global.t("Switch language", "Αλλαγή γλώσσας")
+		lang_button.tooltip_text = Global.text("main.switch_language")
 	update.call()
 	Global.language_changed.connect(update)
 	lang_button.pressed.connect(func(): Global.lang = "el" if Global.lang == "en" else "en")

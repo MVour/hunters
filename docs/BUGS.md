@@ -7,6 +7,19 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-005 — Rare: a bot's click on a pawn didn't register (test flake?)
+- **Logged:** 2026-11-16
+- **Area:** `tools/autotest.gd --ui` clicking pawns (`match/board/pawn_layer.gd` pick areas)
+- **What happens:** Once in ~17 click-mode runs, a simulated click at a
+  pickable pawn's centre didn't pick it; another pawn's click area was under
+  the mouse. Not seen again in 11 runs after the bot learned to tell a new
+  pick from a missed one (pick_serial).
+- **Hypothesis:** Either that bot false alarm, or the pawn was mid-animation
+  (hop/lunge/shake) when clicked, or two pawns' click areas overlap at a
+  location. The failure report now prints the owner of the area under the mouse.
+- **Impact:** Low; at worst a player clicks twice.
+- **Status:** open (watching)
+
 ### BUG-004 — Godot crashes on exit after a network session (headless)
 - **Logged:** 2026-11-16
 - **Area:** engine shutdown (Godot 4.3 mono), seen in `tools/run_autotest.sh`

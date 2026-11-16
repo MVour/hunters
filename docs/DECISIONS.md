@@ -12,16 +12,24 @@ in MANIFEST.md → Non-negotiable constraints.
 
 ---
 
-### D005 — One language at a time, with a switch (2026-11-16)
-- **Status:** active (refines MANIFEST constraint 5)
-- **What:** Texts exist in English and Greek, but the screen shows only the
-  chosen one. `Global.lang` (saved), button bottom-left on every screen.
-  Client code uses `Global.t("en", "el")` and `Global.field(data, key)`;
-  the few bilingual texts the server sends are written `"en  ·  el"` and
-  split by `Global.pick()`.
-- **Why:** User request: both side by side was too busy.
-- **Rejected:** Godot's translation files (.po/CSV) — heavier for two
-  languages and texts that live in GDScript data; keeping both visible.
+### D006 — Translations in one strings file; server sends keys (2026-11-16)
+- **Status:** active (supersedes D005; refines MANIFEST constraint 5)
+- **What:** Every UI text lives in `i18n/strings.csv` (`keys,en,el`), imported
+  by Godot as translations. Code uses `Global.text(key, {named})`; scene-file
+  texts are keys and switch by themselves. The server never sends sentences:
+  it sends `Msg` (`{"k": key, "p": params}`, names via `Msg.named`) and each
+  computer shows it in its own language (`Global.msg`). Card / character /
+  location content stays in its data (`name` / `name_el`, `Global.field`).
+  `tools/check_project` fails on missing keys, a missing language, unequal
+  placeholders or unused keys. One language on screen, switched by the
+  button (unchanged from D005).
+- **Why:** User asked for a front-end-style string dictionary. Also the only
+  way to get server announcements and prompts into both languages.
+- **Rejected:** Inline pairs `Global.t("en", "el")` (D005: scattered, no
+  checks, server text stuck in English); a GDScript dictionary file (no
+  editor/auto-translate support); gettext .po (heavier for two languages).
+
+### D005 — Superseded by D006, full text: docs/archive/DECISIONS_superseded.md
 
 ### D004 — Client store + network actions + separate server state (2026-11-16)
 - **Status:** active

@@ -44,6 +44,8 @@ var status_label: Label
 var player_list: PlayerList
 ## Players you may pick right now (attack, card target…); [] when not picking.
 var pick_ids := []
+## Counts picks started (tests use it to tell "my click worked" from "a new pick began").
+var pick_serial := 0
 var _pick_callback: Callable
 var _refresh_queued := false
 var decks := {}  # card type -> CardDeck
@@ -246,14 +248,13 @@ func _on_set_character(_pl_id, character):
 
 ## Texts that are set once; re-run when the player switches language.
 func _apply_language() -> void:
-	roll_button.text = Global.t("Roll", "Ρίξε")
-	end_turn_button.text = Global.t("End Turn", "Τέλος γύρου")
-	attack_button.text = Global.t("Attack", "Επίθεση")
-	$Hud/PlayerHud/AbilityButton.text = Global.t("Use Ability", "Ικανότητα")
-	reveal_button.text = Global.t("Reveal", "Αποκάλυψη")
-	reveal_button.tooltip_text = Global.t(
-		"Show everyone your character card. Passive abilities only work once you're revealed.",
-		"Δείξε σε όλους την κάρτα χαρακτήρα σου. Οι παθητικές ικανότητες λειτουργούν μόνο αφού αποκαλυφθείς.")
+	roll_button.text = Global.text("dice.roll")
+	end_turn_button.text = Global.text("match.end_turn")
+	attack_button.text = Global.text("match.attack")
+	$Hud/PlayerHud/AbilityButton.text = Global.text("match.use_ability")
+	reveal_button.text = Global.text("match.reveal")
+	reveal_button.tooltip_text = Global.text("match.reveal_tooltip")
+	$Hud/PlayerHelp/Label.text = Global.text("hud.help")
 	if not GameState.local_player.character.is_empty():
 		_on_set_character(GameState.local_id, GameState.local_player.character)
 	_refresh_my_cards()
@@ -291,7 +292,7 @@ func _on_pawn_moved(pl_id, _location_id):
 func _on_choose_location(options: Array) -> void:
 	choice_options = options
 	roll_button.hide()
-	prompt_label.text = Global.t("You rolled 7! Pick any other location.", "Έφερες 7! Διάλεξε όποια άλλη τοποθεσία θέλεις.")
+	prompt_label.text = Global.text("match.rolled_seven_prompt")
 	prompt_label.show()
 	game_map.set_choosable(options)
 
@@ -338,7 +339,7 @@ func _refresh_buttons() -> void:
 			_set_enabled(attack_button, false, wait_reason)
 		else:
 			_set_enabled(attack_button, not targets.is_empty(),
-				Global.t("Nobody is within reach.", "Κανείς δεν είναι κοντά."))
+				Global.text("match.nobody_in_reach"))
 
 	end_turn_button.visible = my_turn and moved_this_turn and not picking
 	_set_enabled(end_turn_button, not waiting, wait_reason)
@@ -351,42 +352,38 @@ func _refresh_buttons() -> void:
 	status_label.visible = not game_finished
 
 	reveal_button.visible = me.get("hidden", true) and not me.get("character", {}).is_empty()
-	_set_enabled(reveal_button, not me.get("dead", false), Global.t("You're out of the game.", "Είσαι εκτός παιχνιδιού."))
+	_set_enabled(reveal_button, not me.get("dead", false), Global.text("match.you_are_out"))
 
 
 ## The status line: what you should do, or who everyone is waiting on.
 func _status_text(my_turn: bool) -> String:
 	if question_to_give:
-		return Global.t("Give your green card to someone: press \"Choose who to ask\".",
-			"Δώσε την πράσινη κάρτα σου: πάτα «Διάλεξε».")
+		return Global.text("status.give_green_card")
 	if question_from != 0:
-		return Global.t("%s gave you a green card: click Answer.", "Ο/Η %s σου έδωσε πράσινη κάρτα: πάτα Απάντησε.") \
+		return Global.text("status.answer_green_card") \
 			% _player_name(question_from)
 	if not pick_ids.is_empty():
-		return Global.t("Pick a player: click them on the list or on the board.",
-			"Διάλεξε παίκτη: κάνε κλικ στη λίστα ή στο ταμπλό.")
+		return Global.text("status.pick_player")
 	if server_choice_open:
-		return Global.t("Make your choice in the box below.", "Διάλεξε στο κουτί παρακάτω.")
+		return Global.text("status.make_choice")
 	if not choice_options.is_empty():
-		return Global.t("You rolled 7: click any other location.", "Έφερες 7: κάνε κλικ σε άλλη τοποθεσία.")
+		return Global.text("status.rolled_seven")
 	if question_waiting_on != 0:
-		return Global.t("Waiting for %s to answer your green card. Then you can end your turn.",
-			"Περιμένεις τον/την %s να απαντήσει στην πράσινη κάρτα. Μετά μπορείς να τελειώσεις τον γύρο.") \
+		return Global.text("status.waiting_answer") \
 			% _player_name(question_waiting_on)
 	var deciding := (GameState.game_info.get("waiting_for", []) as Array).filter(func(id): return id != GameState.local_id)
 	if not deciding.is_empty():
-		return Global.t("Waiting for %s to decide…", "Περιμένεις τον/την %s να αποφασίσει…") \
+		return Global.text("status.waiting_decide") \
 			% ", ".join(deciding.map(_player_name))
 	if my_turn:
 		if not moved_this_turn:
-			return Global.t("Your turn: roll the dice.", "Η σειρά σου: ρίξε τα ζάρια.")
+			return Global.text("status.your_turn_roll")
 		if offered_action != "":
-			return Global.t("Use your location (or Skip), then attack or end your turn.",
-				"Χρησιμοποίησε την τοποθεσία (ή Παράλειψη), μετά επίθεση ή τέλος γύρου.")
-		return Global.t("Attack, or end your turn.", "Επίθεση ή τέλος γύρου.")
+			return Global.text("status.use_location")
+		return Global.text("status.attack_or_end")
 	for id in GameState.game_info.players_turn:
 		if GameState.players[id].get("playing", false):
-			return Global.t("%s's turn.", "Παίζει ο/η %s.") % _player_name(id)
+			return Global.text("status.someones_turn") % _player_name(id)
 	return ""
 
 
@@ -395,23 +392,22 @@ func _status_text(my_turn: bool) -> String:
 func _ability_blocked_reason(me: Dictionary, my_turn: bool, waiting: bool) -> String:
 	var character: Dictionary = me.get("character", {})
 	if character.is_empty() or game_finished:
-		return Global.t("No character yet.", "Δεν έχεις χαρακτήρα ακόμα.")
+		return Global.text("ability.no_character")
 	if me.get("dead", false):
-		return Global.t("You're out of the game.", "Είσαι εκτός παιχνιδιού.")
+		return Global.text("match.you_are_out")
 	match character.get("timing", ""):
 		"passive":
-			return "" if me.get("hidden", true) else Global.t("Always active now that you're revealed.",
-				"Είναι πάντα ενεργή, αφού αποκαλύφθηκες.")
+			return "" if me.get("hidden", true) else Global.text("ability.passive_revealed")
 		"attack":
-			return Global.t("You'll be offered it when you attack.", "Θα σου προταθεί όταν επιτεθείς.")
+			return Global.text("ability.offered_on_attack")
 		"reactive":
-			return Global.t("You'll be offered it when you're attacked.", "Θα σου προταθεί όταν σου επιτεθούν.")
+			return Global.text("ability.offered_when_attacked")
 	if me.get("ability_used", false):
-		return Global.t("Already used.", "Την έχεις ήδη χρησιμοποιήσει.")
+		return Global.text("ability.already_used")
 	if character.get("ability_id", "") != "switch_side" and not my_turn:
-		return Global.t("Only on your turn.", "Μόνο στη σειρά σου.")
+		return Global.text("ability.your_turn_only")
 	if waiting:
-		return Global.t("Finish the choice first.", "Τελείωσε πρώτα την επιλογή.")
+		return Global.text("ability.finish_choice")
 	return ""
 
 
@@ -434,8 +430,8 @@ func _player_color(id: int) -> Color:
 
 
 ## Announcements: small black boxes that stack near the top and fade out.
-## Server texts may come as "English  ·  Ελληνικά"; Global.pick() chooses.
-func toast(text: String) -> void:
+## `message` is text, or a Msg from the server (shown in this player's language).
+func toast(message) -> void:
 	var box := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.04, 0.05, 0.08, 0.9)
@@ -450,7 +446,7 @@ func toast(text: String) -> void:
 	box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var label := Label.new()
-	label.text = Global.pick(text)
+	label.text = Global.msg(message)
 	label.add_theme_font_size_override("font_size", 19)
 	box.add_child(label)
 	toast_box.add_child(box)
@@ -486,8 +482,8 @@ func _on_location_action_offered(action: String) -> void:
 		options.append({"value": card_type})  # shown as a pack
 		decks[card_type].set_highlight(true)
 	if draws.is_empty():
-		options.append({"value": "use", "label": Global.t("Use", "Χρήση"), "color": info.color})
-	options.append({"value": "skip", "label": Global.t("Skip", "Παράλειψη"), "color": "b0b0b0"})
+		options.append({"value": "use", "label": Global.text("match.use"), "color": info.color})
+	options.append({"value": "skip", "label": Global.text("match.skip"), "color": "b0b0b0"})
 	_open_choice("%s: %s" % [loc_name, Global.field(info, "text")], options, false, func(value):
 		_clear_action_bar()
 		if value == "skip":
@@ -510,10 +506,9 @@ func _on_question_drawn(card: Dictionary) -> void:
 	_context_card = card
 	var others: Array = GameState.game_info.players_turn.filter(func(id):
 		return id != GameState.local_id and not GameState.players[id].dead)
-	CardView.open(self, card, Global.t("Your question. Read it, then choose who to ask.",
-			"Η ερώτησή σου. Διάβασέ τη και διάλεξε σε ποιον θα τη δώσεις."),
-		[[Global.t("Choose who to ask", "Διάλεξε σε ποιον"), func():
-			_start_pick(Global.t("Who do you ask?", "Σε ποιον τη δίνεις;"), others, false, func(id):
+	CardView.open(self, card, Global.text("match.your_question"),
+		[[Global.text("match.choose_who_to_ask"), func():
+			_start_pick(Global.text("match.who_do_you_ask"), others, false, func(id):
 				question_to_give = false
 				_queue_refresh()
 				MatchNet.give_question(id))]])
@@ -523,8 +518,8 @@ func _on_question_drawn(card: Dictionary) -> void:
 func _on_question_asked(from_id: int, card: Dictionary) -> void:
 	question_from = from_id
 	_context_card = card
-	CardView.open(self, card, Global.t("%s asks you:", "Ο/Η %s σε ρωτάει:") % _player_name(from_id),
-		[[Global.t("Answer", "Απάντησε"), func():
+	CardView.open(self, card, Global.text("match.asks_you") % _player_name(from_id),
+		[[Global.text("match.answer"), func():
 			question_from = 0
 			_queue_refresh()
 			MatchNet.answer_question()]])
@@ -536,7 +531,7 @@ func _on_question_passed(from_id: int, to_id: int) -> void:
 		question_waiting_on = to_id
 		_context_card = {}
 	if to_id != GameState.local_id:
-		toast(Global.t("%s gave a green card to %s", "Ο/Η %s έδωσε πράσινη κάρτα στον/στην %s")
+		toast(Global.text("match.toast_gave_green")
 			% [_player_name(from_id), _player_name(to_id)])
 
 
@@ -546,13 +541,13 @@ func _on_question_answered(from_id: int, to_id: int) -> void:
 	if to_id == GameState.local_id:
 		question_from = 0
 		_context_card = {}
-	toast(Global.t("%s answered %s's question", "Ο/Η %s απάντησε στην ερώτηση του/της %s")
+	toast(Global.text("match.toast_answered")
 		% [_player_name(to_id), _player_name(from_id)])
 
 
 func _on_card_drawn_secretly(pl_id: int, card_type: String) -> void:
 	if pl_id != GameState.local_id:
-		toast(Global.t("%s drew a %s card", "Ο/Η %s τράβηξε %s κάρτα")
+		toast(Global.text("match.toast_drew_secret")
 			% [_player_name(pl_id), Global.field(Global.CARD_COLORS[card_type], "label").to_lower()])
 
 
@@ -563,7 +558,7 @@ func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
 	var mine := pl_id == GameState.local_id
 	if mine:
 		_context_card = card
-	var who := Global.t("You drew:", "Τράβηξες:") if mine else Global.t("%s drew:", "Ο/Η %s τράβηξε:") % _player_name(pl_id)
+	var who := Global.text("match.you_drew") if mine else Global.text("match.someone_drew") % _player_name(pl_id)
 	var view := CardView.open(self, card, who, [["OK", func(): pass]])
 	if view and not pick_ids.is_empty():
 		view.make_passive()  # don't block the player who's picking someone
@@ -572,19 +567,19 @@ func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
 # --- Choices & private info --------------------------------------------------
 
 ## The server asks you to pick (a player, a deck, a piece of equipment...).
-func _on_choice_requested(prompt: String, options: Array, allow_skip: bool) -> void:
+func _on_choice_requested(prompt_msg: Dictionary, options: Array, allow_skip: bool) -> void:
 	server_choice_open = true
 	_queue_refresh()
 	var answer := func(value):
 		server_choice_open = false
 		_queue_refresh()
 		MatchNet.choose(value)
-	prompt = Global.pick(prompt)
-	var context := _context_for(prompt)
+	var prompt := Global.msg(prompt_msg)
+	var context := _context_for(prompt_msg)
 	# Picking a player: click them on the list or the board, not a button.
 	var ids := _player_ids_in(options)
 	if not ids.is_empty():
-		_start_pick(prompt, ids, allow_skip, answer, context)
+		_start_pick(prompt, ids, allow_skip, answer)
 	else:
 		_open_choice(prompt, options, allow_skip, answer, context)
 
@@ -592,11 +587,15 @@ func _on_choice_requested(prompt: String, options: Array, allow_skip: bool) -> v
 ## The card a server question is about, to show beside the choices: the
 ## card you just drew (its name is in the prompt, e.g. "Swarm of Bats:
 ## choose a player"), or the green card you're answering.
-func _context_for(prompt: String) -> Dictionary:
+func _context_for(prompt_msg: Dictionary) -> Dictionary:
 	if _context_card.is_empty():
 		return {}
-	if _context_card.get("kind", "") == "question" or prompt.contains(str(_context_card.get("name", "§"))):
+	if _context_card.get("kind", "") == "question":
 		return _context_card
+	# The prompt names the card (Msg.named keeps its uid).
+	for value in prompt_msg.get("p", {}).values():
+		if value is Dictionary and value.get("uid", "") == _context_card.get("uid", "-"):
+			return _context_card
 	return {}
 
 
@@ -623,18 +622,20 @@ func _player_ids_in(options: Array) -> Array:
 
 
 ## Let the player pick one of `ids` on the player list or on the board.
-## The choice panel only shows the prompt (and Skip, if allowed).
-func _start_pick(prompt: String, ids: Array, allow_skip: bool, on_pick: Callable, context := {}) -> void:
+## The choice panel only shows the prompt (and Skip, if allowed), compact
+## so it never covers pawns at the bottom of the board; the card it's about
+## stays readable in the bottom-right corner (passive popup).
+func _start_pick(prompt: String, ids: Array, allow_skip: bool, on_pick: Callable) -> void:
 	pick_ids = ids
+	pick_serial += 1
 	_pick_callback = on_pick
 	_passivate_cards()
 	player_list.set_pickable(ids)
 	pawn_layer.set_pickable(ids)
-	var hint := Global.t("Click a highlighted player, on the list or on the board.",
-		"Κάνε κλικ σε έναν φωτισμένο παίκτη, στη λίστα ή στο ταμπλό.")
+	var hint := Global.text("match.pick_hint")
 	_open_choice("%s\n%s" % [prompt, hint], [], allow_skip, func(value):
 		_end_pick()
-		on_pick.call(value), context)
+		on_pick.call(value))
 	_queue_refresh()
 
 
@@ -681,7 +682,7 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 
 	var entries := options.duplicate()
 	if allow_skip:
-		entries.append({"value": null, "label": Global.t("Skip", "Παράλειψη"), "color": "b0b0b0"})
+		entries.append({"value": null, "label": Global.text("match.skip"), "color": "b0b0b0"})
 	for option in entries:
 		var value = option.value
 		var pick := func():
@@ -698,7 +699,7 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 			choice_buttons.add_child(_card_button(equipment, pick))
 		else:
 			var button := Button.new()
-			button.text = Global.pick(str(option.get("label", value)))
+			button.text = Global.msg(option.get("label", str(value)))
 			button.custom_minimum_size = Vector2(140, 44)
 			button.add_theme_font_size_override("font_size", 19)
 			if option.has("color"):
@@ -737,15 +738,16 @@ func _close_card_views_of(card: Dictionary) -> void:
 
 
 ## A message only for you, with an OK button.
-func _show_info(title: String, text: String) -> void:
-	_open_choice("%s\n%s" % [Global.pick(title), Global.pick(text)], [{"value": "ok", "label": "OK"}], false,
+## `title` / `text`: text, or Msgs from the server.
+func _show_info(title, text) -> void:
+	_open_choice("%s\n%s" % [Global.msg(title), Global.msg(text)], [{"value": "ok", "label": Global.text("option.ok")}], false,
 		func(_v): pass)
 
 
 func _on_private_character(pl_id: int, character: Dictionary) -> void:
-	_show_info(Global.t("You secretly see %s's character:", "Βλέπεις κρυφά τον χαρακτήρα του/της %s:") % _player_name(pl_id),
-		Global.t("%s, %s, %d health\n%s", "%s, %s, %d ζωή\n%s") % [Global.field(character, "name"),
-			character.get("species", "?"), character.get("health", 0), Global.field(character, "goal")])
+	_show_info(Global.text("match.peek_title") % _player_name(pl_id),
+		Global.text("match.peek_text") % [Global.field(character, "name"),
+			Global.species_name(character.get("species", "")), character.get("health", 0), Global.field(character, "goal")])
 
 
 func _on_equipment_changed(pl_id: int) -> void:
@@ -766,7 +768,7 @@ func _refresh_my_cards() -> void:
 	var equipment: Array = GameState.local_player.equipment
 	if equipment.is_empty():
 		var none := Label.new()
-		none.text = Global.t("No equipment yet.", "Κανένας εξοπλισμός ακόμα.")
+		none.text = Global.text("match.no_equipment_yet")
 		list.add_child(none)
 	for card in equipment:
 		var line := Label.new()
@@ -810,9 +812,9 @@ func _on_game_over(faction: String, winners: Array) -> void:
 
 	var headline := Label.new()
 	headline.text = {
-		"vampire": Global.t("The vampires win!", "Οι βρικόλακες κερδίζουν!"),
-		"werewolf": Global.t("The werewolves win!", "Οι λυκάνθρωποι κερδίζουν!"),
-	}.get(faction, Global.t("Nobody's side survived.", "Καμία πλευρά δεν επέζησε."))
+		"vampire": Global.text("match.the_vampires_win"),
+		"werewolf": Global.text("match.the_werewolves_win"),
+	}.get(faction, Global.text("match.nobody_s_side_survived"))
 	headline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	headline.add_theme_font_size_override("font_size", 40)
 	headline.add_theme_color_override("font_color", Color("ffd27a"))
@@ -820,7 +822,7 @@ func _on_game_over(faction: String, winners: Array) -> void:
 
 	var me_won := GameState.local_id in winners
 	var verdict := Label.new()
-	verdict.text = Global.t("You WIN!", "Κέρδισες!") if me_won else Global.t("You lose.", "Έχασες.")
+	verdict.text = Global.text("match.you_win") if me_won else Global.text("match.you_lose")
 	verdict.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	verdict.add_theme_font_size_override("font_size", 30)
 	column.add_child(verdict)
@@ -829,14 +831,14 @@ func _on_game_over(faction: String, winners: Array) -> void:
 		var p: Dictionary = GameState.players[id]
 		var row := Label.new()
 		row.text = "%s %s — %s (%s)%s" % ["★" if id in winners else "  ", p.name, Global.field(p.character, "name"),
-			p.character.get("species", "?"), "  †" if p.dead else ""]
+			Global.species_name(p.character.get("species", "")), "  †" if p.dead else ""]
 		row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_theme_font_size_override("font_size", 24)
 		row.add_theme_color_override("font_color", _player_color(id))
 		column.add_child(row)
 
 	var back := Button.new()
-	back.text = Global.t("Back to menu", "Πίσω στο μενού")
+	back.text = Global.text("match.back_to_menu")
 	back.custom_minimum_size = Vector2(260, 52)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(func(): SignalBus.leave_match.emit())

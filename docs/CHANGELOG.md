@@ -7,6 +7,26 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C009 — Strings file for translations; server sends message keys (2026-11-16)
+- **What:** All UI text moved into `i18n/strings.csv` (160 keys, en + el),
+  imported as Godot translations; `Global.text(key, {params})` replaces the
+  inline `Global.t("en","el")` pairs; `Global.pick()` removed. Scene-file
+  texts are keys and switch language by themselves (stray line breaks
+  removed; HUD help text rewritten). The server now sends `Msg` keys + params
+  (`data/msg.gd`) for every notice, prompt, option label, private info and
+  lobby problem, so announcements are finally in Greek too. Species shown
+  translated. The Classic art toggle and its tooltip are keyed. The checker
+  validates the strings file (missing/unused keys, missing language,
+  placeholder mismatch). Bots set their own language (never the player's
+  saved one); loading settings no longer rewrites the file. Picking a player
+  keeps a compact dialog (no card inside) so it can't cover bottom pawns.
+- **Why:** User asked for a front-end-style string dictionary. See D006.
+- **Rejected:** Keeping inline pairs (D005, superseded).
+- **Verified:** check_project 71 files + 160 keys clean; the checker catches a
+  bad key and a placeholder typo (tested); 11 `--ui` matches in a row pass
+  with English and Greek clients (status lines and announcements seen in
+  Greek on the Greek client, English on the host); plain runs pass.
+
 ### C008 — Language switch, chat, card dialogs, tighter packs (2026-11-16)
 - **What:** Language button bottom-left (every screen): the game shows
   English *or* Greek, saved in settings (D005); Greek names added for

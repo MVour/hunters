@@ -194,7 +194,7 @@ func offer_location_action(action: String) -> void:
 
 ## Only to the player who has to choose.
 @rpc("authority", "call_local", "reliable")
-func present_choice(prompt: String, options: Array, allow_skip: bool) -> void:
+func present_choice(prompt: Dictionary, options: Array, allow_skip: bool) -> void:
 	SignalBus.choice_requested.emit(prompt, options, allow_skip)
 
 ## Public: which players the server is waiting on for a choice (not what).
@@ -204,12 +204,12 @@ func waiting_for(player_ids: Array) -> void:
 	SignalBus.waiting_changed.emit(player_ids)
 
 @rpc("authority", "call_local", "reliable")
-func notice(text: String) -> void:
-	SignalBus.notice.emit(text)
+func notice(message: Dictionary) -> void:
+	SignalBus.notice.emit(message)
 
 ## Only to one player: something only they get to know.
 @rpc("authority", "call_local", "reliable")
-func private_info(title: String, text: String) -> void:
+func private_info(title: Dictionary, text: Dictionary) -> void:
 	SignalBus.private_info.emit(title, text)
 
 ## Only to one player: a look at someone's character card.

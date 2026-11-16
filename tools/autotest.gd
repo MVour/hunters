@@ -27,9 +27,12 @@ var _statuses := []
 func _init(p_role: String) -> void:
 	role = p_role
 	Global.persist_settings = false  # never touch the player's saved settings
+	# Our own language (English unless --lang=el), whatever the player picked.
+	var language := "en"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--lang="):
-			Global.lang = arg.get_slice("=", 1)
+			language = arg.get_slice("=", 1)
+	Global.lang = language
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--max-turns="):
 			max_turns = arg.get_slice("=", 1).to_int()
@@ -71,6 +74,12 @@ func _process(_delta: float) -> void:
 			text = text.replace(GameState.players[id].name, "<P>")
 		if not text in _statuses:
 			_statuses.append(text)
+		for box in scene.toast_box.get_children():  # announcements (black boxes)
+			var toast_text: String = "TOAST " + box.get_child(0).text
+			for id in GameState.players:
+				toast_text = toast_text.replace(GameState.players[id].name, "<P>")
+			if not toast_text in _statuses:
+				_statuses.append(toast_text)
 	if (Time.get_ticks_msec() - _last_progress) / 1000.0 > STALL_SECONDS:
 		_finish(false, "stalled: no new turn for %ds" % STALL_SECONDS)
 
@@ -190,6 +199,7 @@ func _click_pick() -> bool:
 	var scene := get_tree().root.find_child("PlayScene", true, false)
 	if scene == null or scene.pick_ids.is_empty():
 		return false
+	var serial: int = scene.pick_serial
 	var id: int = scene.pick_ids[randi() % scene.pick_ids.size()]
 	var target: Control
 	var on_board: bool = stats.ui_picks % 2 == 1
@@ -206,14 +216,24 @@ func _click_pick() -> bool:
 		e.global_position = centre
 		get_viewport().push_input(e)
 		await get_tree().process_frame
-	if not scene.pick_ids.is_empty():
+	# Still the same pick open = the click didn't land (a new pick may follow
+	# right away, e.g. a card that targets twice: that's fine).
+	if not scene.pick_ids.is_empty() and scene.pick_serial == serial:
 		var motion := InputEventMouseMotion.new()
 		motion.position = centre
 		motion.global_position = centre
 		get_viewport().push_input(motion)
 		await get_tree().process_frame
 		var under: Control = get_viewport().gui_get_hovered_control()
-		_finish(false, "clicked %s of player %d at %s but the pick didn't register; under the mouse: %s" % ["pawn" if on_board else "row", id, centre, under.get_path() if under else "nothing"])
+		var owner_id := -1
+		for pid in scene.pawn_layer._pick_areas:
+			if scene.pawn_layer._pick_areas[pid] == under:
+				owner_id = pid
+		var now: Vector2 = target.get_global_transform_with_canvas() * (target.size / 2.0)
+		_finish(false, ("clicked %s of player %d at %s but the pick didn't register; under the mouse: %s"
+			+ " (pawn of %d, pickable %s, filter %s); target now at %s; pick ids %s") % ["pawn" if on_board else "row", id,
+			centre, under.get_path() if under else "nothing", owner_id, owner_id in scene.pick_ids,
+			under.mouse_filter if under else -1, now, scene.pick_ids])
 		return true
 	stats.ui_picks += 1
 	return true

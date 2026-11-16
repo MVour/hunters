@@ -212,12 +212,12 @@ static func _kind_text(card: Dictionary) -> String:
 	var deck_label: String = Global.field(Global.CARD_COLORS[card.deck], "label").to_upper()
 	match card.kind:
 		"question":
-			return "%s · %s" % [deck_label, Global.t("QUESTION", "ΕΡΩΤΗΣΗ")]
+			return "%s · %s" % [deck_label, Global.text("card.question")]
 		"equipment":
-			return "%s · %s" % [deck_label, Global.t("EQUIPMENT", "ΕΞΟΠΛΙΣΜΟΣ")]
+			return "%s · %s" % [deck_label, Global.text("card.equipment")]
 		_:
-			var must := " · " + Global.t("MUST", "ΥΠΟΧΡΕΩΤΙΚΟ") if card.get("must", false) else ""
-			return "%s · %s%s" % [deck_label, Global.t("EVENT", "ΓΕΓΟΝΟΣ"), must]
+			var must := " · " + Global.text("card.must") if card.get("must", false) else ""
+			return "%s · %s%s" % [deck_label, Global.text("card.event"), must]
 
 
 func close() -> void:

@@ -34,8 +34,8 @@ func draw_for(player_id: int, card_type: String) -> void:
 		return
 	# Events: "must" ones happen; the others the player may decline.
 	if not card.get("must", false):
-		var use = await s.ask(player_id, "%s: use it now?" % card.name,
-			[{"value": "use", "label": "Use it", "color": Global.CARD_COLORS[card.deck].color}])
+		var use = await s.ask(player_id, Msg.make("prompt.use_now", {"card": Msg.named(card)}),
+			[{"value": "use", "label": Msg.make("option.use_it"), "color": Global.CARD_COLORS[card.deck].color}])
 		if use == null:
 			s.state.discard(card)
 			return
@@ -77,16 +77,17 @@ func transfer_equipment(from_id: int, to_id: int, uid) -> void:
 			s.state.players[to_id].equipment.append(card)
 			MatchNet.set_equipment.rpc(from_id, from_list)
 			MatchNet.set_equipment.rpc(to_id, s.state.players[to_id].equipment)
-			s.notice("%s takes %s from %s" % [s.state.name_of(to_id), card.name, s.state.name_of(from_id)])
+			s.notice(Msg.make("notice.takes_from", {"taker": s.state.name_of(to_id), "card": Msg.named(card),
+				"from": s.state.name_of(from_id)}))
 			return
 
 
 ## `chooser` picks one of `owner`'s equipment cards; returns its uid (or null).
-func pick_equipment(chooser: int, owner: int, prompt: String, allow_skip: bool):
+func pick_equipment(chooser: int, owner: int, prompt: Dictionary, allow_skip: bool):
 	var equipment: Array = s.state.players[owner].equipment
 	if equipment.size() == 1 and not allow_skip:
 		return equipment[0].uid
-	var options := equipment.map(func(card): return {"value": card.uid, "label": card.name,
+	var options := equipment.map(func(card): return {"value": card.uid, "label": Msg.named(card),
 		"color": Global.CARD_COLORS[card.deck].color})
 	return await s.ask(chooser, prompt, options, allow_skip)
 
@@ -96,4 +97,4 @@ func set_protected(player_id: int, on: bool) -> void:
 	s.state.players[player_id].protected = on
 	MatchNet.set_protected.rpc(player_id, on)
 	if on:
-		s.notice("%s is protected until their next turn." % s.state.name_of(player_id))
+		s.notice(Msg.make("notice.protected", {"player": s.state.name_of(player_id)}))

@@ -23,7 +23,7 @@ func _update_click_area() -> void:
 	var can_roll := roll_button.visible
 	mouse_filter = Control.MOUSE_FILTER_STOP if can_roll else Control.MOUSE_FILTER_IGNORE
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if can_roll else Control.CURSOR_ARROW
-	tooltip_text = Global.t("Roll", "Ρίξε") if can_roll else ""
+	tooltip_text = Global.text("dice.roll") if can_roll else ""
 
 
 func _on_gui_input(event: InputEvent) -> void:

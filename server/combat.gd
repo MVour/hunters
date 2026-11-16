@@ -51,7 +51,7 @@ func _kill(player_id: int, killer_id: int) -> void:
 			and not s.state.players[killer_id].dead:
 		s.busy_begin()
 		var uid = await s.cards.pick_equipment(killer_id, player_id,
-			"You killed %s! Take one of their equipment cards." % dead.name, false)
+			Msg.make("prompt.killed_take", {"player": dead.name}), false)
 		s.cards.transfer_equipment(player_id, killer_id, uid)
 		s.busy_end()
 	s.after_resolution()
@@ -65,9 +65,9 @@ func turn_start_effects(player_id: int) -> void:
 	var m := s.effects.mods(player_id)
 	if m.get("heal_per_turn", 0) > 0 and p.dmg > 0:
 		heal(player_id, m.heal_per_turn)
-		s.notice("%s's Healer's Satchel heals %d." % [p.name, m.heal_per_turn])
+		s.notice(Msg.make("notice.satchel_heals", {"player": p.name, "amount": m.heal_per_turn}))
 	if m.get("upkeep_damage", 0) > 0:
-		s.notice("%s's Cursed Ring bites." % p.name)
+		s.notice(Msg.make("notice.ring_bites", {"player": p.name}))
 		apply_damage(player_id, m.upkeep_damage)
 
 
@@ -84,10 +84,10 @@ func attack(sender: int) -> void:
 		return
 	var targets := attack_targets(sender)
 	if targets.is_empty():
-		s.private_info(sender, "Attack  ·  Επίθεση", "Nobody is within reach.")
+		s.private_info(sender, Msg.make("info.attack_title"), Msg.make("info.nobody_in_reach"))
 		return
 	s.busy_begin()
-	var target = await s.ask(sender, "Attack whom?  ·  Σε ποιον επιτίθεσαι;", targets.map(s.player_option))
+	var target = await s.ask(sender, Msg.make("prompt.attack_whom"), targets.map(s.player_option))
 	if target != null:
 		s.turn.attacked = true
 		await _attack(sender, target, true)
@@ -105,9 +105,10 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 	# Frederick / Gregor: once per game, the damage is one die alone.
 	if character.get("timing", "") == "attack" and not a.get("ability_used", false):
 		var die := "6" if character.ability_id == "d6_attack" else "4"
-		var reveal_note := "\n(This reveals your character.)" if a.hidden else ""
-		var use = await s.ask(attacker, "%s: use your ability (damage = the d%s alone)?%s" % [character.name, die, reveal_note],
-			[{"value": "use", "label": "Use ability", "color": "c8a85a"}], true)
+		var reveal_note = Msg.make("note.reveals") if a.hidden else ""
+		var use = await s.ask(attacker, Msg.make("prompt.ability_die",
+				{"character": Msg.named(character), "die": die, "note": reveal_note}),
+			[{"value": "use", "label": Msg.make("option.use_ability"), "color": "c8a85a"}], true)
 		if use == "use":
 			_mark_ability_used(attacker)
 			mode = "d" + die
@@ -133,23 +134,24 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 			dmg = mini(dmg, tm.max_attack_damage)
 
 	var t: Dictionary = s.state.players[target]
-	s.notice("%s attacks %s: rolled %d and %d → %d damage" % [a.name, t.name, dice.val6, dice.val4, dmg])
+	s.notice(Msg.make("notice.attack", {"attacker": a.name, "target": t.name, "d6": dice.val6,
+		"d4": dice.val4, "dmg": dmg}))
 	MatchNet.attack_fx.rpc(attacker, target, dmg)
 	apply_damage(target, dmg, attacker)
 
 	if tm.get("thorns", 0) > 0 and not a.dead:
-		s.notice("%s's Rusty Bear Trap snaps!" % t.name)
+		s.notice(Msg.make("notice.trap_snaps", {"player": t.name}))
 		apply_damage(attacker, tm.thorns, target)
 	if dmg > 0 and character.get("ability_id", "") == "lifesteal" and not a.hidden and not a.dead:
 		heal(attacker, 2)
-		s.notice("%s drinks: heals 2." % a.name)
+		s.notice(Msg.make("notice.drinks", {"player": a.name}))
 
 	# Mel: strike back (not against the attack that killed her).
 	if allow_counter and not t.dead and not a.dead and not s.finished \
 			and t.character.get("ability_id", "") == "strike_back":
-		var reveal_note := "\n(This reveals your character.)" if t.hidden else ""
-		var back = await s.ask(target, "%s attacked you. Strike back?%s" % [a.name, reveal_note],
-			[{"value": "yes", "label": "Strike back", "color": "e8402e"}], true)
+		var reveal_note = Msg.make("note.reveals") if t.hidden else ""
+		var back = await s.ask(target, Msg.make("prompt.strike_back", {"attacker": a.name, "note": reveal_note}),
+			[{"value": "yes", "label": Msg.make("option.strike_back"), "color": "e8402e"}], true)
 		if back == "yes":
 			if t.hidden:
 				reveal(target)
@@ -169,7 +171,8 @@ func reveal(player_id: int) -> void:
 	var p: Dictionary = s.state.players[player_id]
 	p.hidden = false
 	MatchNet.reveal_character.rpc(player_id, p.character)
-	s.notice("%s reveals: %s the %s!" % [p.name, p.character.name, p.character.species])
+	s.notice(Msg.make("notice.reveals", {"player": p.name, "character": Msg.named(p.character),
+		"species": Msg.species(p.character.species)}))
 
 
 func _mark_ability_used(player_id: int) -> void:
@@ -191,16 +194,16 @@ func use_ability(sender: int) -> void:
 				reveal(sender)  # passive abilities work once you're revealed
 			return
 		"attack":
-			s.private_info(sender, character.name, "You'll be offered your ability when you attack.")
+			s.private_info(sender, Msg.named(character), Msg.make("info.ability_on_attack"))
 			return
 		"reactive":
-			s.private_info(sender, character.name, "You'll be offered your ability when you're attacked.")
+			s.private_info(sender, Msg.named(character), Msg.make("info.ability_when_attacked"))
 			return
 	if p.get("ability_used", false):
-		s.private_info(sender, character.name, "You've already used your ability.")
+		s.private_info(sender, Msg.named(character), Msg.make("info.ability_used_already"))
 		return
 	if character.ability_id != "switch_side" and not s.is_current(sender):
-		s.private_info(sender, character.name, "You can only use this on your turn.")
+		s.private_info(sender, Msg.named(character), Msg.make("info.ability_your_turn_only"))
 		return
 
 	s.busy_begin()
@@ -210,14 +213,14 @@ func use_ability(sender: int) -> void:
 			heal(sender, p.dmg)
 		"switch_side":
 			p.hope_side = "left"
-			s.private_info(sender, character.name, "You now back the player on your LEFT.")
+			s.private_info(sender, Msg.named(character), Msg.make("info.backing_left"))
 		"peek":
-			completed = await s.effects.run({"name": character.name, "effect": [{"do": "peek_character"}]}, {"actor": sender})
+			completed = await s.effects.run({"name": character.name, "name_el": character.get("name_el", ""), "effect": [{"do": "peek_character"}]}, {"actor": sender})
 		"heal_other":
-			completed = await s.effects.run({"name": character.name,
+			completed = await s.effects.run({"name": character.name, "name_el": character.get("name_el", ""),
 				"effect": [{"do": "heal", "amount": 3, "target": "chosen_any"}]}, {"actor": sender})
 		"drain":
-			completed = await s.effects.run({"name": character.name, "effect": [
+			completed = await s.effects.run({"name": character.name, "name_el": character.get("name_el", ""), "effect": [
 				{"do": "damage", "amount": 1, "target": "chosen_in_reach"},
 				{"do": "heal", "amount": 1, "target": "self"}]}, {"actor": sender})
 	if completed:

@@ -30,8 +30,10 @@ func in_reach(attacker: int, target: int) -> bool:
 	return Rules.in_reach(s.state.players, s.state.locations, attacker, target)
 
 
-func _card_title(ctx: Dictionary) -> String:
-	return ctx.get("card", {}).get("name", "")
+## The card (or location / ability) an effect comes from, as a name the
+## client shows in its own language.
+func _card_title(ctx: Dictionary) -> Dictionary:
+	return Msg.named(ctx.get("card", {}))
 
 
 # --- Running effects ---------------------------------------------------------
@@ -61,7 +63,7 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 				if step.do == "heal":
 					s.combat.heal(t, step.amount)
 				elif _blocked_by_amulet(t, ctx):
-					s.notice("%s's Holy Amulet blocks the damage." % s.state.players[t].name)
+					s.notice(Msg.make("notice.amulet_blocks", {"player": s.state.name_of(t)}))
 				else:
 					s.combat.apply_damage(t, step.amount, actor)
 
@@ -72,7 +74,7 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 			if s.state.players[t].equipment.is_empty():
 				s.combat.apply_damage(t, step.amount, ctx.asker)
 			else:
-				var uid = await s.cards.pick_equipment(t, t, "Give one of your equipment cards to %s" % s.state.players[ctx.asker].name, false)
+				var uid = await s.cards.pick_equipment(t, t, Msg.make("prompt.give_equipment_to", {"player": s.state.name_of(ctx.asker)}), false)
 				s.cards.transfer_equipment(t, ctx.asker, uid)
 
 		"show_character_to_asker":
@@ -82,7 +84,7 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 		"tell_health_to_asker":
 			var p: Dictionary = s.state.players[ctx.receiver]
 			s.private_info(ctx.asker, _card_title(ctx),
-				"%s's character starts with %d health." % [p.name, p.character.get("health", 0)])
+				Msg.make("info.starts_with_health", {"player": p.name, "health": p.character.get("health", 0)}))
 
 		"steal_equipment", "take_from_dead":
 			var from_dead: bool = step.do == "take_from_dead"
@@ -92,12 +94,12 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 				if id != actor and p.dead == from_dead and not p.equipment.is_empty():
 					victims.append(s.player_option(id))
 			if victims.is_empty():
-				s.notice("%s: there's no equipment to take." % _card_title(ctx))
+				s.notice(Msg.make("notice.no_equipment_to_take", {"card": _card_title(ctx)}))
 				return false
-			var victim = await s.ask(actor, "%s: take equipment from whom?" % _card_title(ctx), victims)
+			var victim = await s.ask(actor, Msg.make("prompt.take_from_whom", {"card": _card_title(ctx)}), victims)
 			if victim == null:
 				return false
-			var uid = await s.cards.pick_equipment(actor, victim, "Which one?", false)
+			var uid = await s.cards.pick_equipment(actor, victim, Msg.make("prompt.which_one"), false)
 			s.cards.transfer_equipment(victim, actor, uid)
 
 		"protect":
@@ -108,15 +110,15 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 			var options := []
 			for loc in s.state.locations:
 				if loc.id != here:
-					options.append({"value": loc.id, "label": loc.label})
-			var dest = await s.ask(actor, "%s: where do you go?" % _card_title(ctx), options)
+					options.append({"value": loc.id, "label": Msg.named(loc)})
+			var dest = await s.ask(actor, Msg.make("prompt.where_go", {"card": _card_title(ctx)}), options)
 			if dest == null:
 				return false
 			s.move_pawn(actor, dest)
 
 		"peek_character":
 			var others := s.alive().filter(func(id): return id != actor).map(s.player_option)
-			var t = await s.ask(actor, "%s: whose character do you look at?" % _card_title(ctx), others)
+			var t = await s.ask(actor, Msg.make("prompt.peek_whom", {"card": _card_title(ctx)}), others)
 			if t == null:
 				return false
 			MatchNet.private_character.rpc_id(actor, t, s.state.players[t].character)
@@ -124,22 +126,22 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 		"draw_any":
 			var colors := []
 			for card_type in Global.CARD_TYPES:
-				colors.append({"value": card_type, "label": "Draw %s" % Global.CARD_COLORS[card_type].label,
+				colors.append({"value": card_type, "label": Msg.make("option.draw_deck", {"deck": Msg.named(Global.CARD_COLORS[card_type])}),
 					"color": Global.CARD_COLORS[card_type].color})
-			var card_type = await s.ask(actor, "%s: which deck?" % _card_title(ctx), colors)
+			var card_type = await s.ask(actor, Msg.make("prompt.which_deck", {"card": _card_title(ctx)}), colors)
 			if card_type == null:
 				return false
 			await s.cards.draw_for(actor, card_type)
 
 		"give_equipment_and_heal":
 			if s.state.players[actor].equipment.is_empty():
-				s.notice("%s: you have no equipment to give." % _card_title(ctx))
+				s.notice(Msg.make("notice.no_equipment_to_give", {"card": _card_title(ctx)}))
 				return false
-			var uid = await s.cards.pick_equipment(actor, actor, "Which equipment do you give away?", true)
+			var uid = await s.cards.pick_equipment(actor, actor, Msg.make("prompt.which_to_give"), true)
 			if uid == null:
 				return false
 			var others := s.alive().filter(func(id): return id != actor).map(s.player_option)
-			var t = await s.ask(actor, "Give it to whom?", others)
+			var t = await s.ask(actor, Msg.make("prompt.give_to_whom"), others)
 			if t == null:
 				return false
 			s.cards.transfer_equipment(actor, t, uid)
@@ -183,9 +185,9 @@ func _targets(target: String, ctx: Dictionary):
 					return false
 				return target != "chosen_in_reach" or in_reach(actor, id))
 			if candidates.is_empty():
-				s.notice("%s: nobody to target." % _card_title(ctx))
+				s.notice(Msg.make("notice.nobody_to_target", {"card": _card_title(ctx)}))
 				return null
-			var pick = await s.ask(actor, "%s: choose a player" % _card_title(ctx), candidates.map(s.player_option))
+			var pick = await s.ask(actor, Msg.make("prompt.choose_player", {"card": _card_title(ctx)}), candidates.map(s.player_option))
 			if pick == null:
 				return null
 			ctx.chosen[target] = pick

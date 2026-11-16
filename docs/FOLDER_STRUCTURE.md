@@ -27,7 +27,8 @@ match/               the match screen (play_scene) and its parts:
 assets/              the user's art: pawns/ portraits/ cards/ locations/ icons/ dices/ ui/
   legacy/            original art kept usable (Classic art): board/ portraits/ pawns/ cards/
   _source/           full source sheets + drafts; .gdignore'd (not imported, not exported)
-tools/               dev tools: check_project (loads every file), autotest (bots play a match)
+i18n/                owns: every UI text, strings.csv (keys,en,el); .translation files are generated
+tools/               dev tools: check_project (loads every file + checks i18n), autotest (bots play a match)
 docs/                project docs (see MANIFEST.md)
 ```
 
@@ -43,6 +44,7 @@ docs/                project docs (see MANIFEST.md)
 | `autoload/global.gd` | Static data (pawns, locations, card colours, defaults) and the Classic art setting. |
 | `data/cards.gd` / `data/characters.gd` | The card list and the character list (EN + EL text). |
 | `data/rules.gd` | Rules both sides need (reach, attack targets, equipment mods). Never duplicate these in UI or server. |
+| `i18n/strings.csv` | Every player-facing UI text, English + Greek. No hard-coded text elsewhere. |
 | `server/card_effects.gd` | Applying card effects. |
 | `autoload/signal_bus.gd` | Every cross-scene signal. |
 | `match/play_scene.gd` | The match screen UI: prompts, action bar, choices, toasts, game-over overlay. |

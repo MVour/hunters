@@ -17,7 +17,8 @@ _Last updated: 2026-11-16_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
-2026-11-16: language switch, chat, card dialogs, tighter packs — see C008.
+2026-11-16: all text in `i18n/strings.csv`, server sends message keys — see C009.
+Before that: language switch, chat, card dialogs, tighter packs (C008).
 Before that: player list + click to pick (C006/C007).
 Before that: clearer match screen (C005), network/state refactor (C004).
 
@@ -27,5 +28,5 @@ Before that: clearer match screen (C005), network/state refactor (C004).
 - BUG-001 (player drops mid-match) matters for online play; fix before or with deployment.
 
 ## Open bugs
-BUG-001 (player drops mid-match), BUG-002 (GUIDE button), BUG-004 (exit crash
+BUG-001 (player drops mid-match), BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
 after a network session, harmless). BUG-003 fixed. See BUGS.md.

@@ -331,8 +331,7 @@ anchor_bottom = 0.334572
 offset_right = 55.0001
 theme_override_colors/font_color = Color(0.690196, 0, 0, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_myibe")
-text = "Goal
-"
+text = "Goal"
 metadata/_edit_use_anchors_ = true
 
 [node name="PlayerGoal" type="Label" parent="Hud/PlayerHud"]
@@ -357,8 +356,7 @@ anchor_bottom = 0.628253
 offset_right = 4.0
 theme_override_colors/font_color = Color(0.690196, 0, 0, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_myibe")
-text = "Ability
-"
+text = "Ability"
 metadata/_edit_use_anchors_ = true
 
 [node name="PlayerAbility" type="Label" parent="Hud/PlayerHud"]

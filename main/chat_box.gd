@@ -49,7 +49,7 @@ func _process(_delta: float) -> void:
 
 
 func _apply_language() -> void:
-	_input.placeholder_text = Global.t("Say something… (Enter)", "Γράψε κάτι… (Enter)")
+	_input.placeholder_text = Global.text("chat.placeholder")
 
 
 func _on_submit(text: String) -> void:
