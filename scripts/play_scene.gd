@@ -14,8 +14,13 @@ class_name PlayScene extends Node2D
 var game_finished := false
 var pawn_layer: PawnLayer
 var prompt_label: Label
+var action_bar: HBoxContainer
+var toast_label: Label
+var decks := {}  # card type -> CardDeck
 ## Locations you may pick after rolling a 7 (empty when not choosing).
 var choice_options := []
+## The location action currently offered to you ("" when none).
+var offered_action := ""
 
 
 func _ready():
@@ -39,9 +44,35 @@ func _ready():
 	add_child(pawn_layer)
 	move_child(pawn_layer, game_map.get_index() + 1)
 
+	SignalBus.location_action_offered.connect(_on_location_action_offered)
+	SignalBus.deck_count_changed.connect(_on_deck_count_changed)
+	SignalBus.question_drawn.connect(_on_question_drawn)
+	SignalBus.question_asked.connect(_on_question_asked)
+	SignalBus.question_passed.connect(_on_question_passed)
+	SignalBus.question_answered.connect(_on_question_answered)
+	SignalBus.card_drawn_secretly.connect(_on_card_drawn_secretly)
+	SignalBus.card_revealed.connect(_on_card_revealed)
+
+	action_bar = HBoxContainer.new()
+	action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	action_bar.add_theme_constant_override("separation", 10)
+	action_bar.position = Vector2(560, 636)
+	action_bar.size = Vector2(800, 50)
+	add_child(action_bar)
+
+	toast_label = Label.new()
+	toast_label.position = Vector2(560, 196)
+	toast_label.size = Vector2(800, 40)
+	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toast_label.add_theme_font_size_override("font_size", 22)
+	toast_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	toast_label.add_theme_constant_override("outline_size", 8)
+	toast_label.modulate.a = 0.0
+	add_child(toast_label)
+
 	prompt_label = Label.new()
-	prompt_label.position = Vector2(700, 628)
-	prompt_label.size = Vector2(520, 48)
+	prompt_label.position = Vector2(560, 446)
+	prompt_label.size = Vector2(800, 40)
 	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt_label.add_theme_font_size_override("font_size", 24)
 	prompt_label.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -73,6 +104,7 @@ func _on_attach_deck(card_type: String, count: int):
 	decks_container.add_child(new_deck)
 	new_deck.add_cards(card_type, count)
 	new_deck.init()
+	decks[card_type] = new_deck
 
 
 func _on_end_game():
@@ -97,6 +129,7 @@ func _on_end_turn(pl_id):
 		playing_label.hide()
 		roll_button.hide()
 		end_turn_button.hide()
+		_clear_action_bar()
 
 
 func _on_pawn_moved(pl_id, _location_id):
@@ -125,3 +158,107 @@ func _on_location_chosen(location_id: String) -> void:
 
 func _on_end_turn_button_pressed() -> void:
 	game_manager.request_end_turn.rpc_id(1)
+
+
+# --- Location actions & cards ------------------------------------------------
+
+func _player_name(id: int) -> String:
+	return GameState.players.get(id, {}).get("name", "?")
+
+
+func _player_color(id: int) -> Color:
+	var pawn: String = GameState.players.get(id, {}).get("pawn", "")
+	return Color(Global.pawns[pawn].hex) if Global.pawns.has(pawn) else Color.WHITE
+
+
+func toast(text: String) -> void:
+	toast_label.text = text
+	var tween := create_tween()
+	tween.tween_property(toast_label, "modulate:a", 1.0, 0.2)
+	tween.tween_interval(2.8)
+	tween.tween_property(toast_label, "modulate:a", 0.0, 0.5)
+
+
+func _clear_action_bar() -> void:
+	for child in action_bar.get_children():
+		child.queue_free()
+	offered_action = ""
+	prompt_label.hide()
+	for deck in decks.values():
+		deck.set_highlight(false)
+
+
+func _add_action_button(text: String, color: Color, callback: Callable) -> void:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(170, 46)
+	button.add_theme_font_size_override("font_size", 19)
+	button.add_theme_color_override("font_color", color)
+	button.pressed.connect(func():
+		_clear_action_bar()
+		callback.call())
+	action_bar.add_child(button)
+
+
+## You arrived somewhere: offer what the location lets you do.
+func _on_location_action_offered(action: String) -> void:
+	_clear_action_bar()
+	offered_action = action
+	var loc_label := ""
+	for loc in GameState.locations:
+		if loc.id == GameState.local_player.location:
+			loc_label = loc.label
+	prompt_label.text = "%s: %s" % [loc_label, Global.LOCATION_ACTIONS[action].text]
+	prompt_label.show()
+
+	var draws: Array = GameManager.DRAW_ACTIONS.get(action, [])
+	for card_type in draws:
+		var info: Dictionary = Global.CARD_COLORS[card_type]
+		_add_action_button("Draw %s" % info.label, Color(info.color).lightened(0.3),
+			func(): game_manager.request_draw.rpc_id(1, card_type))
+		decks[card_type].set_highlight(true)
+	if draws.is_empty():
+		prompt_label.text += "  (coming soon)"
+	_add_action_button("Skip", Color(0.8, 0.8, 0.8),
+		func(): game_manager.request_skip_action.rpc_id(1))
+
+
+func _on_deck_count_changed(card_type: String, count: int) -> void:
+	if decks.has(card_type):
+		decks[card_type].set_count(count)
+
+
+## You drew a green question: read it, then pick who to ask.
+func _on_question_drawn(card: Dictionary) -> void:
+	var buttons := []
+	for id in GameState.game_info.players_turn:
+		var player: Dictionary = GameState.players[id]
+		if id != GameState.local_id and not player.dead:
+			buttons.append([player.name, func(): game_manager.request_give_question.rpc_id(1, id), _player_color(id)])
+	CardView.open(self, card, "Your question. Who do you ask?  ·  Σε ποιον τη δίνεις;", buttons)
+
+
+## Someone asked you a question.
+func _on_question_asked(from_id: int, card: Dictionary) -> void:
+	CardView.open(self, card, "%s asks you:  ·  Σε ρωτάει:" % _player_name(from_id),
+		[["Answer", func(): game_manager.request_answer_question.rpc_id(1)]])
+
+
+func _on_question_passed(from_id: int, to_id: int) -> void:
+	if to_id != GameState.local_id:
+		toast("%s gave a green card to %s" % [_player_name(from_id), _player_name(to_id)])
+
+
+func _on_question_answered(from_id: int, to_id: int) -> void:
+	toast("%s answered %s's question" % [_player_name(to_id), _player_name(from_id)])
+
+
+func _on_card_drawn_secretly(pl_id: int, card_type: String) -> void:
+	if pl_id != GameState.local_id:
+		toast("%s drew a %s card" % [_player_name(pl_id), Global.CARD_COLORS[card_type].label])
+
+
+## Red/blue cards are read aloud: everyone sees them.
+func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
+	var who := "You" if pl_id == GameState.local_id else _player_name(pl_id)
+	CardView.open(self, card, "%s drew:" % who, [["OK", func(): pass]])

@@ -86,27 +86,17 @@ var deck = {
 		{"id": "magic_forest", "name": "magic_forest", "label": "Magic Forest", "rolls": [9], "action": "heal_or_damage"},
 		{"id": "stone_circle", "name": "stone_circle", "label": "Stone Circle", "rolls": [10], "action": "steal_equipment"},
 	],
-	"blue_cards" : [
-		{"id": "bc1", "title": "Some Blue Card", "text": "Some BlueCard Text"},
-		{"id": "bc2", "title": "Some Blue Card", "text": "Some BlueCard Text"},
-		{"id": "bc3", "title": "Some Blue Card", "text": "Some BlueCard Text"},
-		{"id": "bc4", "title": "Some Blue Card", "text": "Some BlueCard Text"},
-		{"id": "bc5", "title": "Some Blue Card", "text": "Some BlueCard Text"}
-	],
-	"green_cards" : [
-		{"id": "gc1", "title": "Some Green Card", "text": "Some GreenCard Text"},
-		{"id": "gc2", "title": "Some Green Card", "text": "Some GreenCard Text"},
-		{"id": "gc3", "title": "Some Green Card", "text": "Some GreenCard Text"},
-		{"id": "gc4", "title": "Some Green Card", "text": "Some GreenCard Text"},
-		{"id": "gc5", "title": "Some Green Card", "text": "Some GreenCard Text"}
-	],
-	"red_cards" : [
-		{"id": "rc1", "title": "Some Red Card", "text": "Some RedCard Text"},
-		{"id": "rc2", "title": "Some Red Card", "text": "Some RedCard Text"},
-		{"id": "rc3", "title": "Some Red Card", "text": "Some RedCard Text"},
-		{"id": "rc4", "title": "Some Red Card", "text": "Some RedCard Text"},
-		{"id": "rc5", "title": "Some Red Card", "text": "Some RedCard Text"}
-	]
+	# The card designs live in scripts/cards.gd (see docs/CARDS.md).
+	"green_cards" : Cards.build(Cards.GREEN),
+	"red_cards" : Cards.build(Cards.RED),
+	"blue_cards" : Cards.build(Cards.BLUE),
+}
+
+## Display info per deck.
+const CARD_COLORS := {
+	"green_cards": {"label": "green", "label_el": "Πράσινη", "color": "44b052"},
+	"red_cards": {"label": "red", "label_el": "Κόκκινη", "color": "d83a42"},
+	"blue_cards": {"label": "blue", "label_el": "Μπλε", "color": "3a7ae0"},
 }
 
 

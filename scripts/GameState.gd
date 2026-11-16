@@ -32,6 +32,8 @@ var locations := []
 
 ## Server only: this match's shuffled copy of Global.deck.
 var deck := {}
+## Server only: used cards per deck, reshuffled when a deck runs out.
+var discards := {}
 
 var _no_player := new_player(0)
 
@@ -45,6 +47,7 @@ func reset_session(my_id := 0) -> void:
 	game_info = {"players_turn": [], "round": 0}
 	locations = []
 	deck = {}
+	discards = {}
 
 
 func new_player(id: int) -> Dictionary:
@@ -58,6 +61,7 @@ func new_player(id: int) -> Dictionary:
 		"dmg": 0,
 		"location": "",  # location id, "" = still at the campfire
 		"dead": false,
+		"equipment": [],  # face-up equipment cards (public)
 	}
 
 
@@ -92,12 +96,32 @@ func can_reach(from_id: String, to_id: String) -> bool:
 ## touch Global.deck.
 func prepare_deck() -> void:
 	deck = Global.deck.duplicate(true)
+	discards = {}
 	for card_type in Global.CARD_TYPES:
+		for card in deck[card_type]:
+			card.deck = card_type
 		deck[card_type].shuffle()
+		discards[card_type] = []
 	for species_list in deck.characters.values():
 		species_list.shuffle()
 	deck.locations.shuffle()
 	locations = deck.locations
+
+
+## Server only. Top card of a deck; reshuffles the discards when empty.
+func draw_card(card_type: String) -> Dictionary:
+	if deck[card_type].is_empty():
+		deck[card_type] = discards[card_type]
+		discards[card_type] = []
+		deck[card_type].shuffle()
+	if deck[card_type].is_empty():
+		return {}
+	return deck[card_type].pop_back()
+
+
+## Server only.
+func discard(card: Dictionary) -> void:
+	discards[card.deck].append(card)
 
 
 func is_pawn_taken(pawn: String, except_id := 0) -> bool:

@@ -39,11 +39,23 @@ func _ready() -> void:
 
 ## Adds face-down cards. What each card says is only revealed when drawn
 ## (the server sends it then), so nobody can peek at the deck order.
-func add_cards(card_type: String, count: int):
-	# Drop the preview cards placed in the editor.
-	for c in cards.get_children():
-		cards.remove_child(c)
-		c.queue_free()
+## Only this many cards are drawn in the stack; a number shows the real size.
+const MAX_VISIBLE := 6
+
+var _count := 0
+var _count_label: Label
+
+
+func add_cards(card_type: String, count: int, replace := true):
+	_card_type = card_type
+	if replace:
+		# Drop the preview cards placed in the editor.
+		for c in cards.get_children():
+			cards.remove_child(c)
+			c.queue_free()
+		_count = count
+		count = mini(count, MAX_VISIBLE)
+		_update_label()
 	for i in count:
 		var new_card_scene = card_scn.instantiate()
 		cards.add_child(new_card_scene)
@@ -140,3 +152,62 @@ func set_cards_3D(state: bool) -> void:
 
 func _on_check_button_toggled(toggled_on: bool) -> void:
 	set_cards_3D(toggled_on)
+
+
+var _card_type := ""
+var _highlight: Tween
+
+
+## Match the number of face-down cards to the real deck size.
+func set_count(count: int) -> void:
+	if count < _count and cards.get_child_count() > 0:
+		_fly_off_top()
+	_count = count
+	_update_label()
+	var target := mini(count, MAX_VISIBLE)
+	while cards.get_child_count() > target:
+		var extra: Node = cards.get_child(0)
+		cards.remove_child(extra)
+		extra.queue_free()
+	if cards.get_child_count() < target and _card_type != "":
+		add_cards(_card_type, target - cards.get_child_count(), false)
+	if cards.get_child_count() > 0:
+		update_cards()
+
+
+## A copy of the top card lifts off the deck and fades out.
+func _fly_off_top() -> void:
+	var top: Control = cards.get_child(cards.get_child_count() - 1)
+	var ghost = card_scn.instantiate()
+	add_child(ghost)
+	ghost.card_set_type(_card_type)
+	ghost.global_position = top.global_position
+	ghost.scale = top.scale
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(ghost, "position:y", ghost.position.y - 140, 0.4)
+	tween.tween_property(ghost, "modulate:a", 0.0, 0.4)
+	tween.chain().tween_callback(ghost.queue_free)
+
+
+func _update_label() -> void:
+	if not _count_label:
+		_count_label = Label.new()
+		_count_label.add_theme_font_size_override("font_size", 26)
+		_count_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		_count_label.add_theme_constant_override("outline_size", 8)
+		_count_label.position = Vector2(12, 190)
+		_count_label.z_index = 1
+		add_child(_count_label)
+	_count_label.text = str(_count)
+
+
+## Glow while you're allowed to draw from this deck.
+func set_highlight(on: bool) -> void:
+	if _highlight:
+		_highlight.kill()
+	modulate = Color.WHITE
+	if on:
+		_highlight = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
+		_highlight.tween_property(self, "modulate", Color(1.45, 1.45, 1.3), 0.5)
+		_highlight.tween_property(self, "modulate", Color.WHITE, 0.5)

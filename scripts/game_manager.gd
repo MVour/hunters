@@ -120,6 +120,8 @@ func _start_turn() -> void:
 	current_turn.turn_count += 1
 	current_turn.playing_id = playing_id
 	current_turn.phase = TurnPhase.ROLL
+	current_turn.action_used = false
+	current_turn.pending_question = {}
 	@warning_ignore("integer_division")
 	GameState.game_info.round = (current_turn.turn_count - 1) / order.size() + 1
 
@@ -189,7 +191,152 @@ func request_choose_location(location_id: String) -> void:
 
 func _move_player(player_id: int, location_id: String) -> void:
 	current_turn.phase = TurnPhase.ACTION
+	current_turn.action_used = false
 	move_pawn.rpc(player_id, location_id)
+	var loc: Dictionary = GameState.locations[GameState.location_index(location_id)]
+	offer_location_action.rpc_id(player_id, loc.action)
+
+
+# --- Location actions & drawing cards ----------------------------------------
+
+## Which decks a location action lets you draw from.
+const DRAW_ACTIONS := {
+	"draw_green": ["green_cards"],
+	"draw_red": ["red_cards"],
+	"draw_blue": ["blue_cards"],
+	"draw_any": ["green_cards", "red_cards", "blue_cards"],
+}
+
+
+## Server -> the player who just arrived: what this location offers.
+@rpc("authority", "call_local", "reliable")
+func offer_location_action(action: String) -> void:
+	SignalBus.location_action_offered.emit(action)
+
+
+func _location_action_of(player_id: int) -> String:
+	var index := GameState.location_index(GameState.players[player_id].location)
+	return GameState.locations[index].action if index != -1 else ""
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_skip_action() -> void:
+	if multiplayer.is_server() and _is_current_player(Network.sender_id()):
+		current_turn.action_used = true
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_draw(card_type: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	if not _is_current_player(sender) or current_turn.phase != TurnPhase.ACTION or current_turn.action_used:
+		return
+	if not card_type in DRAW_ACTIONS.get(_location_action_of(sender), []):
+		return
+	draw_for(sender, card_type)
+	current_turn.action_used = true
+
+
+## Server only. A player draws a card (also used by card effects later).
+func draw_for(player_id: int, card_type: String) -> void:
+	var card := GameState.draw_card(card_type)
+	if card.is_empty():
+		return
+	deck_count.rpc(card_type, GameState.deck[card_type].size())
+	if card.kind == "question":
+		# Green: secret. Only the drawer sees it, then picks who to ask.
+		var waiting: Dictionary = current_turn.get("pending_question", {})
+		if not waiting.is_empty():
+			GameState.discard(waiting.card)  # never lose a card from the deck
+		current_turn.pending_question = {"card": card, "from": player_id, "to": 0}
+		question_drawn.rpc_id(player_id, card)
+		card_drawn_secretly.rpc(player_id, card_type)
+	else:
+		# Red/blue: read aloud. Everyone sees it.
+		card_revealed.rpc(player_id, card)
+		if card.kind == "equipment":
+			GameState.players[player_id].equipment.append(card)
+			equipment_gained.rpc(player_id, card)
+		else:
+			# TODO (step 3): resolve the event's effect before discarding.
+			GameState.discard(card)
+
+
+@rpc("authority", "call_local", "reliable")
+func deck_count(card_type: String, count: int) -> void:
+	SignalBus.deck_count_changed.emit(card_type, count)
+
+
+## Server -> the drawer of a green card.
+@rpc("authority", "call_local", "reliable")
+func question_drawn(card: Dictionary) -> void:
+	SignalBus.question_drawn.emit(card)
+
+
+## Server -> everyone: someone drew a card nobody else gets to see.
+@rpc("authority", "call_local", "reliable")
+func card_drawn_secretly(player_id: int, card_type: String) -> void:
+	SignalBus.card_drawn_secretly.emit(player_id, card_type)
+
+
+@rpc("authority", "call_local", "reliable")
+func card_revealed(player_id: int, card: Dictionary) -> void:
+	SignalBus.card_revealed.emit(player_id, card)
+
+
+@rpc("authority", "call_local", "reliable")
+func equipment_gained(player_id: int, card: Dictionary) -> void:
+	if GameState.players.has(player_id) and not multiplayer.is_server():
+		GameState.players[player_id].equipment.append(card)
+	SignalBus.equipment_changed.emit(player_id)
+
+
+## The asker hands their green card to another player.
+@rpc("any_peer", "call_local", "reliable")
+func request_give_question(target_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	var q: Dictionary = current_turn.get("pending_question", {})
+	if q.is_empty() or q.from != sender or q.to != 0:
+		return
+	if target_id == sender or not GameState.players.has(target_id) or GameState.players[target_id].dead:
+		return
+	q.to = target_id
+	question_asked.rpc_id(target_id, sender, q.card)
+	question_passed.rpc(sender, target_id)
+
+
+## Server -> the player being asked.
+@rpc("authority", "call_local", "reliable")
+func question_asked(from_id: int, card: Dictionary) -> void:
+	SignalBus.question_asked.emit(from_id, card)
+
+
+## Server -> everyone: who asked whom (not what).
+@rpc("authority", "call_local", "reliable")
+func question_passed(from_id: int, to_id: int) -> void:
+	SignalBus.question_passed.emit(from_id, to_id)
+
+
+## The asked player has read the card; the server applies it.
+@rpc("any_peer", "call_local", "reliable")
+func request_answer_question() -> void:
+	if not multiplayer.is_server():
+		return
+	var q: Dictionary = current_turn.get("pending_question", {})
+	if q.is_empty() or q.to == 0 or Network.sender_id() != q.to:
+		return
+	# TODO (step 3): apply the question's effect to q.to, tell q.from the result.
+	GameState.discard(q.card)
+	current_turn.pending_question = {}
+	question_answered.rpc(q.from, q.to)
+
+
+@rpc("authority", "call_local", "reliable")
+func question_answered(from_id: int, to_id: int) -> void:
+	SignalBus.question_answered.emit(from_id, to_id)
 
 
 ## Server -> everyone: this player's pawn is now at this location.
@@ -205,8 +352,11 @@ func request_end_turn() -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := Network.sender_id()
-	# You have to move before you can end your turn.
+	# You have to move before you can end your turn, and an asked question
+	# has to be answered first.
 	if not _is_current_player(sender) or current_turn.phase != TurnPhase.ACTION:
+		return
+	if not current_turn.get("pending_question", {}).is_empty():
 		return
 	players_lock.rpc(sender, false)
 	_start_turn()
