@@ -57,6 +57,7 @@ func new_player(id: int) -> Dictionary:
 		"playing": false,
 		"dmg": 0,
 		"location": "",  # location id, "" = still at the campfire
+		"dead": false,
 	}
 
 

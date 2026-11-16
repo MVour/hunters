@@ -18,6 +18,12 @@ signal set_locations
 signal pawn_moved
 ## You rolled a 7: pick one of these location ids. (options: Array)
 signal choose_location
+## A player's damage changed: (player_id, damage)
+signal damage_changed
+## A character card is now public: (player_id, character)
+signal character_revealed
+## A player died and is out: (player_id, killer_id) - killer 0 = no one
+signal player_died
 
 ## Avatar Creation signals (might include avatar movement or actions as well)
 signal _avatar_created

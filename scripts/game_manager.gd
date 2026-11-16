@@ -110,7 +110,13 @@ func _decide_turn_order() -> void:
 
 func _start_turn() -> void:
 	var order: Array = GameState.game_info.players_turn
+	# Skip players who are out.
 	var playing_id: int = order[current_turn.turn_count % order.size()]
+	for i in order.size():
+		if not GameState.players[playing_id].dead:
+			break
+		current_turn.turn_count += 1
+		playing_id = order[current_turn.turn_count % order.size()]
 	current_turn.turn_count += 1
 	current_turn.playing_id = playing_id
 	current_turn.phase = TurnPhase.ROLL
@@ -215,3 +221,63 @@ func players_lock(playing_id: int, val: bool) -> void:
 		SignalBus.begin_turn.emit(playing_id)
 	else:
 		SignalBus.end_turn.emit(playing_id)
+
+
+# --- Health ------------------------------------------------------------------
+# Server only. Cards, locations and attacks all go through these.
+
+func apply_damage(target_id: int, amount: int, source_id := 0) -> void:
+	if not multiplayer.is_server() or not GameState.players.has(target_id):
+		return
+	var target: Dictionary = GameState.players[target_id]
+	if target.dead or amount <= 0:
+		return
+	target.dmg = mini(target.dmg + amount, target.character.health)
+	set_damage.rpc(target_id, target.dmg)
+	if target.dmg >= target.character.health:
+		_kill(target_id, source_id)
+
+
+func heal(target_id: int, amount: int) -> void:
+	if not multiplayer.is_server() or not GameState.players.has(target_id):
+		return
+	var target: Dictionary = GameState.players[target_id]
+	if target.dead or amount <= 0:
+		return
+	target.dmg = maxi(0, target.dmg - amount)
+	set_damage.rpc(target_id, target.dmg)
+
+
+@rpc("authority", "call_local", "reliable")
+func set_damage(player_id: int, damage: int) -> void:
+	if GameState.players.has(player_id):
+		GameState.players[player_id].dmg = damage
+	SignalBus.damage_changed.emit(player_id, damage)
+
+
+## Out of health: the player is out and their card is revealed to everyone.
+func _kill(player_id: int, killer_id: int) -> void:
+	GameState.players[player_id].dead = true
+	reveal_character.rpc(player_id, GameState.players[player_id].character)
+	player_died.rpc(player_id, killer_id)
+	# TODO (step 6): the killer takes one of the dead player's equipment cards.
+	# TODO (step 7): check win conditions.
+	if player_id == current_turn.playing_id:
+		players_lock.rpc(player_id, false)
+		_start_turn()
+
+
+## Makes a character public (on death, or when a player reveals it).
+@rpc("authority", "call_local", "reliable")
+func reveal_character(player_id: int, character: Dictionary) -> void:
+	if GameState.players.has(player_id):
+		GameState.players[player_id].character = character
+		GameState.players[player_id].hidden = false
+	SignalBus.character_revealed.emit(player_id, character)
+
+
+@rpc("authority", "call_local", "reliable")
+func player_died(player_id: int, killer_id: int) -> void:
+	if GameState.players.has(player_id):
+		GameState.players[player_id].dead = true
+	SignalBus.player_died.emit(player_id, killer_id)

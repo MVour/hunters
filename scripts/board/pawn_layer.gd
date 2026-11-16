@@ -39,6 +39,17 @@ func setup(map: GameMap, players: Dictionary) -> void:
 	for loc in occupants:
 		_reflow(loc, false)
 	SignalBus.pawn_moved.connect(_on_pawn_moved)
+	SignalBus.player_died.connect(_on_player_died)
+
+
+## A dead player's pawn falls over and fades to grey.
+func _on_player_died(player_id: int, _killer_id: int) -> void:
+	if not pawns.has(player_id):
+		return
+	var pawn: Sprite2D = pawns[player_id]
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(pawn, "rotation_degrees", 90.0, 0.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(pawn, "modulate", Color(0.45, 0.45, 0.5, 0.85), 0.4)
 
 
 ## Where the n-th pawn at a location stands.

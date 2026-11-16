@@ -57,9 +57,6 @@ func _input(event):
 		get_tree().quit()
 
 
-#players = [{ "name": ... , "color": ... , "board_scene": ..., "main_scene": ... }, {}, ...]
+## Old debug button from the main menu; players now join via the lobby.
 func _on_add_player():
-	var pl_brd_scn = dmg_board_sprite.instantiate()
-	pl_brd_scn.get_node("PlayerBoardSprite").texture = Global.colors_sprites["red"]
-	var player = {"name": "mike", "color": "red", "board_scene": pl_brd_scn, "main_scene": "..."}
-	play_scene.spawn_players([player])
+	pass

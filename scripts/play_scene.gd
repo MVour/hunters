@@ -27,7 +27,11 @@ func _ready():
 	SignalBus.end_turn.connect(_on_end_turn)
 	SignalBus.pawn_moved.connect(_on_pawn_moved)
 	SignalBus.choose_location.connect(_on_choose_location)
+	SignalBus.damage_changed.connect(_on_damage_changed)
 	game_map.location_chosen.connect(_on_location_chosen)
+
+	# Life track down the left edge.
+	damage_board.position = Vector2(8, 192)
 
 	# Pawns draw above the locations, below the HUD.
 	pawn_layer = PawnLayer.new()
@@ -53,13 +57,15 @@ func _ready():
 	game_manager.report_loaded.rpc_id(1)
 
 
-func spawn_players(players):
-	damage_board.spawn_players(players)
-
-
 func _on_set_locations(_locations):
 	game_map.locations_spawn()
 	pawn_layer.setup(game_map, GameState.players)
+	damage_board.show_players(GameState.players)
+
+
+func _on_damage_changed(pl_id, dmg):
+	if pl_id == GameState.local_id:
+		player_hud.player_damage.text = str(dmg)
 
 
 func _on_attach_deck(card_type: String, count: int):
