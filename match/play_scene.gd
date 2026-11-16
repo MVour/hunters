@@ -34,7 +34,7 @@ var question_waiting_on := 0
 var question_from := 0
 ## One line at the bottom: what's happening and who we're waiting on.
 var status_label: Label
-## Everyone, down the left edge (replaces the old seats around the board).
+## Everyone, down the right edge (replaces the old seats around the board).
 var player_list: PlayerList
 ## Players you may pick right now (attack, card target…); [] when not picking.
 var pick_ids := []
@@ -68,14 +68,14 @@ func _ready():
 		forest.hide()
 		forest.process_mode = Node.PROCESS_MODE_DISABLED
 
-	# Life track down the left edge.
-	# Players down the left edge; the life track on the right.
+	# Players down the right edge (top-right corner; decks are bottom-right),
+	# the life track down the left edge.
 	player_list = PlayerList.new()
-	player_list.position = Vector2(8, 12)
+	player_list.position = Vector2(1920 - 8 - PlayerList.WIDTH, 12)
 	player_list.z_index = 4
 	add_child(player_list)
 	player_list.player_picked.connect(_on_player_picked)
-	damage_board.dock_right(Vector2(1912, 292))
+	damage_board.position = Vector2(8, 120)
 
 	# Pawns draw above the locations, below the HUD.
 	pawn_layer = PawnLayer.new()

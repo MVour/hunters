@@ -1,5 +1,5 @@
 class_name PlayerList extends PanelContainer
-## Every player down the left edge, in play order (numbered), the current
+## Every player down the right edge, in play order (numbered), the current
 ## player highlighted. Each row opens a drawer with what's known about them.
 ## While the server asks you to pick a player (attack, card target…), the
 ## players you can pick light up here and can be clicked (see set_pickable).

@@ -17,7 +17,7 @@ _Last updated: 2026-11-16_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
-2026-11-16: player list on the left + click players to pick them — see C006.
+2026-11-16: player list (now on the right, C007) + click players to pick them — see C006.
 Before that: clearer match screen (C005), network/state refactor (C004).
 
 ## Next

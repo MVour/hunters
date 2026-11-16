@@ -77,8 +77,8 @@ frees the play scene and returns to the menu.
 
 Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
 (`ForestBoard` or, with Classic art, `ClassicBoard`), `Locations` (`GameMap`),
-`PawnLayer`, `PlayerList` (left edge, play order, drawers), `Hud/PlayerHud`,
-`DamageBoard` (life track, right edge), `DecksContainer`, `DicesContainer`,
+`PawnLayer`, `PlayerList` (right edge, play order, drawers), `Hud/PlayerHud`,
+`DamageBoard` (life track, left edge), `DecksContainer`, `DicesContainer`,
 `CardView` popups, and the
 prompt/action/choice panels and the status line built in `play_scene.gd`.
 `_refresh_buttons()` sets every turn button's visible/enabled state and the

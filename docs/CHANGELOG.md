@@ -7,6 +7,14 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C007 — Player list right, life track left (2026-11-16)
+- **What:** Swapped sides: the player list sits in the top-right corner
+  (decks are bottom-right), the life track back on the left edge.
+  `DamageBoard.dock_right()` stays available but unused.
+- **Why:** User preference.
+- **Rejected:** —
+- **Verified:** check_project 67/67; 2 `--ui` runs (32 clicks) + 1 normal run pass.
+
 ### C006 — Player list on the left; pick players by clicking them (2026-11-16)
 - **What:** The seats around the board are replaced by a player list down
   the left edge (`match/hud/player_list.gd`, `player_row.gd`): play-order
