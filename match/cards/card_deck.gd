@@ -4,8 +4,10 @@ class_name CardDeck extends Control
 @onready var cards: Control = $Cards
 @onready var card_scn : PackedScene = preload("res://match/cards/card.tscn")
 
-@export var offset: float = 30.0
-@export var scale_between_cards: float = 0.05
+## A tight pile: each card under the top one sits a few pixels lower-right.
+@export var offset: float = 3.0
+@export var offset_x: float = 1.5
+@export var scale_between_cards: float = 0.0
 @export var anim_duration: float = 0.45
 @export var anim_duration_offset: float = 0.15
 
@@ -40,7 +42,7 @@ func _ready() -> void:
 ## Adds face-down cards. What each card says is only revealed when drawn
 ## (the server sends it then), so nobody can peek at the deck order.
 ## Only this many cards are drawn in the stack; a number shows the real size.
-const MAX_VISIBLE := 6
+const MAX_VISIBLE := 8
 
 var _count := 0
 var _count_label: Label
@@ -48,6 +50,7 @@ var _count_label: Label
 
 func add_cards(card_type: String, count: int, replace := true):
 	_card_type = card_type
+	$Panel.hide()  # no box behind the pack
 	if replace:
 		# Drop the preview cards placed in the editor.
 		for c in cards.get_children():
@@ -114,11 +117,11 @@ func update_cards(thrown: bool = false, animated: bool = true) -> void:
 		#print("Card scale: ", card_scale)
 		
 		if not animated:
-			c.position = first_card_pos - Vector2(0, card_offset)
+			c.position = first_card_pos + Vector2(offset_x * multiplier, card_offset)
 			c.scale = first_card_scale - Vector2(card_scale, card_scale)
 		else:
 			var duration: float = anim_duration + (anim_duration_offset * multiplier)
-			tween.tween_property(c, "position", first_card_pos - Vector2(0, card_offset), duration)
+			tween.tween_property(c, "position", first_card_pos + Vector2(offset_x * multiplier, card_offset), duration)
 			tween.tween_property(c, "scale", first_card_scale - Vector2(card_scale, card_scale), duration)
 
 func on_card_put_back(which: Button) -> void:

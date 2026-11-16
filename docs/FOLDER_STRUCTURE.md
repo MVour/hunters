@@ -16,12 +16,12 @@ network/             owns: everything sent over the network: connecting (network
 server/              owns: match rules, server only (match_server, card_flow, combat,
                      card_effects, server_state)
 data/                card list, character list (EN + EL), shared board rules
-main/                entry scene (main.tscn) + main menu
+main/                entry scene (main.tscn), main menu, chat box + language button overlay
 lobby/               host/join screen, waiting room, avatar picker, role settings
 match/               the match screen (play_scene) and its parts:
   board/             forest board, classic board, locations, pawns
   hud/               player HUD, player list (+rows), life track
-  cards/             card, deck, CardView popup, card shaders
+  cards/             card, deck, deck pack, CardView popup (+ card_face), card shaders
   dice/              d6, d4, dice panel
   legacy/            old damage-board HUD and old seats, kept for possible reuse (in no scene)
 assets/              the user's art: pawns/ portraits/ cards/ locations/ icons/ dices/ ui/

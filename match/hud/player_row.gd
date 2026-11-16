@@ -86,7 +86,7 @@ func _init(id: int, number: int) -> void:
 	_arrow = Button.new()
 	_arrow.text = "▸"
 	_arrow.flat = true
-	_arrow.tooltip_text = "Details  ·  Λεπτομέρειες"
+	_arrow.tooltip_text = Global.t("Details", "Λεπτομέρειες")
 	_arrow.custom_minimum_size = Vector2(28, 0)
 	_arrow.add_theme_font_size_override("font_size", 18)
 	_arrow.pressed.connect(toggle_drawer)
@@ -123,21 +123,21 @@ func refresh() -> void:
 	var me := player_id == GameState.local_id
 	var pawn_info: Dictionary = Global.pawns.get(p.pawn, {})
 	_pawn.texture = pawn_info.get("sprite")
-	_name.text = p.name + ("  (you · εσύ)" if me else "")
+	_name.text = p.name + (Global.t("  (you)", "  (εσύ)") if me else "")
 	_name.add_theme_color_override("font_color", Color(pawn_info.get("hex", "ffffff")).lightened(0.25))
 
 	var character: Dictionary = p.get("character", {})
 	var known: bool = not character.is_empty() and (me or not p.hidden)
 	var parts := []
 	if p.dead:
-		parts.append("† out · εκτός")
-	parts.append("%s %s" % [character.get("species", "?"), character.get("name", "")] if known else "?????")
+		parts.append(Global.t("† out", "† εκτός"))
+	parts.append("%s %s" % [character.get("species", "?"), Global.field(character, "name")] if known else "?????")
 	var health := " / %d" % character.health if known and character.has("health") else ""
-	parts.append("dmg %d%s" % [p.dmg, health])
+	parts.append(Global.t("dmg %d%s", "ζημιά %d%s") % [p.dmg, health])
 	if not p.equipment.is_empty():
-		parts.append("eq %d" % p.equipment.size())
+		parts.append(Global.t("eq %d", "εξοπλ. %d") % p.equipment.size())
 	if p.get("protected", false):
-		parts.append("shield · ασπίδα")
+		parts.append(Global.t("shield", "ασπίδα"))
 	_info.text = "  ·  ".join(parts)
 
 	var current: bool = p.get("playing", false)
@@ -155,21 +155,21 @@ func refresh() -> void:
 func _details(p: Dictionary, known: bool, character: Dictionary) -> String:
 	var lines := []
 	if known:
-		lines.append("[b]%s · %s[/b] — %s — %d health · ζωή" % [character.get("name", "?"),
-			character.get("name_el", ""), character.get("species", "?"), character.get("health", 0)])
+		lines.append(Global.t("[b]%s[/b] — %s — %d health", "[b]%s[/b] — %s — %d ζωή") % [Global.field(character, "name"),
+			character.get("species", "?"), character.get("health", 0)])
 		if character.has("goal"):
-			lines.append("[color=#e8c060]Goal · Στόχος:[/color] %s\n[color=#aab]%s[/color]" % [character.goal, character.get("goal_el", "")])
+			lines.append("[color=#e8c060]%s[/color] %s" % [Global.t("Goal:", "Στόχος:"), Global.field(character, "goal")])
 		if character.has("ability"):
-			lines.append("[color=#e8c060]Ability · Ικανότητα:[/color] %s\n[color=#aab]%s[/color]" % [character.ability, character.get("ability_el", "")])
+			lines.append("[color=#e8c060]%s[/color] %s" % [Global.t("Ability:", "Ικανότητα:"), Global.field(character, "ability")])
 	else:
-		lines.append("[i]Hidden character  ·  Κρυφός χαρακτήρας[/i]")
+		lines.append("[i]%s[/i]" % Global.t("Hidden character", "Κρυφός χαρακτήρας"))
 	var loc := GameState.location_index(p.location)
-	lines.append("[color=#9aa]At · Στο:[/color] %s" % (GameState.locations[loc].label if loc != -1 else "the campfire · φωτιά"))
+	lines.append("[color=#9aa]%s[/color] %s" % [Global.t("At:", "Στο:"), Global.field(GameState.locations[loc], "label") if loc != -1 else Global.t("the campfire", "τη φωτιά")])
 	if p.equipment.is_empty():
-		lines.append("[color=#9aa]No equipment · Κανένας εξοπλισμός[/color]")
+		lines.append("[color=#9aa]%s[/color]" % Global.t("No equipment.", "Κανένας εξοπλισμός."))
 	for card in p.equipment:
 		var color: String = Global.CARD_COLORS.get(card.get("deck", ""), {}).get("color", "ffffff")
-		lines.append("[color=#%s][b]%s[/b][/color] — %s" % [Color(color).lightened(0.35).to_html(false), card.name, card.get("text", "")])
+		lines.append("[color=#%s][b]%s[/b][/color] — %s" % [Color(color).lightened(0.35).to_html(false), Global.field(card, "name"), Global.field(card, "text")])
 	return "\n".join(lines)
 
 

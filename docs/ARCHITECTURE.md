@@ -46,6 +46,7 @@ Like a Pinia store (D004):
 | `Network` | `network/network.gd` | Connect/host/leave through a `NetworkTransport`; emits `session_closed`, `host_disconnected`, `peer_joined/left`. |
 | `LobbyNet` | `network/lobby_net.gd` | Lobby actions/requests/messages + the lobby's server truth. |
 | `MatchNet` | `network/match_net.gd` | Match actions/requests/messages; owns the `MatchServer` on the server. |
+| `ChatNet` | `network/chat_net.gd` | Session chat: say → server checks speaker → everyone; history to newcomers. |
 
 ## Networking
 - Listen server today: the host is peer 1 and a player (`Network.server_is_player`).
@@ -104,6 +105,19 @@ buttons hide until the pick ends.
   script error. `MAX_TURNS=N` makes the host leave mid-match;
   `AUTOTEST_ARGS="--show-status --slow"` prints every status line the bots saw;
   `AUTOTEST_ARGS=--ui` makes the bots pick players by clicking rows/pawns.
+
+## Language
+`Global.lang` ("en"/"el", saved). Client text: `Global.t("en", "el")`;
+data fields: `Global.field(card, "name")` → `name_el` in Greek. Server-sent
+bilingual text is `"en  ·  el"`, split with `Global.pick()`. UI that sets
+text once listens to `Global.language_changed`. The main scene adds an
+overlay layer with the language button and the chat (`main/chat_box.gd`).
+
+## The dialog
+`play_scene._open_choice()`: one black dialog for choices, info and the
+location offer. Options render as `DeckPack`s (value = a deck), whole cards
+(value = an equipment uid, via `CardView.card_face()`), or buttons. The card
+a server question is about (`_context_card`) shows on the left.
 
 ## Art switch
 `Global.classic_art` picks the current art or the original Feb 2025 art (for

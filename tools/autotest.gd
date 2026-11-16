@@ -16,7 +16,7 @@ const PORT := 18080            # not the default, so a running game is left alon
 
 var role := ""
 var stats := {"turns": 0, "my_turns": 0, "moves": 0, "cards": 0, "choices": 0,
-	"questions": 0, "attacks": 0, "deaths": 0, "ui_picks": 0}
+	"questions": 0, "attacks": 0, "deaths": 0, "ui_picks": 0, "chat_heard": 0, "dialog_clicks": 0}
 var _last_progress := 0
 var _my_turn := false
 var _done := false
@@ -26,6 +26,10 @@ var _statuses := []
 
 func _init(p_role: String) -> void:
 	role = p_role
+	Global.persist_settings = false  # never touch the player's saved settings
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--lang="):
+			Global.lang = arg.get_slice("=", 1)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--max-turns="):
 			max_turns = arg.get_slice("=", 1).to_int()
@@ -48,6 +52,7 @@ func _ready() -> void:
 
 	await _until(func(): return GameState.players.has(GameState.local_id))
 	SignalBus._avatar_created.emit("Bot_" + role, "red" if role == "host" else "blue")
+	ChatNet.say("hello from the %s" % role)
 
 	if role == "host":
 		await _until(func(): return GameState.players.size() >= 2 \
@@ -89,7 +94,7 @@ func _connect_signals() -> void:
 		stats.choices += 1
 		await _think()
 		# --ui: pick players by clicking them on the list / the board, like a person.
-		if _ui_mode() and await _click_pick():
+		if _ui_mode() and (await _click_pick() or await _press_dialog_option(false)):
 			return
 		MatchNet.choose(options[randi() % options.size()].value))
 	SignalBus.question_drawn.connect(_on_question_drawn)
@@ -98,6 +103,9 @@ func _connect_signals() -> void:
 		await get_tree().create_timer(0.2).timeout
 		MatchNet.answer_question())
 	SignalBus.pawn_moved.connect(func(_id, _loc): stats.moves += 1)
+	SignalBus.chat_message.connect(func(id, _n, _t):
+		if id != GameState.local_id:
+			stats.chat_heard += 1)
 	SignalBus.card_revealed.connect(func(_id, _card): stats.cards += 1)
 	SignalBus.card_drawn_secretly.connect(func(_id, _t): stats.cards += 1)
 	SignalBus.attack_happened.connect(func(_a, _t, _d): stats.attacks += 1)
@@ -129,6 +137,9 @@ func _on_end_turn(player_id: int) -> void:
 
 func _on_location_action(action: String) -> void:
 	await get_tree().create_timer(0.3).timeout
+	if _ui_mode() and await _press_dialog_option(true):
+		await _after_action()
+		return
 	var draws: Array = Global.DRAW_ACTIONS.get(action, [])
 	if not draws.is_empty():
 		MatchNet.draw(draws[randi() % draws.size()])
@@ -136,6 +147,10 @@ func _on_location_action(action: String) -> void:
 		MatchNet.use_location()
 	else:
 		MatchNet.skip_action()
+	await _after_action()
+
+
+func _after_action() -> void:
 	await get_tree().create_timer(1.0).timeout
 	if randf() < 0.6:
 		MatchNet.attack()
@@ -204,6 +219,23 @@ func _click_pick() -> bool:
 	return true
 
 
+## --ui: press an option in the black dialog (a deck pack, a whole card or
+## a button). prefer_pack: pick a deck pack when there is one.
+func _press_dialog_option(prefer_pack: bool) -> bool:
+	await get_tree().process_frame
+	var scene := get_tree().root.find_child("PlayScene", true, false)
+	if scene == null or not scene.choice_panel.visible:
+		return false
+	var options: Array = scene.choice_buttons.get_children().filter(func(c): return c is BaseButton and not c.is_queued_for_deletion())
+	if options.is_empty():
+		return false
+	var packs := options.filter(func(c): return c is DeckPack)
+	var button: BaseButton = (packs if prefer_pack and not packs.is_empty() else options).pick_random()
+	stats.dialog_clicks += 1
+	button.pressed.emit()
+	return true
+
+
 func _find_button(node: Node, text_start: String) -> Button:
 	if node is Button and node.visible and (node as Button).text.begins_with(text_start):
 		return node
@@ -232,6 +264,9 @@ func _finish(ok: bool, why: String, already_left := false) -> void:
 	if _done:
 		return
 	_done = true
+	if ok and stats.chat_heard == 0:
+		ok = false
+		why += " — but never heard the other bot in the chat"
 	print("AUTOTEST %s [%s] %s | %s" % ["PASS" if ok else "FAIL", role, why, stats])
 	if "--show-status" in OS.get_cmdline_user_args():
 		for s in _statuses:

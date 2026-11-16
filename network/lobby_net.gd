@@ -67,6 +67,7 @@ func request_join() -> void:
 		if other_id != id:
 			sync_player.rpc_id(id, _players[other_id])
 	sync_player.rpc(player)
+	ChatNet.send_history(id)
 	_reset_settings()
 
 
@@ -136,6 +137,11 @@ func _reset_settings() -> void:
 	for key in Global.SPECIES:
 		_settings[key] = preset.get(key, 0)
 	settings_changed.rpc(_settings)
+
+
+## Server: a player as the lobby knows them ({} if not in the session).
+func server_player(id: int) -> Dictionary:
+	return _players.get(id, {})
 
 
 func _pawn_taken(pawn: String, except_id: int) -> bool:

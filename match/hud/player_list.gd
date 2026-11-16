@@ -28,7 +28,10 @@ func _ready() -> void:
 	outer.add_theme_constant_override("separation", 4)
 	add_child(outer)
 	_title = Label.new()
-	_title.text = "Players  ·  Παίκτες"
+	_title.text = Global.t("Players", "Παίκτες")
+	Global.language_changed.connect(func():
+		_title.text = Global.t("Players", "Παίκτες")
+		refresh())
 	_title.add_theme_font_size_override("font_size", 15)
 	_title.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	outer.add_child(_title)

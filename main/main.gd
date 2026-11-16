@@ -18,7 +18,37 @@ func _ready()->void :
 	Network.host_disconnected.connect(_on_host_disconnected)
 	SignalBus.leave_match.connect(_on_leave_match)
 	set_main_screen()
+	_add_overlay()
 	_maybe_start_autotest()
+
+
+## Always on top, on every screen: the language button (bottom-left) and,
+## above it, the chat (only while in a session).
+func _add_overlay() -> void:
+	var overlay := CanvasLayer.new()
+	overlay.name = "Overlay"
+	overlay.layer = 5
+	add_child(overlay)
+
+	var chat := ChatBox.new()
+	chat.name = "ChatBox"
+	chat.position = Vector2(8, 1080 - 8 - 40 - 8 - ChatBox.BOX.y)
+	chat.hide()
+	overlay.add_child(chat)
+
+	var lang_button := Button.new()
+	lang_button.name = "LanguageButton"
+	lang_button.position = Vector2(8, 1080 - 8 - 40)
+	lang_button.custom_minimum_size = Vector2(130, 40)
+	lang_button.add_theme_font_size_override("font_size", 17)
+	var update := func():
+		# Shows the language you'd switch TO.
+		lang_button.text = "Ελληνικά" if Global.lang == "en" else "English"
+		lang_button.tooltip_text = Global.t("Switch language", "Αλλαγή γλώσσας")
+	update.call()
+	Global.language_changed.connect(update)
+	lang_button.pressed.connect(func(): Global.lang = "el" if Global.lang == "en" else "en")
+	overlay.add_child(lang_button)
 
 
 ## Dev only: `-- --autotest=host|client` lets a bot play (tools/autotest.gd).

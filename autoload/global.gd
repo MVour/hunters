@@ -53,12 +53,12 @@ const DRAW_ACTIONS := {
 }
 
 const LOCATION_ACTIONS := {
-	"draw_green": {"color": "4fd08a", "icon": "res://assets/icons/icon_draw_green.png", "text": "Draw a green card."},
-	"draw_blue": {"color": "6a9af0", "icon": "res://assets/icons/icon_draw_blue.png", "text": "Draw a blue card."},
-	"draw_red": {"color": "e8402e", "icon": "res://assets/icons/icon_draw_red.png", "text": "Draw a red card."},
-	"draw_any": {"color": "e8c060", "icon": "res://assets/icons/icon_draw_any.png", "text": "Draw a card of any colour."},
-	"steal_equipment": {"color": "b07ae8", "icon": "res://assets/icons/icon_steal_equipment.png", "text": "Steal an equipment card from any player."},
-	"heal_or_damage": {"color": "4fe0d0", "icon": "res://assets/icons/icon_heal_or_damage.png", "text": "Heal 1 health on any player (yourself included), or deal 2 damage to any player."},
+	"draw_green": {"color": "4fd08a", "icon": "res://assets/icons/icon_draw_green.png", "text": "Draw a green card.", "text_el": "Τράβηξε μια πράσινη κάρτα."},
+	"draw_blue": {"color": "6a9af0", "icon": "res://assets/icons/icon_draw_blue.png", "text": "Draw a blue card.", "text_el": "Τράβηξε μια μπλε κάρτα."},
+	"draw_red": {"color": "e8402e", "icon": "res://assets/icons/icon_draw_red.png", "text": "Draw a red card.", "text_el": "Τράβηξε μια κόκκινη κάρτα."},
+	"draw_any": {"color": "e8c060", "icon": "res://assets/icons/icon_draw_any.png", "text": "Draw a card of any colour.", "text_el": "Τράβηξε μια κάρτα όποιου χρώματος θέλεις."},
+	"steal_equipment": {"color": "b07ae8", "icon": "res://assets/icons/icon_steal_equipment.png", "text": "Steal an equipment card from any player.", "text_el": "Κλέψε έναν εξοπλισμό από όποιον παίκτη θέλεις."},
+	"heal_or_damage": {"color": "4fe0d0", "icon": "res://assets/icons/icon_heal_or_damage.png", "text": "Heal 1 health on any player (yourself included), or deal 2 damage to any player.", "text_el": "Θεράπευσε 1 ζημιά σε όποιον παίκτη θέλεις (και σε σένα), ή κάνε 2 ζημιά σε όποιον παίκτη θέλεις."},
 }
 
 ## Maps the lobby's settings keys to character lists and species names.
@@ -79,12 +79,12 @@ var deck = {
 	## Shuffled around the board every game. "rolls" = the dice totals
 	## (d6 + d4) that send you here; "action" keys into LOCATION_ACTIONS.
 	"locations" : [
-		{"id": "lone_cabin", "name": "lone_cabin", "label": "Lone Cabin", "rolls": [2, 3], "action": "draw_green"},
-		{"id": "widows_river", "name": "widows_river", "label": "Widow's River", "rolls": [4, 5], "action": "draw_any"},
-		{"id": "old_chapel", "name": "old_chapel", "label": "Old Chapel", "rolls": [6], "action": "draw_blue"},
-		{"id": "cemetery", "name": "cemetery", "label": "Cemetery", "rolls": [8], "action": "draw_red"},
-		{"id": "magic_forest", "name": "magic_forest", "label": "Magic Forest", "rolls": [9], "action": "heal_or_damage"},
-		{"id": "stone_circle", "name": "stone_circle", "label": "Stone Circle", "rolls": [10], "action": "steal_equipment"},
+		{"id": "lone_cabin", "name": "lone_cabin", "label": "Lone Cabin", "label_el": "Μοναχική Καλύβα", "rolls": [2, 3], "action": "draw_green"},
+		{"id": "widows_river", "name": "widows_river", "label": "Widow's River", "label_el": "Ποτάμι της Χήρας", "rolls": [4, 5], "action": "draw_any"},
+		{"id": "old_chapel", "name": "old_chapel", "label": "Old Chapel", "label_el": "Παλιό Παρεκκλήσι", "rolls": [6], "action": "draw_blue"},
+		{"id": "cemetery", "name": "cemetery", "label": "Cemetery", "label_el": "Νεκροταφείο", "rolls": [8], "action": "draw_red"},
+		{"id": "magic_forest", "name": "magic_forest", "label": "Magic Forest", "label_el": "Μαγικό Δάσος", "rolls": [9], "action": "heal_or_damage"},
+		{"id": "stone_circle", "name": "stone_circle", "label": "Stone Circle", "label_el": "Πέτρινος Κύκλος", "rolls": [10], "action": "steal_equipment"},
 	],
 	# The card designs live in scripts/cards.gd (see docs/CARDS.md).
 	"green_cards" : Cards.build(Cards.GREEN),
@@ -164,6 +164,7 @@ func _ready() -> void:
 	var config := ConfigFile.new()
 	if config.load(SETTINGS_PATH) == OK:
 		classic_art = config.get_value("art", "classic", classic_art)
+		lang = config.get_value("ui", "lang", lang)
 	_apply_pawn_art()
 
 
@@ -188,8 +189,54 @@ func _apply_pawn_art() -> void:
 		colors_sprites[color] = sprite
 
 
+## Tests switch this off so they never change the player's saved settings.
+var persist_settings := true
+
+
 func _save_settings() -> void:
+	if not persist_settings:
+		return
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
 	config.set_value("art", "classic", classic_art)
+	config.set_value("ui", "lang", lang)
 	config.save(SETTINGS_PATH)
+
+
+# --- Language ------------------------------------------------------------
+## Everything player-facing exists in English and Greek; the player sees
+## one of them. Switched with the language button (bottom-left), saved in
+## user://settings.cfg. UI that shows text listens to language_changed.
+
+signal language_changed
+
+## "en" or "el".
+var lang := "en":
+	set(value):
+		if value == lang or not value in ["en", "el"]:
+			return
+		lang = value
+		_save_settings()
+		language_changed.emit()
+
+
+## The text in the current language.
+func t(en: String, el: String) -> String:
+	return el if lang == "el" and el != "" else en
+
+
+## A data field in the current language: field(card, "name") gives
+## card.name_el in Greek (when it exists), else card.name.
+func field(data: Dictionary, key: String) -> String:
+	if lang == "el" and str(data.get(key + "_el", "")) != "":
+		return str(data[key + "_el"])
+	return str(data.get(key, ""))
+
+
+## For bilingual text from the server, written "English  ·  Ελληνικά":
+## returns the side for the current language (or the text as it is).
+func pick(text: String) -> String:
+	var parts := text.split("  ·  ")
+	if parts.size() != 2:
+		return text
+	return parts[1] if lang == "el" else parts[0]

@@ -74,6 +74,10 @@ signal lobby_start_refused
 signal pawns_changed
 
 
+# Chat
+## Someone said something: (player_id, player_name, text)
+signal chat_message
+
 # Navigation
 signal _return_to_main_menu
 signal _return_to_multiplayer_menu

@@ -7,6 +7,25 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C008 — Language switch, chat, card dialogs, tighter packs (2026-11-16)
+- **What:** Language button bottom-left (every screen): the game shows
+  English *or* Greek, saved in settings (D005); Greek names added for
+  locations and location actions. Chat box above it (`network/chat_net.gd`
+  + `main/chat_box.gd`): server checks the speaker, newcomers get the recent
+  history. The black dialog is used more: the location offer shows the decks
+  as packs ("Draw · count") to click; "which deck?" choices too; picking an
+  equipment card (steal, take, give) shows the whole cards; a card that asks
+  you something next ("use it now?", "choose a player") moves into the
+  dialog beside the choices, so no OK first. Announcements are small black
+  boxes. Decks are tight piles (3 px steps, no grey box) on the left under
+  the life track. Cards pushed aside during a pick go bottom-right.
+- **Why:** User requests.
+- **Rejected:** Separate action-button row (removed; the dialog does it).
+- **Verified:** check_project 70/70; bots: normal match, `--ui` match with
+  the client in Greek (pack/card/button clicks in the dialog, player picks,
+  chat both ways) — all pass. The chat check found late joiners missed
+  earlier lines (fixed: history on join).
+
 ### C007 — Player list right, life track left (2026-11-16)
 - **What:** Swapped sides: the player list sits in the top-right corner
   (decks are bottom-right), the life track back on the left edge.

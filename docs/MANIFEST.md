@@ -68,7 +68,9 @@ Everything else — routine implementation detail that doesn't touch a constrain
 4. **The user's own art.** Characters and card art come from the user's images (or light
    remasters of them). No code-drawn replacements. Archive originals in `assets/legacy/`
    before replacing anything, and keep old art usable (see the Classic art toggle).
-5. **Bilingual.** Every player-facing text is in English and Greek (EL).
+5. **Bilingual.** Every player-facing text exists in English and Greek; the player sees one,
+   chosen with the language button (`Global.t(en, el)`, `Global.field(data, key)`; data uses
+   `key` / `key_el`). Never show both side by side (D005).
 
 ### Key-file roles
 Kept in docs/FOLDER_STRUCTURE.md (one place only).

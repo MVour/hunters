@@ -2,6 +2,7 @@
 # Headless smoke test: a host bot and a client bot play a match.
 # Usage: tools/run_autotest.sh [path-to-godot-console-exe]
 # Env: MAX_TURNS=N makes the host leave mid-match after N turns.
+#      AUTOTEST_ARGS for both bots (--ui, --slow, --show-status), CLIENT_ARGS for the client only (--lang=el).
 # Exit 0 only if both bots PASS and no script errors were logged.
 set -u
 cd "$(dirname "$0")/.."
@@ -11,7 +12,7 @@ mkdir -p "$OUT"
 timeout 240 "$GODOT" --headless --path . -- --autotest=host --max-turns=${MAX_TURNS:-30} ${AUTOTEST_ARGS:-} > "$OUT/host.log" 2>&1 &
 HOST=$!
 sleep 2
-timeout 240 "$GODOT" --headless --path . -- --autotest=client ${AUTOTEST_ARGS:-} > "$OUT/client.log" 2>&1 &
+timeout 240 "$GODOT" --headless --path . -- --autotest=client ${CLIENT_ARGS:-} ${AUTOTEST_ARGS:-} > "$OUT/client.log" 2>&1 &
 CLIENT=$!
 wait $HOST; H=$?
 wait $CLIENT; C=$?

@@ -17,8 +17,10 @@ const BOTTOM_LIMIT := 800.0
 var _layout: VBoxContainer
 var _dim: ColorRect
 var _pop: Tween
-## Shrunk into the bottom-left corner, not blocking the screen (see make_passive).
+## Shrunk into the bottom-right corner, not blocking the screen (see make_passive).
 var passive := false
+## The card this popup shows (so the dialog can take it over).
+var shown_card := {}
 const PASSIVE_SCALE := 0.5
 var _card_panel: PanelContainer
 
@@ -50,6 +52,7 @@ static func open(parent: Node, card: Dictionary, heading: String, buttons: Array
 
 
 func _build(card: Dictionary, heading: String, buttons: Array) -> void:
+	shown_card = card
 	z_index = 20
 	size = Vector2(1920, 1080)
 	mouse_filter = Control.MOUSE_FILTER_STOP  # the card is modal
@@ -59,8 +62,6 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	dim.color = Color(0, 0, 0, 0.55)
 	dim.size = size
 	add_child(dim)
-
-	var accent := Color(Global.CARD_COLORS[card.deck].color)
 
 	_layout = VBoxContainer.new()
 	_layout.add_theme_constant_override("separation", 14)
@@ -77,73 +78,9 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	_layout.add_child(title)
 
 	# The card
-	_card_panel = PanelContainer.new()
-	var frame := StyleBoxFlat.new()
-	frame.bg_color = Color(0.05, 0.05, 0.08)
-	frame.border_color = accent
-	frame.set_border_width_all(4)
-	frame.set_corner_radius_all(14)
-	_card_panel.add_theme_stylebox_override("panel", frame)
-	_card_panel.custom_minimum_size = Vector2(CARD_WIDTH, 0)
+	_card_panel = card_face(card, CARD_WIDTH, 180.0)
 	_card_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_layout.add_child(_card_panel)
-
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	_card_panel.add_child(column)
-
-	var art := TextureRect.new()
-	art.texture = Global.card_back(card.deck)
-	art.custom_minimum_size = Vector2(0, 180)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	column.add_child(art)
-
-	var name_en := Label.new()
-	name_en.text = card.name
-	name_en.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_en.add_theme_font_size_override("font_size", 28)
-	column.add_child(name_en)
-
-	var name_el := Label.new()
-	name_el.text = card.get("name_el", "")
-	name_el.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_el.add_theme_font_size_override("font_size", 18)
-	name_el.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	column.add_child(name_el)
-
-	var kind := Label.new()
-	kind.text = _kind_text(card)
-	kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	kind.add_theme_font_size_override("font_size", 15)
-	kind.add_theme_color_override("font_color", accent.lightened(0.3))
-	column.add_child(kind)
-
-	var text := Label.new()
-	text.text = card.text
-	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	text.custom_minimum_size = Vector2(CARD_WIDTH - 40, 0)
-	text.add_theme_font_size_override("font_size", 20)
-	text.add_theme_font_size_override("font_size", 18)
-
-	var text_el := Label.new()
-	text_el.text = card.get("text_el", "")
-	text_el.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text_el.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	text_el.custom_minimum_size = Vector2(CARD_WIDTH - 40, 0)
-	text_el.add_theme_font_size_override("font_size", 16)
-	text_el.add_theme_color_override("font_color", Color(0.72, 0.74, 0.8))
-
-	var texts := VBoxContainer.new()
-	texts.add_theme_constant_override("separation", 10)
-	texts.add_child(text)
-	texts.add_child(text_el)
-	var text_margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		text_margin.add_theme_constant_override("margin_" + side, 16)
-	text_margin.add_child(texts)
-	column.add_child(text_margin)
 
 	# Buttons under the card
 	var row := HBoxContainer.new()
@@ -174,7 +111,7 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	_pop.tween_property(self, "modulate:a", 1.0, 0.2)
 
 
-## Shrink into the bottom-left corner and stop blocking the screen, e.g.
+## Shrink into the bottom-right corner and stop blocking the screen, e.g.
 ## while the player has to click someone on the board. Buttons still work.
 func make_passive() -> void:
 	if passive or _closing:
@@ -197,30 +134,90 @@ func _ignore_mouse(node: Node) -> void:
 
 
 ## Centre the column on screen, keeping its bottom above the choice panel.
-## Passive: small, in the bottom-left corner.
+## Passive: small, in the bottom-right corner.
 func _place() -> void:
 	_layout.reset_size()
 	var s := _layout.size
 	if passive:
 		_layout.pivot_offset = Vector2.ZERO
 		_layout.scale = Vector2.ONE * PASSIVE_SCALE
-		_layout.position = Vector2(16.0, 1080.0 - 16.0 - s.y * PASSIVE_SCALE)
+		# Bottom-right: the chat and language button live bottom-left.
+		_layout.position = Vector2(1920.0 - 16.0 - s.x * PASSIVE_SCALE, 1080.0 - 16.0 - s.y * PASSIVE_SCALE)
 		return
 	var y := clampf((1080.0 - s.y) / 2.0 - 60.0, 20.0, maxf(20.0, BOTTOM_LIMIT - s.y))
 	_layout.position = Vector2(960.0 - s.x / 2.0, y)
 	_layout.pivot_offset = s / 2.0
 
 
+## A card face (frame in the deck colour, art, name, type, text) in the
+## current language. Used by this popup and inside the choice dialog.
+## `width` / `art_height` set its size; text scales with the width.
+static func card_face(card: Dictionary, width: float, art_height: float) -> PanelContainer:
+	var s := width / CARD_WIDTH
+	var accent := Color(Global.CARD_COLORS.get(card.get("deck", ""), {}).get("color", "c8a85a"))
+	var panel := PanelContainer.new()
+	var frame := StyleBoxFlat.new()
+	frame.bg_color = Color(0.05, 0.05, 0.08)
+	frame.border_color = accent
+	frame.set_border_width_all(maxi(2, roundi(4 * s)))
+	frame.set_corner_radius_all(roundi(14 * s))
+	panel.add_theme_stylebox_override("panel", frame)
+	panel.custom_minimum_size = Vector2(width, 0)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", roundi(6 * s))
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(column)
+
+	if art_height > 0 and card.has("deck"):
+		var art := TextureRect.new()
+		art.texture = Global.card_back(card.deck)
+		art.custom_minimum_size = Vector2(0, art_height)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		column.add_child(art)
+
+	var title := Label.new()
+	title.text = Global.field(card, "name")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_size_override("font_size", maxi(14, roundi(28 * s)))
+	column.add_child(title)
+
+	if card.has("kind"):
+		var kind := Label.new()
+		kind.text = _kind_text(card)
+		kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		kind.add_theme_font_size_override("font_size", maxi(11, roundi(15 * s)))
+		kind.add_theme_color_override("font_color", accent.lightened(0.3))
+		column.add_child(kind)
+
+	var text := Label.new()
+	text.text = Global.field(card, "text")
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	text.custom_minimum_size = Vector2(width - 40 * s, 0)
+	text.add_theme_font_size_override("font_size", maxi(12, roundi(18 * s)))
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, roundi(16 * s))
+	margin.add_child(text)
+	column.add_child(margin)
+	return panel
+
+
 static func _kind_text(card: Dictionary) -> String:
-	var deck_label: String = Global.CARD_COLORS[card.deck].label.to_upper()
+	var deck_label: String = Global.field(Global.CARD_COLORS[card.deck], "label").to_upper()
 	match card.kind:
 		"question":
-			return "%s · QUESTION · ΕΡΩΤΗΣΗ" % deck_label
+			return "%s · %s" % [deck_label, Global.t("QUESTION", "ΕΡΩΤΗΣΗ")]
 		"equipment":
-			return "%s · EQUIPMENT · ΕΞΟΠΛΙΣΜΟΣ" % deck_label
+			return "%s · %s" % [deck_label, Global.t("EQUIPMENT", "ΕΞΟΠΛΙΣΜΟΣ")]
 		_:
-			var must := " · MUST · ΥΠΟΧΡΕΩΤΙΚΟ" if card.get("must", false) else ""
-			return "%s · EVENT · ΓΕΓΟΝΟΣ%s" % [deck_label, must]
+			var must := " · " + Global.t("MUST", "ΥΠΟΧΡΕΩΤΙΚΟ") if card.get("must", false) else ""
+			return "%s · %s%s" % [deck_label, Global.t("EVENT", "ΓΕΓΟΝΟΣ"), must]
 
 
 func close() -> void:

@@ -23,6 +23,7 @@ GameState="*res://autoload/game_state.gd"
 Network="*res://network/network.gd"
 LobbyNet="*res://network/lobby_net.gd"
 MatchNet="*res://network/match_net.gd"
+ChatNet="*res://network/chat_net.gd"
 
 [display]
 
