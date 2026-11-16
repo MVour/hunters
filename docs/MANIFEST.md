@@ -32,7 +32,7 @@ skill's setup step to re-sync this block if the skill's rules change.)
 | docs/BUGS.md | Status log | Sequential IDs (BUG-001, ...). Log area, root-cause hypothesis, impact. Update status field when addressed — distinguish fix implemented from fix verified. |
 | docs/IDEAS.md | Backlog | Reference pool, not a queue — implementing an entry only happens if the user asks. Remove on implementation + add a Log entry. |
 | docs/ARCHITECTURE.md | Living reference | Edit in place, same session as the invalidating change. No history kept — risk is drift, not bloat. |
-| docs/RULES.md, docs/CARDS.md | Living reference (game design spec) | Edit in place, same session as a rules/card change in code (`scripts/cards.gd`, `scripts/characters.gd`, `scripts/game_manager.gd`, `scripts/rules/card_effects.gd`). |
+| docs/RULES.md, docs/CARDS.md | Living reference (game design spec) | Edit in place, same session as a rules/card change in code (`data/cards.gd`, `data/characters.gd`, `server/game_manager.gd`, `server/card_effects.gd`). |
 | docs/FOLDER_STRUCTURE.md | Folder map | Update only when a folder's purpose changes, a top-level folder is added/removed, or a key-file-roles-table file moves/renames/is removed. Not on every file rename. |
 
 ### Approval gates — stop and ask before proceeding when:

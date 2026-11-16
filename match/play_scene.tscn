@@ -1,0 +1,627 @@
+[gd_scene load_steps=33 format=3 uid="uid://buama3fol0eb6"]
+
+[ext_resource type="PackedScene" uid="uid://d3ev876e5fbof" path="res://match/hud/health_board.tscn" id="1_2f02m"]
+[ext_resource type="Script" path="res://match/play_scene.gd" id="1_uvvkh"]
+[ext_resource type="Script" path="res://match/board/game_map.gd" id="2_bl4s0"]
+[ext_resource type="Script" path="res://server/game_manager.gd" id="2_kvevl"]
+[ext_resource type="Texture2D" uid="uid://bbkr172x6dv1r" path="res://assets/portraits/vampire.png" id="3_8w2fw"]
+[ext_resource type="Script" path="res://match/hud.gd" id="3_dot8f"]
+[ext_resource type="Script" path="res://match/hud/player_hud.gd" id="3_kph0c"]
+[ext_resource type="Texture2D" uid="uid://b1kbeamx0aiky" path="res://assets/portraits/werewolf.png" id="6_ee57v"]
+[ext_resource type="Script" path="res://match/hud/players_slots.gd" id="7_nceq5"]
+[ext_resource type="Texture2D" uid="uid://3l8ywfisy5tp" path="res://assets/cards/blue_card.png" id="8_hvili"]
+[ext_resource type="PackedScene" uid="uid://cg8cceqjwmtk4" path="res://match/cards/card_deck.tscn" id="9_edp6p"]
+[ext_resource type="PackedScene" uid="uid://by6wb574urfni" path="res://match/dice/dice_6_sided.tscn" id="10_eenv0"]
+[ext_resource type="Script" path="res://match/dice/dices_container.gd" id="10_mu42g"]
+[ext_resource type="PackedScene" uid="uid://bg6yrjrdptuum" path="res://match/dice/dice_4_sided.tscn" id="11_rx4br"]
+[ext_resource type="Script" path="res://match/board/forest_board.gd" id="20_forest"]
+[ext_resource type="Texture2D" uid="uid://cdmvdhg67lqqp" path="res://assets/portraits/human.png" id="21_human"]
+
+[sub_resource type="Animation" id="Animation_q7a4v"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("..:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(363, 806)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:text")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": ["HIDE"]
+}
+
+[sub_resource type="Animation" id="Animation_en44x"]
+resource_name = "ToggleHud"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("..:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.133333, 0.4, 0.566667, 0.733333, 0.966667),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(363, 800), Vector2(363, 850), Vector2(363, 900), Vector2(363, 1000), Vector2(363, 1050), Vector2(363, 1070)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:text")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0.1, 0.933333),
+"transitions": PackedFloat32Array(1, 1),
+"update": 1,
+"values": ["HIDE", "SHOW"]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = false
+tracks/2/path = NodePath("..:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.4, 0.566667, 0.733333, 0.966667),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(363, 850), Vector2(363, 900), Vector2(363, 1000), Vector2(363, 1050), Vector2(363, 1070)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_vrv0s"]
+_data = {
+"RESET": SubResource("Animation_q7a4v"),
+"ToggleHud": SubResource("Animation_en44x")
+}
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hum1"]
+atlas = ExtResource("21_human")
+region = Rect2(0, 0, 38, 38)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hum2"]
+atlas = ExtResource("21_human")
+region = Rect2(38, 0, 38, 38)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hum3"]
+atlas = ExtResource("21_human")
+region = Rect2(0, 38, 38, 38)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hum4"]
+atlas = ExtResource("21_human")
+region = Rect2(38, 38, 38, 38)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hum5"]
+atlas = ExtResource("21_human")
+region = Rect2(0, 76, 38, 38)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hum6"]
+atlas = ExtResource("21_human")
+region = Rect2(38, 76, 38, 38)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_dv3dq"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hum1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hum2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hum3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hum4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hum5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hum6")
+}],
+"loop": true,
+"name": &"human",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3_8w2fw")
+}],
+"loop": true,
+"name": &"vampire",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_ee57v")
+}],
+"loop": true,
+"name": &"werewolf",
+"speed": 5.0
+}]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_myibe"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+border_width_bottom = 10
+border_color = Color(0.792516, 0.223814, 0.452169, 1)
+border_blend = true
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pmsmx"]
+bg_color = Color(0.064764, 0.234161, 0.367009, 1)
+
+[sub_resource type="Animation" id="Animation_tilpe"]
+resource_name = "PlayingNotigication"
+loop_mode = 2
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("PlayingLabel:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(-0.0333333, 0.9),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(2, 2)]
+}
+
+[sub_resource type="Animation" id="Animation_uxo7j"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("PlayingLabel:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_tdqul"]
+_data = {
+"PlayingNotification": SubResource("Animation_tilpe"),
+"RESET": SubResource("Animation_uxo7j")
+}
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_pi85q"]
+
+[node name="PlayScene" type="Node2D"]
+script = ExtResource("1_uvvkh")
+
+[node name="GameManager" type="Node" parent="."]
+script = ExtResource("2_kvevl")
+
+[node name="ForestBoard" type="Node2D" parent="."]
+script = ExtResource("20_forest")
+
+[node name="Locations" type="Node2D" parent="."]
+script = ExtResource("2_bl4s0")
+
+[node name="DamageBoard" parent="." instance=ExtResource("1_2f02m")]
+offset_left = 19.0
+offset_top = 11.0
+offset_right = 152.0
+offset_bottom = 154.0
+metadata/_edit_use_anchors_ = true
+
+[node name="Hud" type="Panel" parent="."]
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 363.0
+offset_top = 806.0
+offset_right = 1310.0
+offset_bottom = 1038.0
+grow_vertical = 2
+script = ExtResource("3_dot8f")
+metadata/_edit_use_anchors_ = true
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Hud"]
+root_node = NodePath("../ToggleHudButton")
+libraries = {
+"": SubResource("AnimationLibrary_vrv0s")
+}
+
+[node name="ToggleHudButton" type="Button" parent="Hud"]
+layout_mode = 2
+anchor_left = 0.0141093
+anchor_top = -0.115242
+anchor_right = 0.0864198
+size_flags_horizontal = 0
+size_flags_vertical = 0
+toggle_mode = true
+text = "HIDE"
+metadata/_edit_use_anchors_ = true
+
+[node name="ToggleInfoButton" type="Button" parent="Hud"]
+layout_mode = 2
+anchor_left = 0.10982
+anchor_top = -0.116379
+anchor_right = 0.182131
+anchor_bottom = 0.0172414
+size_flags_horizontal = 0
+size_flags_vertical = 0
+toggle_mode = true
+text = "INFO"
+metadata/_edit_use_anchors_ = true
+
+[node name="ToggleCardsButton" type="Button" parent="Hud"]
+layout_mode = 2
+anchor_left = 0.192186
+anchor_top = -0.116379
+anchor_right = 0.264496
+anchor_bottom = 0.0172414
+size_flags_horizontal = 0
+size_flags_vertical = 0
+toggle_mode = true
+text = "CARDS"
+metadata/_edit_use_anchors_ = true
+
+[node name="ToggleHelpButton" type="Button" parent="Hud"]
+layout_mode = 2
+anchor_left = 0.274551
+anchor_top = -0.116379
+anchor_right = 0.346862
+anchor_bottom = 0.0172414
+size_flags_horizontal = 0
+size_flags_vertical = 0
+toggle_mode = true
+text = "HELP"
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerHud" type="Panel" parent="Hud"]
+z_index = 2
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+anchor_top = 0.0387931
+anchor_right = 0.998944
+anchor_bottom = 1.0
+offset_left = -1.52588e-05
+offset_top = -9.0
+offset_right = 1.0
+script = ExtResource("3_kph0c")
+metadata/_edit_use_anchors_ = true
+
+[node name="CharacterSprite" type="AnimatedSprite2D" parent="Hud/PlayerHud"]
+position = Vector2(114, 115)
+scale = Vector2(4.45066, 5.09539)
+sprite_frames = SubResource("SpriteFrames_dv3dq")
+animation = &"vampire"
+autoplay = "vampire"
+
+[node name="PlayerName" type="Label" parent="Hud/PlayerHud"]
+layout_mode = 2
+anchor_left = 0.357143
+anchor_top = 0.070632
+anchor_right = 0.462081
+anchor_bottom = 0.200743
+theme_override_styles/normal = SubResource("StyleBoxFlat_myibe")
+text = "Name"
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerScpecies" type="Label" parent="Hud/PlayerHud"]
+layout_mode = 2
+anchor_left = 0.238977
+anchor_top = 0.070632
+anchor_right = 0.326279
+anchor_bottom = 0.200743
+offset_right = 1.0
+theme_override_colors/font_color = Color(0.690196, 0, 0, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_myibe")
+text = "Vampire"
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerGoalLabel" type="Label" parent="Hud/PlayerHud"]
+layout_mode = 2
+anchor_left = 0.238977
+anchor_top = 0.204461
+anchor_right = 0.27866
+anchor_bottom = 0.334572
+offset_right = 55.0001
+theme_override_colors/font_color = Color(0.690196, 0, 0, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_myibe")
+text = "Goal
+"
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerGoal" type="Label" parent="Hud/PlayerHud"]
+layout_mode = 2
+anchor_left = 0.357143
+anchor_top = 0.204461
+anchor_right = 0.717813
+anchor_bottom = 0.475836
+offset_right = 6.10352e-05
+theme_override_colors/font_color = Color(0.690196, 0, 0, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_myibe")
+text = "Goal
+"
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerAbilityLabel" type="Label" parent="Hud/PlayerHud"]
+layout_mode = 2
+anchor_left = 0.239859
+anchor_top = 0.498141
+anchor_right = 0.324515
+anchor_bottom = 0.628253
+offset_right = 4.0
+theme_override_colors/font_color = Color(0.690196, 0, 0, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_myibe")
+text = "Ability
+"
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerAbility" type="Label" parent="Hud/PlayerHud"]
+layout_mode = 2
+anchor_left = 0.359788
+anchor_top = 0.501859
+anchor_right = 0.717813
+anchor_bottom = 0.966543
+offset_right = 6.10352e-05
+theme_override_colors/font_color = Color(0.690196, 0, 0, 1)
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBoxFlat_myibe")
+text = "Moisdbjhsd Hkjsdhre HJlkjiudsf huayewer hkcuhslkd bhrsjdn vbwuyegfwj sdkuhsd ushd hgiuasdyjk  vagudowie biwocijwbelkjds hbwiuhf.
+"
+autowrap_mode = 3
+justification_flags = 43
+metadata/_edit_use_anchors_ = true
+
+[node name="Panel" type="Panel" parent="Hud/PlayerHud"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.753213
+anchor_top = 0.0428016
+anchor_right = 0.981148
+anchor_bottom = 0.66537
+grow_horizontal = 0
+metadata/_edit_use_anchors_ = true
+
+[node name="HealthLabel" type="Label" parent="Hud/PlayerHud/Panel"]
+layout_mode = 0
+offset_left = 3.0
+offset_top = 10.0
+offset_right = 91.0
+offset_bottom = 39.0
+theme_override_font_sizes/font_size = 20
+text = "Health:"
+horizontal_alignment = 1
+vertical_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerHealth" type="Label" parent="Hud/PlayerHud/Panel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.698189
+anchor_top = -0.00643879
+anchor_right = 0.698189
+anchor_bottom = -0.00643879
+offset_left = -38.0
+offset_top = 3.0
+offset_right = 6.0
+offset_bottom = 45.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(9.3855e-07, 0.681845, 2.31028e-06, 1)
+theme_override_font_sizes/font_size = 30
+text = "14"
+horizontal_alignment = 1
+vertical_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="DamageLabel" type="Label" parent="Hud/PlayerHud/Panel"]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 12.0
+offset_top = -24.0
+offset_right = 161.0
+offset_bottom = 4.0
+grow_vertical = 2
+theme_override_font_sizes/font_size = 20
+text = "Damage Taken:"
+horizontal_alignment = 1
+vertical_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerDamage" type="Label" parent="Hud/PlayerHud/Panel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.477
+anchor_top = 0.728
+anchor_right = 0.477
+anchor_bottom = 0.728
+offset_left = -85.882
+offset_top = -34.48
+offset_right = 69.118
+offset_bottom = 34.52
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.692458, 1.37895e-05, 7.5084e-06, 1)
+theme_override_font_sizes/font_size = 50
+text = "10"
+horizontal_alignment = 1
+vertical_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="AbilityButton" type="Button" parent="Hud/PlayerHud"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.755784
+anchor_top = 0.727626
+anchor_right = 0.978578
+anchor_bottom = 0.933852
+offset_left = 6.10352e-05
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_pmsmx")
+text = "Use Ability"
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerCards" type="Panel" parent="Hud"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="Sprite2D" type="TextureRect" parent="Hud/PlayerCards"]
+layout_mode = 0
+offset_left = 33.0
+offset_top = 34.0
+offset_right = 152.0
+offset_bottom = 204.0
+texture = ExtResource("8_hvili")
+expand_mode = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayerHelp" type="Panel" parent="Hud"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="Hud/PlayerHelp"]
+layout_mode = 0
+offset_left = 44.0
+offset_top = 13.0
+offset_right = 604.0
+offset_bottom = 218.0
+text = "Round Order:
+
+1. Roll the dice and move to the destination.
+2. On each destination, follow the instructions and draw cards if needed.
+2a. Id you draw a card, follow th einstruction in the cards.
+3. Atack other players if they are withn attackk range.
+
+4. You can use your ability whenever you like in your turn."
+
+[node name="PlayersSlots" type="Node2D" parent="."]
+z_index = 1
+script = ExtResource("7_nceq5")
+
+[node name="Slot1" type="Node2D" parent="PlayersSlots"]
+position = Vector2(40, 875)
+
+[node name="Slot2" type="Node2D" parent="PlayersSlots"]
+position = Vector2(40, 650)
+
+[node name="Slot3" type="Node2D" parent="PlayersSlots"]
+position = Vector2(330, 15)
+
+[node name="Slot4" type="Node2D" parent="PlayersSlots"]
+position = Vector2(827, 15)
+
+[node name="Slot5" type="Node2D" parent="PlayersSlots"]
+position = Vector2(1325, 15)
+
+[node name="Slot6" type="Node2D" parent="PlayersSlots"]
+position = Vector2(1615, 185)
+
+[node name="Slot7" type="Node2D" parent="PlayersSlots"]
+position = Vector2(1615, 360)
+
+[node name="Slot8" type="Node2D" parent="PlayersSlots"]
+position = Vector2(1615, 535)
+
+[node name="DecksContainer" type="HBoxContainer" parent="."]
+offset_left = 1340.0
+offset_top = 830.0
+offset_right = 1840.0
+offset_bottom = 1068.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+metadata/_edit_use_anchors_ = true
+
+[node name="CardDeck" parent="DecksContainer" instance=ExtResource("9_edp6p")]
+visible = false
+layout_mode = 2
+
+[node name="CardDeck2" parent="DecksContainer" instance=ExtResource("9_edp6p")]
+visible = false
+layout_mode = 2
+
+[node name="DicesContainer" type="Panel" parent="."]
+offset_left = 775.0
+offset_top = 450.0
+offset_right = 1144.0
+offset_bottom = 723.0
+script = ExtResource("10_mu42g")
+metadata/_edit_use_anchors_ = true
+
+[node name="Dice6Sided" parent="DicesContainer" instance=ExtResource("10_eenv0")]
+position = Vector2(79.9376, 89.875)
+scale = Vector2(2.31908, 2.26974)
+
+[node name="Dice4Sided" parent="DicesContainer" instance=ExtResource("11_rx4br")]
+position = Vector2(265, 97)
+scale = Vector2(2.29573, 2.47368)
+
+[node name="RollButton" type="Button" parent="DicesContainer"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.238482
+anchor_top = 0.663004
+anchor_right = 0.746862
+anchor_bottom = 0.882784
+text = "Roll
+"
+metadata/_edit_use_anchors_ = true
+
+[node name="PlayingLabel" type="Label" parent="."]
+offset_left = 891.0
+offset_top = 290.0
+offset_right = 1028.0
+offset_bottom = 332.0
+pivot_offset = Vector2(85, 21)
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 22
+text = "Playing ..."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+"": SubResource("AnimationLibrary_tdqul")
+}
+autoplay = "PlayingNotification"
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_pi85q")
+
+[node name="EndTurnButton" type="Button" parent="."]
+offset_left = 863.0
+offset_top = 702.0
+offset_right = 1056.0
+offset_bottom = 746.0
+text = "End Turn"
+
+[connection signal="toggled" from="Hud/ToggleHudButton" to="Hud" method="_on_toggle_hud_button_toggled"]
+[connection signal="pressed" from="Hud/ToggleInfoButton" to="Hud" method="_on_toggle_info_button_pressed"]
+[connection signal="pressed" from="Hud/ToggleCardsButton" to="Hud" method="_on_toggle_cards_button_pressed"]
+[connection signal="pressed" from="Hud/ToggleHelpButton" to="Hud" method="_on_toggle_help_button_pressed"]
+[connection signal="pressed" from="DicesContainer/RollButton" to="DicesContainer" method="_on_roll_button_pressed"]
+[connection signal="pressed" from="EndTurnButton" to="." method="_on_end_turn_button_pressed"]

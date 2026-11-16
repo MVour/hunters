@@ -12,6 +12,16 @@ in MANIFEST.md → Non-negotiable constraints.
 
 ---
 
+### D003 — Organise by feature, verify headless (2026-11-16)
+- **Status:** active
+- **What:** Folders follow features (lobby/, match/, server/, network/…),
+  each scene beside its script. Every structural change is checked with
+  `tools/check_project.tscn` and `tools/run_autotest.sh` (Godot 4.3 console
+  build, headless) before committing.
+- **Why:** Easier to find things; and there was no way to know a refactor
+  hadn't broken multiplayer without a person playing two windows.
+- **Rejected:** Type-based folders (scenes/, scripts/); manual testing only.
+
 ### D002 — Keep old art usable behind a toggle (2026-11-16)
 - **Status:** active
 - **What:** Superseded art isn't deleted or hidden in the repo. It goes in

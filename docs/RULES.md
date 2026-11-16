@@ -64,7 +64,7 @@ Shuffled around the board every game.
 
 ## Characters (Χαρακτήρες)
 
-Data with English + Greek texts: `scripts/characters.gd`.
+Data with English + Greek texts: `data/characters.gd`.
 
 | Side | Character | Health | Ability | Goal |
 |------|-----------|--------|---------|------|

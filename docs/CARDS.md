@@ -1,7 +1,7 @@
 # Cards
 
 The card set, following the rules in RULES.md. Each card has an English
-and a Greek name and description (the Greek texts live in `scripts/cards.gd`,
+and a Greek name and description (the Greek texts live in `data/cards.gd`,
 as `name_el` / `text_el`). Keep this file and the data in
 sync when editing.
 
@@ -87,8 +87,8 @@ sync when editing.
 
 ## Effect steps (for designing new cards)
 
-A card's `effect` in `scripts/cards.gd` is a list of steps run in order by
-`scripts/rules/card_effects.gd`. Combine these to make new cards without
+A card's `effect` in `data/cards.gd` is a list of steps run in order by
+`server/card_effects.gd`. Combine these to make new cards without
 writing code:
 
 | `do` | What it does |

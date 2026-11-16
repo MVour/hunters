@@ -7,6 +7,23 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C003 — Restructure by feature; dead code out; test tools (2026-11-16)
+- **What:** Moved every scene and script into feature folders (autoload/,
+  network/, server/, data/, main/, lobby/, match/{board,hud,cards,dice,legacy}),
+  scenes next to their scripts; `GameState.gd` → `autoload/game_state.gd`.
+  Loose sprites into assets/pawns, portraits, ui; old art into
+  assets/legacy/{board,portraits}; source sheets and drafts into
+  assets/_source (ignored by Godot). Deleted: side menu, empty waiting-lobby
+  sprite, empty TileMapLayer/Control in main.tscn, the "Add Player" debug
+  button, card.gd's unused texture table. Kept the old damage board in
+  match/legacy/. Added tools/check_project (loads every file) and
+  tools/autotest + run_autotest.sh (a host bot and a client bot play a match
+  headless; found BUG-003 and BUG-004).
+- **Why:** The repo was flat and cluttered; the next steps (network
+  refactor, deployment) need a clear layout and a way to test without a person. See D003.
+- **Rejected:** Separate scenes/ and scripts/ trees (one feature spread over
+  two places); deleting the old damage board (user wants it kept).
+
 ### C002 — Adopted the project-workflow docs system (2026-11-16)
 - **What:** Added MANIFEST, STATE, FOLDER_STRUCTURE, ARCHITECTURE, VISION,
   CHANGELOG, DECISIONS, BUGS, IDEAS under `docs/`, `.project-workflow/tuning.yml`,
