@@ -28,16 +28,25 @@ func init(pl_name, species, goal, ability, health, damage):
 	character_sprite.play(species)
 	var frame_size := character_sprite.sprite_frames.get_frame_texture(species, 0).get_size()
 	var fit := minf(PORTRAIT_BOX.x / frame_size.x, PORTRAIT_BOX.y / frame_size.y)
+	var pixel_art := frame_size.x <= 64
+	if pixel_art:
+		fit = maxf(1.0, roundf(fit))  # whole-number scale keeps pixels square
 	character_sprite.scale = Vector2(fit, fit)
-	# Small pixel art stays crisp; big painted portraits get smooth scaling.
-	character_sprite.texture_filter = TEXTURE_FILTER_NEAREST if frame_size.x <= 64 else TEXTURE_FILTER_LINEAR
-	_breathe(Vector2(fit, fit))
+	character_sprite.texture_filter = TEXTURE_FILTER_NEAREST if pixel_art else TEXTURE_FILTER_LINEAR
+	_breathe(fit, pixel_art)
 
 
-## A slow, subtle "breathing" so still portraits feel alive.
-func _breathe(base_scale: Vector2) -> void:
+## A slow, subtle "breathing" so still portraits feel alive. Pixel art bobs
+## by whole pixels instead of scaling (scaling would make pixels shimmer).
+func _breathe(fit: float, pixel_art: bool) -> void:
 	if _breath:
 		_breath.kill()
 	_breath = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_breath.tween_property(character_sprite, "scale", base_scale * 1.02, 1.8)
-	_breath.tween_property(character_sprite, "scale", base_scale, 1.8)
+	if pixel_art:
+		var base_y := character_sprite.position.y
+		_breath.tween_property(character_sprite, "position:y", base_y - fit, 1.6)
+		_breath.tween_property(character_sprite, "position:y", base_y, 1.6)
+	else:
+		var base := Vector2(fit, fit)
+		_breath.tween_property(character_sprite, "scale", base * 1.02, 1.8)
+		_breath.tween_property(character_sprite, "scale", base, 1.8)
