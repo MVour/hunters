@@ -76,8 +76,8 @@ func _process(delta: float) -> void:
 	follow_mouse(delta)
 
 func card_set_type(card_type : String):
-	card_texture.texture = card_types[card_type]
-	shadow.texture = card_types[card_type]
+	card_texture.texture = Global.card_back(card_type)
+	shadow.texture = card_texture.texture
 
 func card_set_info(info):
 	card_info = info

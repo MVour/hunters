@@ -57,7 +57,8 @@ func _on_player_died(player_id: int, _killer_id: int) -> void:
 func spot(location_id: String, n: int) -> Vector2:
 	if location_id == CAMPFIRE:
 		var angle := deg_to_rad(lerpf(200.0, 340.0, n / 7.0))
-		return ForestBoard.FIRE_POS + Vector2(cos(angle) * 130.0, sin(angle) * 50.0 + 30.0)
+		var start := ClassicBoard.START_POS if Global.classic_art else ForestBoard.FIRE_POS
+		return start + Vector2(cos(angle) * 130.0, sin(angle) * 50.0 + 30.0)
 	return game_map.get_location(location_id).pawn_spot(n)
 
 

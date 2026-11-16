@@ -103,3 +103,85 @@ var pawns = {
 	"purple": {"color": "purple", "hex": "9a5ad8", "sprite": preload("res://assets/purple.png")},
 	"orange": {"color": "orange", "hex": "f08030", "sprite": preload("res://assets/orange.png")},
 }
+
+
+# --- Classic art ---------------------------------------------------------
+## Swap between the ORIGINAL art (Feb 2025: path-tile board, chapel
+## locations, stick-figure pawns, animated 38px portraits, first card backs)
+## and the current art. Purely cosmetic and local to this computer; the
+## rules and networking are the same either way. Toggled from the main menu.
+
+signal art_style_changed(classic: bool)
+
+const SETTINGS_PATH := "user://settings.cfg"
+
+var classic_art := true:
+	set(on):
+		if on == classic_art:
+			return
+		classic_art = on
+		_apply_pawn_art()
+		_save_settings()
+		art_style_changed.emit(on)
+
+## Current pawn art, remembered so classic mode can be switched off again.
+var _current_pawn_sprites := {}
+
+const CLASSIC_CARD_BACKS := {
+	"green_cards": "res://assets/legacy/cards/green_card_original.webp",
+	"red_cards": "res://assets/legacy/cards/red_card_original.webp",
+	"blue_cards": "res://assets/legacy/cards/blue_card_original.jpeg",
+}
+const CARD_BACKS := {
+	"green_cards": "res://assets/cards/green_card.png",
+	"red_cards": "res://assets/cards/red_card.png",
+	"blue_cards": "res://assets/cards/blue_card.png",
+}
+
+## The old map used one chapel picture for every location; the Old Chapel
+## gets the other chapel drawing so both originals are on the board.
+const CLASSIC_LOCATION_ART := "res://assets/legacy/chapel_original2.png"
+const CLASSIC_LOCATION_ART_OVERRIDES := {
+	"old_chapel": "res://assets/legacy/chapel_original.png",
+}
+
+## Old animated portraits; animations are named after the species, with
+## extra variants ("vampire_rain", "werewolf_light", ...) to click through.
+const CLASSIC_PORTRAITS := "res://assets/legacy/classic_portraits.tres"
+
+
+func _ready() -> void:
+	for color in pawns:
+		_current_pawn_sprites[color] = pawns[color].sprite
+	var config := ConfigFile.new()
+	if config.load(SETTINGS_PATH) == OK:
+		classic_art = config.get_value("art", "classic", classic_art)
+	_apply_pawn_art()
+
+
+func card_back(card_type: String) -> Texture2D:
+	return load((CLASSIC_CARD_BACKS if classic_art else CARD_BACKS)[card_type])
+
+
+func classic_location_art(location_name: String) -> Texture2D:
+	return load(CLASSIC_LOCATION_ART_OVERRIDES.get(location_name, CLASSIC_LOCATION_ART))
+
+
+## Everything that shows a pawn reads Global.pawns / colors_sprites, so
+## swapping the textures here changes the lobby, seats, life track and board.
+func _apply_pawn_art() -> void:
+	for color in pawns:
+		var sprite: Texture2D = _current_pawn_sprites.get(color, pawns[color].sprite)
+		if classic_art:
+			var old := "res://assets/legacy/pawns/%s.png" % color
+			if ResourceLoader.exists(old):
+				sprite = load(old)
+		pawns[color].sprite = sprite
+		colors_sprites[color] = sprite
+
+
+func _save_settings() -> void:
+	var config := ConfigFile.new()
+	config.load(SETTINGS_PATH)
+	config.set_value("art", "classic", classic_art)
+	config.save(SETTINGS_PATH)

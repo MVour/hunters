@@ -24,8 +24,12 @@ func locations_spawn():
 	for loc in GameState.locations:
 		var new_loc : LocationSprite = location_scn.instantiate()
 		add_child(new_loc)
-		new_loc.set_location(loc, TEXTURES[loc.name])
-		new_loc.position = ForestBoard.location_position(index)
+		if Global.classic_art:
+			new_loc.set_location(loc, Global.classic_location_art(loc.name))
+			new_loc.position = ClassicBoard.location_position(index)
+		else:
+			new_loc.set_location(loc, TEXTURES[loc.name])
+			new_loc.position = ForestBoard.location_position(index)
 		new_loc.chosen.connect(func(id): location_chosen.emit(id))
 		_nodes[loc.id] = new_loc
 		index += 1

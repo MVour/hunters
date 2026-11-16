@@ -79,7 +79,7 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	_card_panel.add_child(column)
 
 	var art := TextureRect.new()
-	art.texture = BACKS[card.deck]
+	art.texture = Global.card_back(card.deck)
 	art.custom_minimum_size = Vector2(0, 200)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED

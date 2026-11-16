@@ -43,6 +43,16 @@ func _ready():
 	SignalBus.damage_changed.connect(_on_damage_changed)
 	game_map.location_chosen.connect(_on_location_chosen)
 
+	# Classic art: the original path-tile board replaces the forest clearing
+	# (the forest stays in the scene, just hidden).
+	if Global.classic_art:
+		var forest: Node2D = $ForestBoard
+		var classic: Node2D = preload("res://scenes/classic_board.tscn").instantiate()
+		add_child(classic)
+		move_child(classic, forest.get_index())
+		forest.hide()
+		forest.process_mode = Node.PROCESS_MODE_DISABLED
+
 	# Life track down the left edge.
 	damage_board.position = Vector2(8, 192)
 
