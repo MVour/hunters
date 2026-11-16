@@ -21,32 +21,13 @@ func species(id: int) -> String:
 	return s.state.players[id].character.get("species", "")
 
 
-## All of a player's equipment modifiers combined: numbers add up, flags OR.
+## Equipment modifiers / reach: shared with the UI, see data/rules.gd.
 func mods(id: int) -> Dictionary:
-	var total := {}
-	for card in s.state.players[id].equipment:
-		for key in card.get("mods", {}):
-			var value = card.mods[key]
-			if value is bool:
-				total[key] = total.get(key, false) or value
-			else:
-				total[key] = total.get(key, 0) + value
-	return total
+	return Rules.mods(s.state.players[id])
 
 
-## Can `attacker` reach `target`? Same location or the next one clockwise,
-## widened by equipment (Hunter's Crossbow, Widow's Lantern).
 func in_reach(attacker: int, target: int) -> bool:
-	var from: String = s.state.players[attacker].location
-	var to: String = s.state.players[target].location
-	var m := mods(attacker)
-	if m.get("ignore_reach", false):
-		return true
-	if from == to:
-		return true
-	if s.state.can_reach(from, to):
-		return true
-	return m.get("reach_back", false) and s.state.can_reach(to, from)
+	return Rules.in_reach(s.state.players, s.state.locations, attacker, target)
 
 
 func _card_title(ctx: Dictionary) -> String:

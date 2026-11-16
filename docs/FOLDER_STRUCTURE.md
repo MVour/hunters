@@ -42,6 +42,7 @@ docs/                project docs (see MANIFEST.md)
 | `autoload/game_state.gd` | The client store: what this computer may know. Written only by LobbyNet/MatchNet messages. |
 | `autoload/global.gd` | Static data (pawns, locations, card colours, defaults) and the Classic art setting. |
 | `data/cards.gd` / `data/characters.gd` | The card list and the character list (EN + EL text). |
+| `data/rules.gd` | Rules both sides need (reach, attack targets, equipment mods). Never duplicate these in UI or server. |
 | `server/card_effects.gd` | Applying card effects. |
 | `autoload/signal_bus.gd` | Every cross-scene signal. |
 | `match/play_scene.gd` | The match screen UI: prompts, action bar, choices, toasts, game-over overlay. |

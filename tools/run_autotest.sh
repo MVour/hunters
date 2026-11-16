@@ -8,10 +8,10 @@ cd "$(dirname "$0")/.."
 GODOT="${1:-${GODOT:-/c/Program Files (x86)/Godot/Godot_v4.3-stable_mono_win64_console.exe}}"
 OUT="${AUTOTEST_OUT:-.godot/autotest}"
 mkdir -p "$OUT"
-"$GODOT" --headless --path . -- --autotest=host --max-turns=${MAX_TURNS:-30} > "$OUT/host.log" 2>&1 &
+"$GODOT" --headless --path . -- --autotest=host --max-turns=${MAX_TURNS:-30} ${AUTOTEST_ARGS:-} > "$OUT/host.log" 2>&1 &
 HOST=$!
 sleep 2
-"$GODOT" --headless --path . -- --autotest=client > "$OUT/client.log" 2>&1 &
+"$GODOT" --headless --path . -- --autotest=client ${AUTOTEST_ARGS:-} > "$OUT/client.log" 2>&1 &
 CLIENT=$!
 wait $HOST; H=$?
 wait $CLIENT; C=$?

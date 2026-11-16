@@ -75,9 +75,7 @@ func turn_start_effects(player_id: int) -> void:
 
 ## Who `attacker` may attack right now.
 func attack_targets(attacker: int) -> Array:
-	return s.alive().filter(func(id):
-		return id != attacker and s.effects.in_reach(attacker, id) \
-			and not s.state.players[id].get("protected", false))
+	return Rules.attack_targets(s.state.players, s.state.locations, s.state.turn_order, attacker)
 
 
 func attack(sender: int) -> void:

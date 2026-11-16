@@ -17,7 +17,8 @@ _Last updated: 2026-11-16_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
-2026-11-16: network/state refactor + server split — see C004.
+2026-11-16: clearer match screen (disabled buttons, status line, card popup) — see C005.
+Before that: network/state refactor + server split (C004).
 
 ## Next
 - **Deployment and a lobby/matchmaking service** (user's stated next goal).

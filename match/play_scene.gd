@@ -23,6 +23,19 @@ var asked_options := []
 var attack_button: Button
 var reveal_button: Button
 var attack_used_this_turn := false
+## This turn: you've moved (so attack / end turn make sense).
+var moved_this_turn := false
+## You drew a green card and still have to give it to someone.
+var question_to_give := false
+## The server is waiting for you to pick in the choice panel.
+var server_choice_open := false
+## You gave your green card to this player; they still have to answer (0 = none).
+var question_waiting_on := 0
+## This player gave you a green card you haven't answered yet (0 = none).
+var question_from := 0
+## One line at the bottom: what's happening and who we're waiting on.
+var status_label: Label
+var _refresh_queued := false
 var decks := {}  # card type -> CardDeck
 ## Locations you may pick after rolling a 7 (empty when not choosing).
 var choice_options := []
@@ -31,7 +44,6 @@ var offered_action := ""
 
 
 func _ready():
-	SignalBus._end_game.connect(_on_end_game)
 	SignalBus._set_character.connect(_on_set_character)
 	SignalBus.set_locations.connect(_on_set_locations)
 	SignalBus._attach_deck.connect(_on_attach_deck)
@@ -80,6 +92,8 @@ func _ready():
 	action_bar.add_theme_constant_override("separation", 10)
 	action_bar.position = Vector2(560, 636)
 	action_bar.size = Vector2(800, 50)
+	# Only its buttons take clicks; the empty row must not cover the Roll button.
+	action_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(action_bar)
 
 	toast_box = VBoxContainer.new()
@@ -140,7 +154,7 @@ func _ready():
 	attack_button.hide()
 	attack_button.pressed.connect(func():
 		attack_used_this_turn = true
-		attack_button.hide()
+		_queue_refresh()
 		MatchNet.attack())
 	add_child(attack_button)
 
@@ -156,12 +170,30 @@ func _ready():
 	reveal_button.pressed.connect(MatchNet.reveal)
 	ability_button.get_parent().add_child(reveal_button)
 
-	SignalBus.character_revealed.connect(func(pl_id, _c):
-		if pl_id == GameState.local_id:
-			reveal_button.hide())
-	SignalBus.ability_used.connect(func(pl_id):
-		if pl_id == GameState.local_id:
-			ability_button.disabled = GameState.local_player.character.get("timing", "") == "once")
+	status_label = Label.new()
+	status_label.position = Vector2(410, 752)
+	status_label.size = Vector2(1100, 40)
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_label.add_theme_font_size_override("font_size", 20)
+	status_label.add_theme_color_override("font_color", Color("ffe2a8"))
+	status_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	status_label.add_theme_constant_override("outline_size", 8)
+	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_label.z_index = 5
+	add_child(status_label)
+
+	roll_button.text = "Roll  ·  Ρίξε"
+	end_turn_button.text = "End Turn  ·  Τέλος"
+
+	# Grey out what you can't do right now (the server would refuse it anyway).
+	for sig in [SignalBus.begin_turn, SignalBus.end_turn, SignalBus.equipment_changed,
+			SignalBus.ability_used, SignalBus.question_drawn, SignalBus.waiting_changed,
+			SignalBus.location_action_offered, SignalBus.choose_location]:
+		sig.connect(_queue_refresh.unbind(1))
+	for sig in [SignalBus.pawn_moved, SignalBus.player_died, SignalBus.character_revealed,
+			SignalBus.question_passed, SignalBus._set_character, SignalBus.game_over,
+			SignalBus.damage_changed, SignalBus.question_asked, SignalBus.question_answered]:
+		sig.connect(_queue_refresh.unbind(2))
 	SignalBus.attack_happened.connect(_on_attack_happened)
 	SignalBus.game_over.connect(_on_game_over)
 
@@ -187,10 +219,6 @@ func _on_attach_deck(card_type: String, count: int):
 	decks[card_type] = new_deck
 
 
-func _on_end_game():
-	game_finished = true
-
-
 func _on_set_character(_pl_id, character):
 	player_hud.init("%s · %s" % [character.name, character.get("name_el", "")], character.species,
 		"%s\n%s" % [character.goal, character.get("goal_el", "")],
@@ -204,15 +232,16 @@ func _on_begin_turn(pl_id):
 	var my_turn: bool = pl_id == GameState.local_id
 	playing_label.visible = my_turn
 	roll_button.visible = my_turn
-	end_turn_button.hide()  # shown once you've moved
+	if my_turn:
+		moved_this_turn = false
+		attack_used_this_turn = false
 
 
 func _on_end_turn(pl_id):
 	if pl_id == GameState.local_id:
 		playing_label.hide()
 		roll_button.hide()
-		end_turn_button.hide()
-		attack_button.hide()
+		moved_this_turn = false
 		attack_used_this_turn = false
 		_clear_action_bar()
 
@@ -220,9 +249,7 @@ func _on_end_turn(pl_id):
 func _on_pawn_moved(pl_id, _location_id):
 	if pl_id == GameState.local_id and GameState.local_player.playing:
 		roll_button.hide()
-		end_turn_button.show()
-		if not attack_used_this_turn:
-			attack_button.show()
+		moved_this_turn = true
 
 
 ## Rolled a 7: light up every other location and wait for a click.
@@ -245,6 +272,107 @@ func _on_location_chosen(location_id: String) -> void:
 
 func _on_end_turn_button_pressed() -> void:
 	MatchNet.end_turn()
+
+
+func _queue_refresh() -> void:
+	if not _refresh_queued:
+		_refresh_queued = true
+		_refresh_buttons.call_deferred()
+
+
+## Shows/enables the turn buttons from what this computer knows (GameState).
+## Uses the same Rules as the server, so a greyed button is one the server
+## would refuse. Disabled buttons say why in their tooltip.
+func _refresh_buttons() -> void:
+	_refresh_queued = false
+	var me: Dictionary = GameState.local_player
+	var my_turn: bool = me.get("playing", false) and not game_finished and not me.get("dead", false)
+	var others_deciding: Array = GameState.game_info.get("waiting_for", [])
+	var waiting: bool = server_choice_open or question_to_give or question_waiting_on != 0 \
+		or not choice_options.is_empty() or not others_deciding.is_empty()
+	var wait_reason := _status_text(my_turn)
+
+	attack_button.visible = my_turn and moved_this_turn and not attack_used_this_turn
+	if attack_button.visible:
+		var targets := Rules.attack_targets(GameState.players, GameState.locations,
+			GameState.game_info.players_turn, GameState.local_id)
+		if waiting:
+			_set_enabled(attack_button, false, wait_reason)
+		else:
+			_set_enabled(attack_button, not targets.is_empty(),
+				"Nobody is within reach.  ·  Κανείς δεν είναι κοντά.")
+
+	end_turn_button.visible = my_turn and moved_this_turn
+	_set_enabled(end_turn_button, not waiting, wait_reason)
+
+	var ability_button: Button = $Hud/PlayerHud/AbilityButton
+	var reason := _ability_blocked_reason(me, my_turn, waiting)
+	_set_enabled(ability_button, reason == "", reason)
+
+	status_label.text = _status_text(my_turn)
+	status_label.visible = not game_finished
+
+	reveal_button.visible = me.get("hidden", true) and not me.get("character", {}).is_empty()
+	_set_enabled(reveal_button, not me.get("dead", false), "You're out of the game.")
+
+
+## The status line: what you should do, or who everyone is waiting on.
+func _status_text(my_turn: bool) -> String:
+	if question_to_give:
+		return "Give your green card to someone: click a name under the card.  ·  Δώσε την πράσινη κάρτα."
+	if question_from != 0:
+		return "%s gave you a green card: click Answer.  ·  Απάντησε στην πράσινη κάρτα." % _player_name(question_from)
+	if server_choice_open:
+		return "Make your choice below.  ·  Διάλεξε παρακάτω."
+	if not choice_options.is_empty():
+		return "You rolled 7: click any other location.  ·  Διάλεξε τοποθεσία."
+	if question_waiting_on != 0:
+		return "Waiting for %s to answer your green card. Then you can end your turn.  ·  Περιμένεις απάντηση…" \
+			% _player_name(question_waiting_on)
+	var deciding := (GameState.game_info.get("waiting_for", []) as Array).filter(func(id): return id != GameState.local_id)
+	if not deciding.is_empty():
+		return "Waiting for %s to decide…  ·  Περιμένεις…" % ", ".join(deciding.map(_player_name))
+	if my_turn:
+		if not moved_this_turn:
+			return "Your turn: roll the dice.  ·  Η σειρά σου: ρίξε τα ζάρια."
+		if offered_action != "":
+			return "Use your location (or Skip), then attack or end your turn.  ·  Τοποθεσία, επίθεση ή τέλος."
+		return "Attack, or end your turn.  ·  Επίθεση ή τέλος γύρου."
+	for id in GameState.game_info.players_turn:
+		if GameState.players[id].get("playing", false):
+			return "%s's turn.  ·  Παίζει ο/η %s." % [_player_name(id), _player_name(id)]
+	return ""
+
+
+## Why the Use Ability button can't be used now ("" = it can). Mirrors
+## Combat.use_ability() on the server.
+func _ability_blocked_reason(me: Dictionary, my_turn: bool, waiting: bool) -> String:
+	var character: Dictionary = me.get("character", {})
+	if character.is_empty() or game_finished:
+		return "No character yet."
+	if me.get("dead", false):
+		return "You're out of the game."
+	match character.get("timing", ""):
+		"passive":
+			return "" if me.get("hidden", true) else "Always active now that you're revealed."
+		"attack":
+			return "You'll be offered it when you attack."
+		"reactive":
+			return "You'll be offered it when you're attacked."
+	if me.get("ability_used", false):
+		return "Already used."
+	if character.get("ability_id", "") != "switch_side" and not my_turn:
+		return "Only on your turn."
+	if waiting:
+		return "Finish the choice first."
+	return ""
+
+
+func _set_enabled(button: Button, on: bool, reason := "") -> void:
+	button.disabled = not on
+	button.tooltip_text = "" if on else reason
+	# Disabled buttons still need hover for the tooltip.
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 # --- Location actions & cards ------------------------------------------------
@@ -274,6 +402,7 @@ func toast(text: String) -> void:
 
 
 func _clear_action_bar() -> void:
+	_queue_refresh()
 	for child in action_bar.get_children():
 		child.queue_free()
 	offered_action = ""
@@ -325,26 +454,41 @@ func _on_deck_count_changed(card_type: String, count: int) -> void:
 
 ## You drew a green question: read it, then pick who to ask.
 func _on_question_drawn(card: Dictionary) -> void:
+	question_to_give = true
 	var buttons := []
 	for id in GameState.game_info.players_turn:
 		var player: Dictionary = GameState.players[id]
 		if id != GameState.local_id and not player.dead:
-			buttons.append([player.name, func(): MatchNet.give_question(id), _player_color(id)])
+			buttons.append([player.name, func():
+				question_to_give = false
+				_queue_refresh()
+				MatchNet.give_question(id), _player_color(id)])
 	CardView.open(self, card, "Your question. Who do you ask?  ·  Σε ποιον τη δίνεις;", buttons)
 
 
 ## Someone asked you a question.
 func _on_question_asked(from_id: int, card: Dictionary) -> void:
+	question_from = from_id
 	CardView.open(self, card, "%s asks you:  ·  Σε ρωτάει:" % _player_name(from_id),
-		[["Answer", MatchNet.answer_question]])
+		[["Answer  ·  Απάντησε", func():
+			question_from = 0
+			_queue_refresh()
+			MatchNet.answer_question()]])
 
 
 func _on_question_passed(from_id: int, to_id: int) -> void:
+	if from_id == GameState.local_id:
+		question_to_give = false
+		question_waiting_on = to_id
 	if to_id != GameState.local_id:
 		toast("%s gave a green card to %s" % [_player_name(from_id), _player_name(to_id)])
 
 
 func _on_question_answered(from_id: int, to_id: int) -> void:
+	if from_id == GameState.local_id:
+		question_waiting_on = 0
+	if to_id == GameState.local_id:
+		question_from = 0
 	toast("%s answered %s's question" % [_player_name(to_id), _player_name(from_id)])
 
 
@@ -363,8 +507,12 @@ func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
 
 ## The server asks you to pick (a player, a deck, a piece of equipment...).
 func _on_choice_requested(prompt: String, options: Array, allow_skip: bool) -> void:
-	_open_choice(prompt, options, allow_skip,
-		MatchNet.choose)
+	server_choice_open = true
+	_queue_refresh()
+	_open_choice(prompt, options, allow_skip, func(value):
+		server_choice_open = false
+		_queue_refresh()
+		MatchNet.choose(value))
 
 
 func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Callable) -> void:
@@ -441,7 +589,9 @@ func _on_attack_happened(attacker: int, target: int, damage: int) -> void:
 
 
 func _on_game_over(faction: String, winners: Array) -> void:
+	game_finished = true
 	_clear_action_bar()
+	status_label.hide()
 	choice_panel.hide()
 	CardView._queue.clear()
 	for child in get_children():

@@ -79,17 +79,23 @@ Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
 (`ForestBoard` or, with Classic art, `ClassicBoard`), `Locations` (`GameMap`),
 `PawnLayer`, `Hud/PlayerHud`, `DamageBoard` (life track), `PlayersSlots`
 (seats), `DecksContainer`, `DicesContainer`, `CardView` popups, and the
-prompt/action/choice panels built in `play_scene.gd`.
+prompt/action/choice panels and the status line built in `play_scene.gd`.
+`_refresh_buttons()` sets every turn button's visible/enabled state and the
+status text ("waiting for …") from GameState; the server broadcasts
+`waiting_for` (who's choosing) so other screens can show it.
 
 ## Data
 - Cards: `data/cards.gd` (spec in docs/CARDS.md). Characters: `data/characters.gd`.
-- Board rules shared by client and server: `data/board.gd` (`Board`).
+- Rules shared by client and server: `data/board.gd` (`Board`: locations,
+  reach) and `data/rules.gd` (`Rules`: equipment mods, in reach, attack
+  targets). The UI uses them to grey out buttons the server would refuse.
 
 ## Testing (headless, Godot 4.3 console build)
 - `tools/check_project.tscn`: loads and compiles every script/scene/resource.
 - `tools/run_autotest.sh`: a host bot and a client bot play a match over
   localhost (port 18080) through the same actions as the UI; fails on any
-  script error. `MAX_TURNS=N` makes the host leave mid-match.
+  script error. `MAX_TURNS=N` makes the host leave mid-match;
+  `AUTOTEST_ARGS="--show-status --slow"` prints every status line the bots saw.
 
 ## Art switch
 `Global.classic_art` picks the current art or the original Feb 2025 art (for

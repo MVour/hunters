@@ -20,6 +20,8 @@ var stats := {"turns": 0, "my_turns": 0, "moves": 0, "cards": 0, "choices": 0,
 var _last_progress := 0
 var _my_turn := false
 var _done := false
+## Every distinct status line the match screen showed (printed with -- --show-status).
+var _statuses := []
 
 
 func _init(p_role: String) -> void:
@@ -57,6 +59,13 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if _done:
 		return
+	var scene := get_tree().root.find_child("PlayScene", true, false)
+	if scene and scene.status_label and scene.status_label.visible:
+		var text: String = scene.status_label.text.get_slice("  ·  ", 0)
+		for id in GameState.players:
+			text = text.replace(GameState.players[id].name, "<P>")
+		if not text in _statuses:
+			_statuses.append(text)
 	if (Time.get_ticks_msec() - _last_progress) / 1000.0 > STALL_SECONDS:
 		_finish(false, "stalled: no new turn for %ds" % STALL_SECONDS)
 
@@ -144,7 +153,9 @@ func _on_question_drawn(_card: Dictionary) -> void:
 # --- Helpers ------------------------------------------------------------------
 
 func _think() -> void:
-	if randf() < 0.5:
+	if "--slow" in OS.get_cmdline_user_args():
+		await get_tree().create_timer(3.0).timeout  # long enough to see "waiting for…"
+	elif randf() < 0.5:
 		await get_tree().create_timer(0.15).timeout
 
 
@@ -158,6 +169,9 @@ func _finish(ok: bool, why: String, already_left := false) -> void:
 		return
 	_done = true
 	print("AUTOTEST %s [%s] %s | %s" % ["PASS" if ok else "FAIL", role, why, stats])
+	if "--show-status" in OS.get_cmdline_user_args():
+		for s in _statuses:
+			print("STATUS [%s] %s" % [role, s])
 	if not ok:
 		print("AUTOTEST DEBUG ", _debug_state())
 	# Leave the match the normal way first: quitting with the match still

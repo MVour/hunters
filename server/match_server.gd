@@ -330,6 +330,7 @@ func ask(player_id: int, prompt: String, options: Array, allow_skip := true):
 	_next_ask_id += 1
 	_awaiting[player_id] = {"id": ask_id, "values": options.map(func(o): return o.value), "skip": allow_skip}
 	MatchNet.present_choice.rpc_id(player_id, prompt, options, allow_skip)
+	_broadcast_waiting()
 	# The answer may already be here (the host answers within the same call).
 	while not _answers.has(ask_id):
 		await choice_made
@@ -348,7 +349,14 @@ func choice(sender: int, value) -> void:
 		return
 	_awaiting.erase(sender)
 	_answers[waiting.id] = value
+	_broadcast_waiting()
 	choice_made.emit(waiting.id)
+
+
+## Tell everyone WHO is deciding something (not what), so screens can say
+## "waiting for Bob…".
+func _broadcast_waiting() -> void:
+	MatchNet.waiting_for.rpc(_awaiting.keys())
 
 
 ## Pause for a moment (e.g. let dice land). Stops forever if the match is freed.

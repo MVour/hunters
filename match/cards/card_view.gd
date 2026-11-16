@@ -8,8 +8,13 @@ const BACKS := {
 	"red_cards": preload("res://assets/cards/red_card.png"),
 	"blue_cards": preload("res://assets/cards/blue_card.png"),
 }
-const CARD_SIZE := Vector2(380, 560)
+const CARD_WIDTH := 380.0
+## Keep the card above this line: the choice panel ("use it now?") sits below.
+const BOTTOM_LIMIT := 800.0
 
+## Heading, card and buttons stacked, so buttons always sit under the text
+## however long the card is.
+var _layout: VBoxContainer
 var _card_panel: PanelContainer
 
 
@@ -51,15 +56,19 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 
 	var accent := Color(Global.CARD_COLORS[card.deck].color)
 
+	_layout = VBoxContainer.new()
+	_layout.add_theme_constant_override("separation", 14)
+	_layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_layout)
+
 	var title := Label.new()
 	title.text = heading
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_outline_color", Color.BLACK)
 	title.add_theme_constant_override("outline_size", 8)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.size = Vector2(800, 40)
-	title.position = Vector2(960 - 400, 150)
-	add_child(title)
+	title.custom_minimum_size = Vector2(800, 0)
+	_layout.add_child(title)
 
 	# The card
 	_card_panel = PanelContainer.new()
@@ -69,10 +78,9 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	frame.set_border_width_all(4)
 	frame.set_corner_radius_all(14)
 	_card_panel.add_theme_stylebox_override("panel", frame)
-	_card_panel.size = CARD_SIZE
-	_card_panel.position = Vector2(960, 200) - Vector2(CARD_SIZE.x / 2.0, 0)
-	_card_panel.pivot_offset = CARD_SIZE / 2.0
-	add_child(_card_panel)
+	_card_panel.custom_minimum_size = Vector2(CARD_WIDTH, 0)
+	_card_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_layout.add_child(_card_panel)
 
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
@@ -80,7 +88,7 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 
 	var art := TextureRect.new()
 	art.texture = Global.card_back(card.deck)
-	art.custom_minimum_size = Vector2(0, 200)
+	art.custom_minimum_size = Vector2(0, 180)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	column.add_child(art)
@@ -109,7 +117,7 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	text.text = card.text
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	text.custom_minimum_size = Vector2(CARD_SIZE.x - 40, 0)
+	text.custom_minimum_size = Vector2(CARD_WIDTH - 40, 0)
 	text.add_theme_font_size_override("font_size", 20)
 	text.add_theme_font_size_override("font_size", 18)
 
@@ -117,7 +125,7 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	text_el.text = card.get("text_el", "")
 	text_el.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_el.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	text_el.custom_minimum_size = Vector2(CARD_SIZE.x - 40, 0)
+	text_el.custom_minimum_size = Vector2(CARD_WIDTH - 40, 0)
 	text_el.add_theme_font_size_override("font_size", 16)
 	text_el.add_theme_color_override("font_color", Color(0.72, 0.74, 0.8))
 
@@ -126,7 +134,7 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	texts.add_child(text)
 	texts.add_child(text_el)
 	var text_margin := MarginContainer.new()
-	for side in ["left", "right", "top"]:
+	for side in ["left", "right", "top", "bottom"]:
 		text_margin.add_theme_constant_override("margin_" + side, 16)
 	text_margin.add_child(texts)
 	column.add_child(text_margin)
@@ -135,9 +143,7 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.size = Vector2(1200, 50)
-	row.position = Vector2(960 - 600, 200 + CARD_SIZE.y + 20)
-	add_child(row)
+	_layout.add_child(row)
 	for b in buttons:
 		var button := Button.new()
 		button.text = b[0]
@@ -151,12 +157,24 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 			callback.call())
 		row.add_child(button)
 
-	# Pop in
-	_card_panel.scale = Vector2(0.4, 0.4)
+	_layout.resized.connect(_place)
+	_place()
+
+	# Pop in (the whole column: a container would reset a child's scale)
+	_layout.scale = Vector2(0.4, 0.4)
 	modulate.a = 0.0
 	var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(_card_panel, "scale", Vector2.ONE, 0.35)
+	tween.tween_property(_layout, "scale", Vector2.ONE, 0.35)
 	tween.tween_property(self, "modulate:a", 1.0, 0.2)
+
+
+## Centre the column on screen, keeping its bottom above the choice panel.
+func _place() -> void:
+	_layout.reset_size()
+	var s := _layout.size
+	var y := clampf((1080.0 - s.y) / 2.0 - 60.0, 20.0, maxf(20.0, BOTTOM_LIMIT - s.y))
+	_layout.position = Vector2(960.0 - s.x / 2.0, y)
+	_layout.pivot_offset = s / 2.0
 
 
 static func _kind_text(card: Dictionary) -> String:

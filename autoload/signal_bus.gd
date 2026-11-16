@@ -8,7 +8,6 @@ signal _new_game
 signal _start_game
 signal begin_turn
 signal end_turn
-signal _end_game
 
 signal _set_character
 signal _attach_deck
@@ -49,6 +48,8 @@ signal question_answered
 signal equipment_changed
 ## The server asks you to pick: (prompt, options, allow_skip)
 signal choice_requested
+## The server is waiting on these players to choose something: (player ids)
+signal waiting_changed
 ## Public message: (text)
 signal notice
 ## Something only you learn: (title, text)

@@ -7,6 +7,27 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C005 — Clearer match screen: disabled buttons, status line, card popup (2026-11-16)
+- **What:** Attack / End Turn / Use Ability / Reveal grey out when the
+  server would refuse them, with a tooltip saying why (nobody in reach, give
+  your green card first, only on your turn…). A status line above the HUD
+  always says what to do or who everyone is waiting on ("Waiting for Bob to
+  answer your green card", "Waiting for Bob to decide…", "Bob's turn").
+  New public message `MatchNet.waiting_for` (who is choosing, not what).
+  Reach/attack-target rules moved to `data/rules.gd` (`Rules`), used by
+  both server and UI so they can't disagree. Card popup: heading, card and
+  buttons in one centred column, so buttons never cover long card text
+  (checked on every card: lowest edge y=785, above the choice panel). The
+  whole dice area rolls on your turn. Roll/End Turn labels bilingual.
+  Removed the dead `_end_game` signal (game over now sets game_finished).
+- **Why:** User feedback: unclear whose move it was, buttons that did
+  nothing, card text hidden behind buttons, roll only clickable at its edge.
+- **Rejected:** Client-only guesses for "who's deciding" (the client can't
+  know without a message).
+- **Note:** The roll-button "only the border works" report couldn't be
+  reproduced headless (clicks land everywhere on it); making the whole dice
+  area clickable is the likely intent. Ask the user if it persists.
+
 ### C004 — Network & state as a store; game manager split (2026-11-16)
 - **What:** New autoloads `LobbyNet` and `MatchNet` hold every `@rpc`:
   actions (UI calls), requests (server checks the sender), messages (update
