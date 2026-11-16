@@ -21,6 +21,9 @@ var choice_title: Label
 var choice_buttons: HFlowContainer
 ## Values offered by the open choice panel (empty when closed).
 var asked_options := []
+var attack_button: Button
+var reveal_button: Button
+var attack_used_this_turn := false
 var decks := {}  # card type -> CardDeck
 ## Locations you may pick after rolling a 7 (empty when not choosing).
 var choice_options := []
@@ -119,6 +122,40 @@ func _ready():
 	roll_button.hide()
 
 	# Signals are connected, so we're ready for the server's messages.
+	# Attack button, next to End Turn.
+	attack_button = Button.new()
+	attack_button.text = "Attack  ·  Επίθεση"
+	attack_button.position = Vector2(640, 702)
+	attack_button.custom_minimum_size = Vector2(205, 44)
+	attack_button.add_theme_color_override("font_color", Color("ff8a7a"))
+	attack_button.hide()
+	attack_button.pressed.connect(func():
+		attack_used_this_turn = true
+		attack_button.hide()
+		game_manager.request_attack.rpc_id(1))
+	add_child(attack_button)
+
+	# HUD: Use Ability + Reveal.
+	var ability_button: Button = $Hud/PlayerHud/AbilityButton
+	ability_button.text = "Use Ability\nΙκανότητα"
+	ability_button.pressed.connect(func(): game_manager.request_ability.rpc_id(1))
+	reveal_button = Button.new()
+	reveal_button.text = "Reveal · Αποκάλυψη"
+	reveal_button.tooltip_text = "Show everyone your character card. Passive abilities only work once you're revealed."
+	reveal_button.position = ability_button.position + Vector2(0, -44)
+	reveal_button.custom_minimum_size = Vector2(ability_button.size.x, 36)
+	reveal_button.pressed.connect(func(): game_manager.request_reveal.rpc_id(1))
+	ability_button.get_parent().add_child(reveal_button)
+
+	SignalBus.character_revealed.connect(func(pl_id, _c):
+		if pl_id == GameState.local_id:
+			reveal_button.hide())
+	SignalBus.ability_used.connect(func(pl_id):
+		if pl_id == GameState.local_id:
+			ability_button.disabled = GameState.local_player.character.get("timing", "") == "once")
+	SignalBus.attack_happened.connect(_on_attack_happened)
+	SignalBus.game_over.connect(_on_game_over)
+
 	game_manager.report_loaded.rpc_id(1)
 
 
@@ -146,7 +183,10 @@ func _on_end_game():
 
 
 func _on_set_character(_pl_id, character):
-	player_hud.init(character.name, character.species, character.goal, character.ability, character.health, 0)
+	player_hud.init("%s · %s" % [character.name, character.get("name_el", "")], character.species,
+		"%s\n%s" % [character.goal, character.get("goal_el", "")],
+		"%s\n%s" % [character.ability, character.get("ability_el", "")],
+		character.health, GameState.local_player.dmg)
 
 
 # --- Turn flow UI ------------------------------------------------------------
@@ -163,6 +203,8 @@ func _on_end_turn(pl_id):
 		playing_label.hide()
 		roll_button.hide()
 		end_turn_button.hide()
+		attack_button.hide()
+		attack_used_this_turn = false
 		_clear_action_bar()
 
 
@@ -170,6 +212,8 @@ func _on_pawn_moved(pl_id, _location_id):
 	if pl_id == GameState.local_id and GameState.local_player.playing:
 		roll_button.hide()
 		end_turn_button.show()
+		if not attack_used_this_turn:
+			attack_button.show()
 
 
 ## Rolled a 7: light up every other location and wait for a click.
@@ -379,3 +423,66 @@ func _refresh_my_cards() -> void:
 		line.custom_minimum_size = Vector2(panel.size.x - 48, 0)
 		line.add_theme_color_override("font_color", Color(Global.CARD_COLORS[card.deck].color).lightened(0.35))
 		list.add_child(line)
+
+
+# --- Attacks & the end -------------------------------------------------------
+
+func _on_attack_happened(attacker: int, target: int, damage: int) -> void:
+	pawn_layer.play_attack(attacker, target, damage)
+
+
+func _on_game_over(faction: String, winners: Array) -> void:
+	_clear_action_bar()
+	choice_panel.hide()
+	CardView._queue.clear()
+	for child in get_children():
+		if child is CardView:
+			child.close()
+	for node in [roll_button, end_turn_button, attack_button, playing_label]:
+		node.hide()
+
+	var overlay := ColorRect.new()
+	overlay.color = Color(0, 0, 0, 0.7)
+	overlay.size = Vector2(1920, 1080)
+	overlay.z_index = 30
+	add_child(overlay)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 14)
+	column.position = Vector2(460, 170)
+	column.size = Vector2(1000, 0)
+	overlay.add_child(column)
+
+	var headline := Label.new()
+	headline.text = {
+		"vampire": "The vampires win!  ·  Οι βρικόλακες κερδίζουν!",
+		"werewolf": "The werewolves win!  ·  Οι λυκάνθρωποι κερδίζουν!",
+	}.get(faction, "Nobody's side survived.  ·  Καμία πλευρά δεν επέζησε.")
+	headline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	headline.add_theme_font_size_override("font_size", 40)
+	headline.add_theme_color_override("font_color", Color("ffd27a"))
+	column.add_child(headline)
+
+	var me_won := GameState.local_id in winners
+	var verdict := Label.new()
+	verdict.text = "You WIN!  ·  Κέρδισες!" if me_won else "You lose.  ·  Έχασες."
+	verdict.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	verdict.add_theme_font_size_override("font_size", 30)
+	column.add_child(verdict)
+
+	for id in GameState.game_info.players_turn:
+		var p: Dictionary = GameState.players[id]
+		var row := Label.new()
+		row.text = "%s %s — %s (%s)%s" % ["★" if id in winners else "  ", p.name, p.character.get("name", "?"),
+			p.character.get("species", "?"), "  †" if p.dead else ""]
+		row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		row.add_theme_font_size_override("font_size", 24)
+		row.add_theme_color_override("font_color", _player_color(id))
+		column.add_child(row)
+
+	var back := Button.new()
+	back.text = "Back to menu  ·  Μενού"
+	back.custom_minimum_size = Vector2(260, 52)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(func(): SignalBus.leave_match.emit())
+	column.add_child(back)

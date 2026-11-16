@@ -62,3 +62,13 @@ signal pawns_changed
 # Navigation
 signal _return_to_main_menu
 signal _return_to_multiplayer_menu
+
+# Combat & end
+## An attack landed: (attacker_id, target_id, damage)
+signal attack_happened
+## A player used their once-per-game ability: (player_id)
+signal ability_used
+## The game ended: (faction "vampire"/"werewolf"/"none", winner ids)
+signal game_over
+## Leave the finished match and go back to the main menu.
+signal leave_match

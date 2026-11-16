@@ -18,6 +18,7 @@ func _ready()->void :
 	SignalBus.connect("_return_to_main_menu", _on_main_menu)
 	SignalBus.connect("_start_game", _on_start_game)
 	Network.host_disconnected.connect(_on_host_disconnected)
+	SignalBus.leave_match.connect(_on_leave_match)
 	set_main_screen()
 
 
@@ -40,6 +41,13 @@ func _on_start_game(id):
 	main_menu.hide()
 	multiplayer_controller.hide()
 	#create_player.show()
+
+## "Back to menu" after a game: leave the session and return to the menu.
+func _on_leave_match():
+	Network.leave()
+	GameState.reset_session()
+	_on_host_disconnected()
+
 
 func _on_host_disconnected():
 	if play_scene:

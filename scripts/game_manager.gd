@@ -109,6 +109,8 @@ func _decide_turn_order() -> void:
 # --- Turns -------------------------------------------------------------------
 
 func _start_turn() -> void:
+	if game_finished:
+		return
 	var order: Array = GameState.game_info.players_turn
 	# Skip players who are out.
 	var playing_id: int = order[current_turn.turn_count % order.size()]
@@ -122,6 +124,7 @@ func _start_turn() -> void:
 	current_turn.phase = TurnPhase.ROLL
 	current_turn.action_used = false
 	current_turn.pending_question = {}
+	current_turn.attacked = false
 	@warning_ignore("integer_division")
 	GameState.game_info.round = (current_turn.turn_count - 1) / order.size() + 1
 
@@ -607,9 +610,15 @@ func set_damage(player_id: int, damage: int) -> void:
 ## Out of health: the player is out and their card is revealed to everyone.
 func _kill(player_id: int, killer_id: int) -> void:
 	GameState.players[player_id].dead = true
+	GameState.players[player_id].hidden = false
 	reveal_character.rpc(player_id, GameState.players[player_id].character)
 	player_died.rpc(player_id, killer_id)
-	# TODO (step 7): check win conditions.
+	if killer_id != 0 and killer_id != player_id:
+		var kills: Array = GameState.players[killer_id].get("kills", [])
+		kills.append(GameState.players[player_id].character.species)
+		GameState.players[killer_id].kills = kills
+	if _check_win():
+		return
 	# The killer takes one of the dead player's equipment cards.
 	if killer_id != 0 and killer_id != player_id and not GameState.players[player_id].equipment.is_empty() \
 			and not GameState.players[killer_id].dead:
@@ -635,3 +644,252 @@ func player_died(player_id: int, killer_id: int) -> void:
 	if GameState.players.has(player_id):
 		GameState.players[player_id].dead = true
 	SignalBus.player_died.emit(player_id, killer_id)
+
+
+# --- Attacks -----------------------------------------------------------------
+
+## Who `attacker` may attack right now.
+func attack_targets(attacker: int) -> Array:
+	return effects.alive().filter(func(id):
+		return id != attacker and effects.in_reach(attacker, id) \
+			and not GameState.players[id].get("protected", false))
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_attack() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	if not _is_current_player(sender) or current_turn.phase != TurnPhase.ACTION \
+			or current_turn.get("attacked", false) or busy():
+		return
+	var targets := attack_targets(sender)
+	if targets.is_empty():
+		private_info.rpc_id(sender, "Attack  ·  Επίθεση", "Nobody is within reach.")
+		return
+	_busy += 1
+	var target = await ask(sender, "Attack whom?  ·  Σε ποιον επιτίθεσαι;", targets.map(effects._player_option))
+	if target != null:
+		current_turn.attacked = true
+		await _attack(sender, target, true)
+	_busy -= 1
+	_after_resolution()
+
+
+## Roll both dice: the difference is the damage, adjusted by equipment and
+## abilities. `allow_counter` lets the target strike back (Mel).
+func _attack(attacker: int, target: int, allow_counter: bool) -> void:
+	var a: Dictionary = GameState.players[attacker]
+	var character: Dictionary = a.character
+	var mode := "d6" if effects.mods(attacker).get("d6_attack", false) else "difference"
+
+	# Frederick / Gregor: once per game, the damage is one die alone.
+	if character.get("timing", "") == "attack" and not a.get("ability_used", false):
+		var die := "6" if character.ability_id == "d6_attack" else "4"
+		var reveal_note := "\n(This reveals your character.)" if a.hidden else ""
+		var use = await ask(attacker, "%s: use your ability (damage = the d%s alone)?%s" % [character.name, die, reveal_note],
+			[{"value": "use", "label": "Use ability", "color": "c8a85a"}], true)
+		if use == "use":
+			_mark_ability_used(attacker)
+			mode = "d" + die
+
+	var roll := dices_container.throw_dices()
+	dices_container.roll_dices.rpc(roll.val6, roll.val4)
+	await get_tree().create_timer(0.8).timeout
+
+	var dmg := absi(roll.val6 - roll.val4)
+	match mode:
+		"d6":
+			dmg = roll.val6
+		"d4":
+			dmg = roll.val4
+	if dmg > 0:
+		dmg += effects.mods(attacker).get("attack_bonus", 0)
+		if character.get("ability_id", "") == "savage" and not a.hidden:
+			dmg += 1
+	var tm := effects.mods(target)
+	if dmg > 0:
+		dmg = maxi(0, dmg - tm.get("damage_reduction", 0))
+		if tm.has("max_attack_damage"):
+			dmg = mini(dmg, tm.max_attack_damage)
+
+	var t: Dictionary = GameState.players[target]
+	notice.rpc("%s attacks %s: rolled %d and %d → %d damage" % [a.name, t.name, roll.val6, roll.val4, dmg])
+	attack_fx.rpc(attacker, target, dmg)
+	apply_damage(target, dmg, attacker)
+
+	if tm.get("thorns", 0) > 0 and not a.dead:
+		notice.rpc("%s's Rusty Bear Trap snaps!" % t.name)
+		apply_damage(attacker, tm.thorns, target)
+	if dmg > 0 and character.get("ability_id", "") == "lifesteal" and not a.hidden and not a.dead:
+		heal(attacker, 2)
+		notice.rpc("%s drinks: heals 2." % a.name)
+
+	# Mel: strike back (not against the attack that killed her).
+	if allow_counter and not t.dead and not a.dead and not game_finished \
+			and t.character.get("ability_id", "") == "strike_back":
+		var reveal_note := "\n(This reveals your character.)" if t.hidden else ""
+		var back = await ask(target, "%s attacked you. Strike back?%s" % [a.name, reveal_note],
+			[{"value": "yes", "label": "Strike back", "color": "e8402e"}], true)
+		if back == "yes":
+			if t.hidden:
+				_reveal(target)
+			await _attack(target, attacker, false)
+
+
+## Everyone: play the attack animation.
+@rpc("authority", "call_local", "reliable")
+func attack_fx(attacker: int, target: int, damage: int) -> void:
+	SignalBus.attack_happened.emit(attacker, target, damage)
+
+
+# --- Revealing & abilities ---------------------------------------------------
+
+@rpc("any_peer", "call_local", "reliable")
+func request_reveal() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	var p: Dictionary = GameState.players.get(sender, {})
+	if p.is_empty() or p.dead or not p.hidden:
+		return
+	_reveal(sender)
+
+
+func _reveal(player_id: int) -> void:
+	var p: Dictionary = GameState.players[player_id]
+	p.hidden = false
+	reveal_character.rpc(player_id, p.character)
+	notice.rpc("%s reveals: %s the %s!" % [p.name, p.character.name, p.character.species])
+
+
+func _mark_ability_used(player_id: int) -> void:
+	GameState.players[player_id].ability_used = true
+	if GameState.players[player_id].hidden:
+		_reveal(player_id)
+	ability_used.rpc(player_id)
+
+
+@rpc("authority", "call_local", "reliable")
+func ability_used(player_id: int) -> void:
+	if GameState.players.has(player_id):
+		GameState.players[player_id].ability_used = true
+	SignalBus.ability_used.emit(player_id)
+
+
+## The HUD's Use Ability button.
+@rpc("any_peer", "call_local", "reliable")
+func request_ability() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	var p: Dictionary = GameState.players.get(sender, {})
+	if p.is_empty() or p.dead or busy() or game_finished:
+		return
+	var character: Dictionary = p.character
+	match character.get("timing", ""):
+		"passive":
+			if p.hidden:
+				_reveal(sender)  # passive abilities work once you're revealed
+			return
+		"attack":
+			private_info.rpc_id(sender, character.name, "You'll be offered your ability when you attack.")
+			return
+		"reactive":
+			private_info.rpc_id(sender, character.name, "You'll be offered your ability when you're attacked.")
+			return
+	if p.get("ability_used", false):
+		private_info.rpc_id(sender, character.name, "You've already used your ability.")
+		return
+	if character.ability_id != "switch_side" and not _is_current_player(sender):
+		private_info.rpc_id(sender, character.name, "You can only use this on your turn.")
+		return
+
+	_busy += 1
+	var completed := true
+	match character.ability_id:
+		"full_heal":
+			heal(sender, p.dmg)
+		"switch_side":
+			p.hope_side = "left"
+			private_info.rpc_id(sender, character.name, "You now back the player on your LEFT.")
+		"peek":
+			completed = await effects.run({"name": character.name, "effect": [{"do": "peek_character"}]}, {"actor": sender})
+		"heal_other":
+			completed = await effects.run({"name": character.name,
+				"effect": [{"do": "heal", "amount": 3, "target": "chosen_any"}]}, {"actor": sender})
+		"drain":
+			completed = await effects.run({"name": character.name, "effect": [
+				{"do": "damage", "amount": 1, "target": "chosen_in_reach"},
+				{"do": "heal", "amount": 1, "target": "self"}]}, {"actor": sender})
+	if completed:
+		_mark_ability_used(sender)
+	_busy -= 1
+	_after_resolution()
+
+
+# --- Winning -----------------------------------------------------------------
+
+## Ends the game when one side is wiped out. Returns true if it ended.
+func _check_win() -> bool:
+	if game_finished:
+		return true
+	var total := {"vampire": 0, "werewolf": 0}
+	var alive := {"vampire": 0, "werewolf": 0}
+	for p in GameState.players.values():
+		var s: String = p.character.get("species", "")
+		if total.has(s):
+			total[s] += 1
+			if not p.dead:
+				alive[s] += 1
+	var faction := ""
+	if total.werewolf > 0 and alive.werewolf == 0:
+		faction = "vampire"
+	if total.vampire > 0 and alive.vampire == 0:
+		faction = "werewolf" if faction == "" else "none"  # both gone at once
+	if faction == "":
+		return false
+
+	game_finished = true
+	var winners := []
+	for id in GameState.players:
+		if _goal_met(id, alive, []):
+			winners.append(id)
+	var characters := {}
+	for id in GameState.players:
+		characters[id] = GameState.players[id].character
+	game_over.rpc(faction, winners, characters)
+	return true
+
+
+func _goal_met(id: int, alive: Dictionary, visited: Array) -> bool:
+	var p: Dictionary = GameState.players[id]
+	match p.character.get("goal_id", ""):
+		"no_werewolves":
+			return alive.werewolf == 0
+		"no_vampires":
+			return alive.vampire == 0
+		"survive":
+			return not p.dead
+		"hunter":
+			var kills: Array = p.get("kills", [])
+			return "vampire" in kills or "werewolf" in kills
+		"neighbour_wins":
+			# Right = the player after you in turn order; left = before you.
+			var order: Array = GameState.game_info.players_turn
+			var step := -1 if p.get("hope_side", "right") == "left" else 1
+			var neighbour: int = order[(order.find(id) + step + order.size()) % order.size()]
+			if neighbour == id or neighbour in visited:
+				return false
+			return _goal_met(neighbour, alive, visited + [id])
+	return false
+
+
+@rpc("authority", "call_local", "reliable")
+func game_over(faction: String, winners: Array, characters: Dictionary) -> void:
+	game_finished = true
+	for id in characters:
+		if GameState.players.has(id):
+			GameState.players[id].character = characters[id]
+			GameState.players[id].hidden = false
+	SignalBus.game_over.emit(faction, winners)

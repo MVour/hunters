@@ -47,6 +47,7 @@ func _on_player_died(player_id: int, _killer_id: int) -> void:
 	if not pawns.has(player_id):
 		return
 	var pawn: Sprite2D = pawns[player_id]
+	await get_tree().create_timer(0.6).timeout  # let a hit flash finish first
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(pawn, "rotation_degrees", 90.0, 0.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	tween.tween_property(pawn, "modulate", Color(0.45, 0.45, 0.5, 0.85), 0.4)
@@ -106,3 +107,41 @@ func _hop(pawn: Sprite2D, target: Vector2) -> void:
 		0.0, 1.0, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(pawn, "scale", Vector2(base.x * 1.2, base.y * 0.8), 0.07)
 	tween.tween_property(pawn, "scale", base, 0.12)
+
+
+## Attacker lunges at the target; the target shakes, flashes red and a
+## damage number floats up.
+func play_attack(attacker: int, target: int, damage: int) -> void:
+	if not pawns.has(attacker) or not pawns.has(target):
+		return
+	var a: Sprite2D = pawns[attacker]
+	var t: Sprite2D = pawns[target]
+	var home := a.position
+	var toward := home + (t.position - home).limit_length(60.0)
+	var lunge := create_tween()
+	lunge.tween_property(a, "position", toward, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	lunge.tween_property(a, "position", home, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+	await get_tree().create_timer(0.15).timeout
+	var base := t.position
+	var shake := create_tween()
+	for i in 4:
+		shake.tween_property(t, "position", base + Vector2(6 if i % 2 == 0 else -6, 0), 0.04)
+	shake.tween_property(t, "position", base, 0.04)
+	if damage > 0:
+		t.modulate = Color(2.0, 0.5, 0.5)
+		create_tween().tween_property(t, "modulate", Color.WHITE, 0.4)
+
+	var label := Label.new()
+	label.text = "-%d" % damage if damage > 0 else "miss"
+	label.add_theme_font_size_override("font_size", 30)
+	label.add_theme_color_override("font_color", Color("ff5a4a") if damage > 0 else Color(0.85, 0.85, 0.85))
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 8)
+	label.position = base + Vector2(-20, -90)
+	label.z_index = 20
+	add_child(label)
+	var rise := create_tween().set_parallel(true)
+	rise.tween_property(label, "position:y", label.position.y - 50, 0.9)
+	rise.tween_property(label, "modulate:a", 0.0, 0.9).set_delay(0.4)
+	rise.chain().tween_callback(label.queue_free)

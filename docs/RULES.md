@@ -61,3 +61,40 @@ Shuffled around the board every game.
 - They must reveal their character card (if they haven't already).
 - The player who killed them takes **one equipment card** from the dead
   character.
+
+## Characters (Χαρακτήρες)
+
+Data with English + Greek texts: `scripts/characters.gd`.
+
+| Side | Character | Health | Ability | Goal |
+|------|-----------|--------|---------|------|
+| Vampire | Volco · Βόλκο | 13 | *Passive:* heal 2 whenever your attack deals damage | No werewolves left standing |
+| Vampire | Mel · Μελ | 14 | *When attacked:* strike back right away (not against the attack that kills you) | No werewolves left standing |
+| Vampire | Selene · Σελήνη | 11 | *Once, your turn:* deal 1 damage to a player within reach, heal 1 | No werewolves left standing |
+| Werewolf | Frederick · Φρειδερίκος | 12 | *Once, when attacking:* the damage is the d6 alone | No vampires left standing |
+| Werewolf | Gregor · Γρηγόρης | 14 | *Once, when attacking:* the damage is the d4 alone | No vampires left standing |
+| Werewolf | Bran · Μπραν | 13 | *Passive:* your attacks deal +1 damage | No vampires left standing |
+| Human | Ada · Άντα | 8 | *Once, your turn:* heal all your damage | Survive until the end |
+| Human | Hope · Ελπίδα | 8 | *Once, any time:* switch from backing the player on your right to the one on your left | Win if the player on your right wins |
+| Human | Elias · Ηλίας | 10 | *Once, your turn:* secretly look at another player's character | Kill a vampire or a werewolf |
+| Human | Iris · Ίρις | 9 | *Once, your turn:* heal 3 damage on any player | Survive until the end |
+
+- **Abilities need a revealed card.** Using one reveals you. Passive
+  abilities only work once you're revealed (the HUD has a Reveal button).
+- **Right / left** (for Hope): the player on your right is the one who
+  plays **after** you; the player on your left plays **before** you.
+
+## Taking your turn (as built)
+
+1. **Roll** — move to a new location (or choose, on a 7).
+2. **Location action** — draw, Magic Forest, Stone Circle, or skip.
+3. **Attack** (optional, once) — pick a player within reach. Equipment
+   modifies the damage: +damage, d6 only, −1, at most 3, or hitting back.
+4. **End turn.**
+
+## End of the game
+
+- The game ends when **all vampires** or **all werewolves** are dead.
+- Then everyone checks their own goal: vampires/werewolves win as a side
+  (dead members too), humans by their personal goal. Every character is
+  revealed on the end screen.

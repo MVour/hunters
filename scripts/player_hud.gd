@@ -19,6 +19,11 @@ func init(pl_name, species, goal, ability, health, damage):
 	player_scpecies.text = species
 	player_goal.text = goal
 	player_ability.text = ability
+	for label in [player_goal, player_ability]:
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.clip_text = true
+		label.add_theme_font_size_override("font_size", 13)
+		label.add_theme_color_override("font_color", Color(0.95, 0.82, 0.78))
 	player_health.text = str(health)
 	player_damage.text = str(damage)
 

@@ -62,19 +62,11 @@ const SPECIES := {
 
 
 var deck = {
+	# Character data lives in scripts/characters.gd.
 	"characters": {
-		"humans" : [
-			{"id": "h1", "species": "human", "name": "Ada", "health": 8, "ability_code": "G:H/++", "ability": "Once per game can restore full health", "goal": "Survive until the end."},
-			{"id": "h2", "species": "human", "name": "Hope", "health": 8, "ability_code": "G:W/LP", "ability": "Once per game can change the winning condition: from supporting the right player, to supporting the left player", "goal": "Wins if the player on the RIGHT wins"},
-		],
-		"vampires": [
-			{"id": "v1", "species": "vampire", "name": "Volco", "health": 13, "ability_code": "A:H/+2", "ability": "Heal +2 when you successfully attack!", "goal": "No werewolves standing" },
-			{"id": "v2", "species": "vampire", "name": "Mel", "health": 14, "ability_code": "D:A", "ability": "When attacked you can return the attack! (Can be used even when it's not your turn. Can't return the attack that killed you)", "goal": "No werewolves standing"}
-		],
-		"werewolves": [
-			{"id": "w1", "species": "werewolf", "name": "Frederick", "health": 12, "ability_code": "G:A/6Z", "ability": "Once per game can choose to attack with the 6 sided dice.", "goal": "No vampires standing"},
-			{"id": "w2", "species": "werewolf", "name": "Gregor", "health": 14, "ability_code": "G:A/4Z", "ability": "Once per game can choose to attack with the 4 sided dice.", "goal": "No vampires standing"}
-		]
+		"humans" : Characters.HUMANS.duplicate(true),
+		"vampires": Characters.VAMPIRES.duplicate(true),
+		"werewolves": Characters.WEREWOLVES.duplicate(true),
 	},
 	## Shuffled around the board every game. "rolls" = the dice totals
 	## (d6 + d4) that send you here; "action" keys into LOCATION_ACTIONS.

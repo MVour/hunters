@@ -72,13 +72,15 @@ func _card_title(ctx: Dictionary) -> String:
 
 # --- Running effects ---------------------------------------------------------
 
-func run(card: Dictionary, ctx: Dictionary) -> void:
+## Returns false if it stopped early (no target, or the player backed out).
+func run(card: Dictionary, ctx: Dictionary) -> bool:
 	ctx.card = card
 	ctx.chosen = {}
 	for step in card.get("effect", []):
 		var keep_going: bool = await _step(step, ctx)
 		if not keep_going:
-			break
+			return false
+	return true
 
 
 ## Returns false to stop the rest of the effect (e.g. no valid target).
