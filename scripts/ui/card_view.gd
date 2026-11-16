@@ -111,10 +111,24 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text.custom_minimum_size = Vector2(CARD_SIZE.x - 40, 0)
 	text.add_theme_font_size_override("font_size", 20)
+	text.add_theme_font_size_override("font_size", 18)
+
+	var text_el := Label.new()
+	text_el.text = card.get("text_el", "")
+	text_el.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text_el.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	text_el.custom_minimum_size = Vector2(CARD_SIZE.x - 40, 0)
+	text_el.add_theme_font_size_override("font_size", 16)
+	text_el.add_theme_color_override("font_color", Color(0.72, 0.74, 0.8))
+
+	var texts := VBoxContainer.new()
+	texts.add_theme_constant_override("separation", 10)
+	texts.add_child(text)
+	texts.add_child(text_el)
 	var text_margin := MarginContainer.new()
 	for side in ["left", "right", "top"]:
 		text_margin.add_theme_constant_override("margin_" + side, 16)
-	text_margin.add_child(text)
+	text_margin.add_child(texts)
 	column.add_child(text_margin)
 
 	# Buttons under the card

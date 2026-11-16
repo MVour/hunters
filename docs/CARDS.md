@@ -1,7 +1,8 @@
 # Cards
 
 The card set, following the rules in RULES.md. Each card has an English
-and a Greek name. The data lives in `scripts/cards.gd`; keep the two in
+and a Greek name and description (the Greek texts live in `scripts/cards.gd`,
+as `name_el` / `text_el`). Keep this file and the data in
 sync when editing.
 
 - **Green (Πράσινες): questions.** The drawer reads it secretly and gives
