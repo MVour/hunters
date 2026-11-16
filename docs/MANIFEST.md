@@ -90,3 +90,4 @@ Kept in docs/FOLDER_STRUCTURE.md (one place only).
 | docs/RULES.md | Task touches game rules | Rules change in code |
 | docs/CARDS.md | Task touches cards | A card is added/changed/removed |
 | docs/FOLDER_STRUCTURE.md | If task touches unfamiliar code | Folder purpose changes, or a key-file-roles-table file moves/renames |
+| i18n/strings.csv (not a doc, but always in sync) | Task adds or changes any player-facing text | Same edit as the code: add the key with en + el; remove keys no longer used. `tools/check_project` enforces it |

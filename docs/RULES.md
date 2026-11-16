@@ -29,15 +29,18 @@ Greek notes; where something isn't decided yet it says so.
 
 Shuffled around the board every game.
 
-| Location      | Dice   | Action                                                        |
-|---------------|--------|---------------------------------------------------------------|
-| Lone Cabin    | 2, 3   | Draw a green card                                             |
-| Widow's River | 4, 5   | Draw a card of any colour                                     |
-| Old Chapel    | 6      | Draw a blue card                                              |
-| *(any)*       | 7      | Move to any other location                                    |
-| Cemetery      | 8      | Draw a red card                                               |
-| Magic Forest  | 9      | Heal 1 on any player (yourself included), or deal 2 damage    |
-| Stone Circle  | 10     | Steal an equipment card from any player                       |
+| Location | Dice | Action |
+|---|---|---|
+| Lone Cabin · Μοναχική Καλύβα | 2, 3 | Draw a green card |
+| Widow's River · Ποτάμι της Χήρας | 4, 5 | Draw a card of any colour |
+| Old Chapel · Παλιό Παρεκκλήσι | 6 | Draw a blue card |
+| *(any)* | 7 | Move to any other location |
+| Cemetery · Νεκροταφείο | 8 | Draw a red card |
+| Magic Forest · Μαγικό Δάσος | 9 | Heal 1 on any player (yourself included), or deal 2 damage |
+| Stone Circle · Πέτρινος Κύκλος | 10 | Steal an equipment card from any player |
+
+Names and action texts in both languages live in `autoload/global.gd`
+(`deck.locations` `label` / `label_el`, `LOCATION_ACTIONS` `text` / `text_el`).
 
 ## Cards
 
