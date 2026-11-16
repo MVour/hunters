@@ -16,7 +16,7 @@ const PORT := 18080            # not the default, so a running game is left alon
 
 var role := ""
 var stats := {"turns": 0, "my_turns": 0, "moves": 0, "cards": 0, "choices": 0,
-	"questions": 0, "attacks": 0, "deaths": 0}
+	"questions": 0, "attacks": 0, "deaths": 0, "ui_picks": 0}
 var _last_progress := 0
 var _my_turn := false
 var _done := false
@@ -88,6 +88,9 @@ func _connect_signals() -> void:
 	SignalBus.choice_requested.connect(func(_prompt, options, _skip):
 		stats.choices += 1
 		await _think()
+		# --ui: pick players by clicking them on the list / the board, like a person.
+		if _ui_mode() and await _click_pick():
+			return
 		MatchNet.choose(options[randi() % options.size()].value))
 	SignalBus.question_drawn.connect(_on_question_drawn)
 	SignalBus.question_asked.connect(func(_from, _card):
@@ -144,10 +147,71 @@ func _on_location_action(action: String) -> void:
 
 func _on_question_drawn(_card: Dictionary) -> void:
 	await _think()
+	if _ui_mode():
+		# Press "Choose who to ask" on the card, then click a player.
+		await get_tree().process_frame
+		var button := _find_button(get_tree().root, "Choose who to ask")
+		if button:
+			button.pressed.emit()
+			if await _click_pick():
+				return
 	for id in GameState.game_info.players_turn:
 		if id != GameState.local_id and not GameState.players[id].dead:
 			MatchNet.give_question(id)
 			return
+
+
+# --- Clicking the screen (--ui) -----------------------------------------------
+
+func _ui_mode() -> bool:
+	return "--ui" in OS.get_cmdline_user_args()
+
+
+## If the screen is in "pick a player" mode, click a highlighted player:
+## alternately their row in the list and their pawn on the board.
+## Returns true if it clicked (and the screen took it).
+func _click_pick() -> bool:
+	await get_tree().process_frame
+	var scene := get_tree().root.find_child("PlayScene", true, false)
+	if scene == null or scene.pick_ids.is_empty():
+		return false
+	var id: int = scene.pick_ids[randi() % scene.pick_ids.size()]
+	var target: Control
+	var on_board: bool = stats.ui_picks % 2 == 1
+	if on_board:
+		target = scene.pawn_layer._pick_areas[id]
+	else:
+		target = scene.player_list._rows[id]._card
+	var centre: Vector2 = target.get_global_transform_with_canvas() * (target.size / 2.0)
+	for pressed in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.position = centre
+		e.global_position = centre
+		get_viewport().push_input(e)
+		await get_tree().process_frame
+	if not scene.pick_ids.is_empty():
+		var motion := InputEventMouseMotion.new()
+		motion.position = centre
+		motion.global_position = centre
+		get_viewport().push_input(motion)
+		await get_tree().process_frame
+		var under: Control = get_viewport().gui_get_hovered_control()
+		_finish(false, "clicked %s of player %d at %s but the pick didn't register; under the mouse: %s" % ["pawn" if on_board else "row", id, centre, under.get_path() if under else "nothing"])
+		return true
+	stats.ui_picks += 1
+	return true
+
+
+func _find_button(node: Node, text_start: String) -> Button:
+	if node is Button and node.visible and (node as Button).text.begins_with(text_start):
+		return node
+	for child in node.get_children():
+		var found := _find_button(child, text_start)
+		if found:
+			return found
+	return null
 
 
 # --- Helpers ------------------------------------------------------------------

@@ -18,10 +18,10 @@ func _walk(dir_path: String) -> void:
 	if dir == null:
 		return
 	for sub in dir.get_directories():
-		if not sub.begins_with(".") and sub != "tools":
+		if not sub.begins_with("."):
 			_walk(dir_path.path_join(sub))
 	for f in dir.get_files():
-		if f.get_extension() in ["gd", "tscn", "tres"]:
+		if f.get_extension() in ["gd", "tscn", "tres"] and not f.begins_with("check_project"):
 			_check(dir_path.path_join(f))
 
 

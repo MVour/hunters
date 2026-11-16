@@ -1,0 +1,198 @@
+class_name PlayerRow extends VBoxContainer
+## One player in the PlayerList: play-order number, pawn, name, what's
+## known of their character, damage, equipment; an arrow opens a drawer with
+## the details. Pure view: rebuilt from GameState by refresh().
+## While picking (attack, card targets…) the row can be clickable.
+
+signal picked(player_id: int)
+
+const C_BG := Color(0.05, 0.06, 0.09, 0.86)
+const C_CURRENT := Color("e8c060")
+const C_PICK := Color("ff7a5a")
+
+var player_id := 0
+var order_number := 0
+
+var _card: PanelContainer
+var _style: StyleBoxFlat
+var _number: Label
+var _pawn: TextureRect
+var _name: Label
+var _info: Label
+var _arrow: Button
+var _drawer: PanelContainer
+var _drawer_text: RichTextLabel
+var _pickable := false
+var _picking := false   # some pick is going on (others dim)
+var _pulse: Tween
+
+
+func _init(id: int, number: int) -> void:
+	player_id = id
+	order_number = number
+	add_theme_constant_override("separation", 2)
+
+	_card = PanelContainer.new()
+	_style = StyleBoxFlat.new()
+	_style.bg_color = C_BG
+	_style.set_corner_radius_all(8)
+	_style.set_border_width_all(2)
+	_style.border_color = Color(1, 1, 1, 0.08)
+	_style.content_margin_left = 6
+	_style.content_margin_right = 4
+	_style.content_margin_top = 4
+	_style.content_margin_bottom = 4
+	_card.add_theme_stylebox_override("panel", _style)
+	_card.gui_input.connect(_on_card_input)
+	add_child(_card)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_card.add_child(row)
+
+	_number = Label.new()
+	_number.text = str(number)
+	_number.custom_minimum_size = Vector2(18, 0)
+	_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_number.add_theme_font_size_override("font_size", 15)
+	_number.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+	row.add_child(_number)
+
+	_pawn = TextureRect.new()
+	_pawn.custom_minimum_size = Vector2(36, 36)
+	_pawn.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_pawn.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_pawn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_pawn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_pawn)
+
+	var texts := VBoxContainer.new()
+	texts.add_theme_constant_override("separation", -2)
+	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(texts)
+	_name = Label.new()
+	_name.add_theme_font_size_override("font_size", 17)
+	_name.clip_text = true
+	texts.add_child(_name)
+	_info = Label.new()
+	_info.add_theme_font_size_override("font_size", 13)
+	_info.add_theme_color_override("font_color", Color(0.78, 0.78, 0.84))
+	_info.clip_text = true
+	texts.add_child(_info)
+
+	_arrow = Button.new()
+	_arrow.text = "▸"
+	_arrow.flat = true
+	_arrow.tooltip_text = "Details  ·  Λεπτομέρειες"
+	_arrow.custom_minimum_size = Vector2(28, 0)
+	_arrow.add_theme_font_size_override("font_size", 18)
+	_arrow.pressed.connect(toggle_drawer)
+	row.add_child(_arrow)
+
+	_drawer = PanelContainer.new()
+	var drawer_style := StyleBoxFlat.new()
+	drawer_style.bg_color = Color(0.03, 0.035, 0.05, 0.92)
+	drawer_style.set_corner_radius_all(6)
+	drawer_style.set_content_margin_all(8)
+	_drawer.add_theme_stylebox_override("panel", drawer_style)
+	_drawer.hide()
+	add_child(_drawer)
+	_drawer_text = RichTextLabel.new()
+	_drawer_text.bbcode_enabled = true
+	_drawer_text.fit_content = true
+	_drawer_text.scroll_active = false
+	_drawer_text.add_theme_font_size_override("normal_font_size", 13)
+	_drawer_text.add_theme_font_size_override("bold_font_size", 14)
+	_drawer.add_child(_drawer_text)
+
+
+func toggle_drawer() -> void:
+	_drawer.visible = not _drawer.visible
+	_arrow.text = "▾" if _drawer.visible else "▸"
+	refresh()
+
+
+## Redraw from GameState.
+func refresh() -> void:
+	var p: Dictionary = GameState.players.get(player_id, {})
+	if p.is_empty():
+		return
+	var me := player_id == GameState.local_id
+	var pawn_info: Dictionary = Global.pawns.get(p.pawn, {})
+	_pawn.texture = pawn_info.get("sprite")
+	_name.text = p.name + ("  (you · εσύ)" if me else "")
+	_name.add_theme_color_override("font_color", Color(pawn_info.get("hex", "ffffff")).lightened(0.25))
+
+	var character: Dictionary = p.get("character", {})
+	var known: bool = not character.is_empty() and (me or not p.hidden)
+	var parts := []
+	if p.dead:
+		parts.append("† out · εκτός")
+	parts.append("%s %s" % [character.get("species", "?"), character.get("name", "")] if known else "?????")
+	var health := " / %d" % character.health if known and character.has("health") else ""
+	parts.append("dmg %d%s" % [p.dmg, health])
+	if not p.equipment.is_empty():
+		parts.append("eq %d" % p.equipment.size())
+	if p.get("protected", false):
+		parts.append("shield · ασπίδα")
+	_info.text = "  ·  ".join(parts)
+
+	var current: bool = p.get("playing", false)
+	_style.border_color = C_CURRENT if current else Color(1, 1, 1, 0.08)
+	_style.bg_color = C_BG.lightened(0.12) if current else C_BG
+	_number.add_theme_color_override("font_color", C_CURRENT if current else Color(0.7, 0.7, 0.75))
+	if _pickable:
+		_style.border_color = C_PICK
+	modulate = Color(0.55, 0.55, 0.6) if p.dead or (_picking and not _pickable) else Color.WHITE
+
+	if _drawer.visible:
+		_drawer_text.text = _details(p, known, character)
+
+
+func _details(p: Dictionary, known: bool, character: Dictionary) -> String:
+	var lines := []
+	if known:
+		lines.append("[b]%s · %s[/b] — %s — %d health · ζωή" % [character.get("name", "?"),
+			character.get("name_el", ""), character.get("species", "?"), character.get("health", 0)])
+		if character.has("goal"):
+			lines.append("[color=#e8c060]Goal · Στόχος:[/color] %s\n[color=#aab]%s[/color]" % [character.goal, character.get("goal_el", "")])
+		if character.has("ability"):
+			lines.append("[color=#e8c060]Ability · Ικανότητα:[/color] %s\n[color=#aab]%s[/color]" % [character.ability, character.get("ability_el", "")])
+	else:
+		lines.append("[i]Hidden character  ·  Κρυφός χαρακτήρας[/i]")
+	var loc := GameState.location_index(p.location)
+	lines.append("[color=#9aa]At · Στο:[/color] %s" % (GameState.locations[loc].label if loc != -1 else "the campfire · φωτιά"))
+	if p.equipment.is_empty():
+		lines.append("[color=#9aa]No equipment · Κανένας εξοπλισμός[/color]")
+	for card in p.equipment:
+		var color: String = Global.CARD_COLORS.get(card.get("deck", ""), {}).get("color", "ffffff")
+		lines.append("[color=#%s][b]%s[/b][/color] — %s" % [Color(color).lightened(0.35).to_html(false), card.name, card.get("text", "")])
+	return "\n".join(lines)
+
+
+## Picking mode: `on` = this row can be clicked; `picking` = a pick is
+## going on (rows that can't be picked dim).
+func set_pick_state(on: bool, picking: bool) -> void:
+	_pickable = on
+	_picking = picking
+	_card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if on else Control.CURSOR_ARROW
+	if _pulse:
+		_pulse.kill()
+		_pulse = null
+	_card.modulate = Color.WHITE
+	if on:
+		_pulse = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
+		_pulse.tween_property(_card, "modulate", Color(1.35, 1.2, 1.1), 0.45)
+		_pulse.tween_property(_card, "modulate", Color.WHITE, 0.45)
+	refresh()
+
+
+func _on_card_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _pickable:
+			picked.emit(player_id)
+		else:
+			toggle_drawer()

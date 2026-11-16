@@ -1,7 +1,6 @@
 class_name PlayScene extends Node2D
 
 @onready var damage_board: DamageBoard = $DamageBoard
-@onready var players_slots: Node2D = $PlayersSlots
 @onready var player_hud: PlayerHud = $Hud/PlayerHud
 @onready var decks_container: HBoxContainer = $DecksContainer
 @onready var deck_scn : PackedScene = preload("res://match/cards/card_deck.tscn")
@@ -35,6 +34,11 @@ var question_waiting_on := 0
 var question_from := 0
 ## One line at the bottom: what's happening and who we're waiting on.
 var status_label: Label
+## Everyone, down the left edge (replaces the old seats around the board).
+var player_list: PlayerList
+## Players you may pick right now (attack, card target…); [] when not picking.
+var pick_ids := []
+var _pick_callback: Callable
 var _refresh_queued := false
 var decks := {}  # card type -> CardDeck
 ## Locations you may pick after rolling a 7 (empty when not choosing).
@@ -65,7 +69,13 @@ func _ready():
 		forest.process_mode = Node.PROCESS_MODE_DISABLED
 
 	# Life track down the left edge.
-	damage_board.position = Vector2(8, 192)
+	# Players down the left edge; the life track on the right.
+	player_list = PlayerList.new()
+	player_list.position = Vector2(8, 12)
+	player_list.z_index = 4
+	add_child(player_list)
+	player_list.player_picked.connect(_on_player_picked)
+	damage_board.dock_right(Vector2(1912, 292))
 
 	# Pawns draw above the locations, below the HUD.
 	pawn_layer = PawnLayer.new()
@@ -203,6 +213,7 @@ func _ready():
 func _on_set_locations(_locations):
 	game_map.locations_spawn()
 	pawn_layer.setup(game_map, GameState.players)
+	pawn_layer.player_picked.connect(_on_player_picked)
 	damage_board.show_players(GameState.players)
 
 
@@ -292,7 +303,11 @@ func _refresh_buttons() -> void:
 		or not choice_options.is_empty() or not others_deciding.is_empty()
 	var wait_reason := _status_text(my_turn)
 
-	attack_button.visible = my_turn and moved_this_turn and not attack_used_this_turn
+	# While picking a player, turn buttons step aside: they sit over the bottom
+	# of the board, where pawns can be the ones to click.
+	var picking := not pick_ids.is_empty()
+	action_bar.visible = not picking
+	attack_button.visible = my_turn and moved_this_turn and not attack_used_this_turn and not picking
 	if attack_button.visible:
 		var targets := Rules.attack_targets(GameState.players, GameState.locations,
 			GameState.game_info.players_turn, GameState.local_id)
@@ -302,7 +317,7 @@ func _refresh_buttons() -> void:
 			_set_enabled(attack_button, not targets.is_empty(),
 				"Nobody is within reach.  ·  Κανείς δεν είναι κοντά.")
 
-	end_turn_button.visible = my_turn and moved_this_turn
+	end_turn_button.visible = my_turn and moved_this_turn and not picking
 	_set_enabled(end_turn_button, not waiting, wait_reason)
 
 	var ability_button: Button = $Hud/PlayerHud/AbilityButton
@@ -322,6 +337,8 @@ func _status_text(my_turn: bool) -> String:
 		return "Give your green card to someone: click a name under the card.  ·  Δώσε την πράσινη κάρτα."
 	if question_from != 0:
 		return "%s gave you a green card: click Answer.  ·  Απάντησε στην πράσινη κάρτα." % _player_name(question_from)
+	if not pick_ids.is_empty():
+		return "Pick a player: click them on the list or on the board.  ·  Διάλεξε παίκτη."
 	if server_choice_open:
 		return "Make your choice below.  ·  Διάλεξε παρακάτω."
 	if not choice_options.is_empty():
@@ -455,15 +472,14 @@ func _on_deck_count_changed(card_type: String, count: int) -> void:
 ## You drew a green question: read it, then pick who to ask.
 func _on_question_drawn(card: Dictionary) -> void:
 	question_to_give = true
-	var buttons := []
-	for id in GameState.game_info.players_turn:
-		var player: Dictionary = GameState.players[id]
-		if id != GameState.local_id and not player.dead:
-			buttons.append([player.name, func():
+	var others: Array = GameState.game_info.players_turn.filter(func(id):
+		return id != GameState.local_id and not GameState.players[id].dead)
+	CardView.open(self, card, "Your question. Read it, then choose who to ask.  ·  Σε ποιον τη δίνεις;",
+		[["Choose who to ask  ·  Διάλεξε", func():
+			_start_pick("Who do you ask?  ·  Σε ποιον τη δίνεις;", others, false, func(id):
 				question_to_give = false
 				_queue_refresh()
-				MatchNet.give_question(id), _player_color(id)])
-	CardView.open(self, card, "Your question. Who do you ask?  ·  Σε ποιον τη δίνεις;", buttons)
+				MatchNet.give_question(id))]])
 
 
 ## Someone asked you a question.
@@ -500,7 +516,9 @@ func _on_card_drawn_secretly(pl_id: int, card_type: String) -> void:
 ## Red/blue cards are read aloud: everyone sees them.
 func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
 	var who := "You" if pl_id == GameState.local_id else _player_name(pl_id)
-	CardView.open(self, card, "%s drew:" % who, [["OK", func(): pass]])
+	var view := CardView.open(self, card, "%s drew:" % who, [["OK", func(): pass]])
+	if view and not pick_ids.is_empty():
+		view.make_passive()  # don't block the player who's picking someone
 
 
 # --- Choices & private info --------------------------------------------------
@@ -509,10 +527,66 @@ func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
 func _on_choice_requested(prompt: String, options: Array, allow_skip: bool) -> void:
 	server_choice_open = true
 	_queue_refresh()
-	_open_choice(prompt, options, allow_skip, func(value):
+	var answer := func(value):
 		server_choice_open = false
 		_queue_refresh()
-		MatchNet.choose(value))
+		MatchNet.choose(value)
+	# Picking a player: click them on the list or the board, not a button.
+	var ids := _player_ids_in(options)
+	if not ids.is_empty():
+		_start_pick(prompt, ids, allow_skip, answer)
+	else:
+		_open_choice(prompt, options, allow_skip, answer)
+
+
+## The player ids if every option is a player, else [].
+func _player_ids_in(options: Array) -> Array:
+	var ids := []
+	for option in options:
+		var value = option.value
+		if not (value is int and GameState.players.has(value)):
+			return []
+		ids.append(value)
+	return ids
+
+
+## Let the player pick one of `ids` on the player list or on the board.
+## The choice panel only shows the prompt (and Skip, if allowed).
+func _start_pick(prompt: String, ids: Array, allow_skip: bool, on_pick: Callable) -> void:
+	pick_ids = ids
+	_pick_callback = on_pick
+	_passivate_cards()
+	player_list.set_pickable(ids)
+	pawn_layer.set_pickable(ids)
+	var hint := "Click a highlighted player, on the list or on the board.  ·  Κάνε κλικ σε έναν παίκτη."
+	_open_choice("%s\n%s" % [prompt, hint], [], allow_skip, func(value):
+		_end_pick()
+		on_pick.call(value))
+	_queue_refresh()
+
+
+## Open card popups move aside so the list and the board can be clicked.
+func _passivate_cards() -> void:
+	for child in get_children():
+		if child is CardView:
+			child.make_passive()
+
+
+func _on_player_picked(id: int) -> void:
+	if not id in pick_ids:
+		return
+	var callback := _pick_callback
+	choice_panel.hide()
+	_end_pick()
+	callback.call(id)
+
+
+func _end_pick() -> void:
+	pick_ids = []
+	player_list.set_pickable([])
+	if pawn_layer.game_map:
+		pawn_layer.set_pickable([])
+	_queue_refresh()
 
 
 func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Callable) -> void:
@@ -590,6 +664,7 @@ func _on_attack_happened(attacker: int, target: int, damage: int) -> void:
 
 func _on_game_over(faction: String, winners: Array) -> void:
 	game_finished = true
+	_end_pick()
 	_clear_action_bar()
 	status_label.hide()
 	choice_panel.hide()

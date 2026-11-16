@@ -20,10 +20,10 @@ main/                entry scene (main.tscn) + main menu
 lobby/               host/join screen, waiting room, avatar picker, role settings
 match/               the match screen (play_scene) and its parts:
   board/             forest board, classic board, locations, pawns
-  hud/               player HUD, life track, seats
+  hud/               player HUD, player list (+rows), life track
   cards/             card, deck, CardView popup, card shaders
   dice/              d6, d4, dice panel
-  legacy/            old damage-board HUD, kept for possible reuse (in no scene)
+  legacy/            old damage-board HUD and old seats, kept for possible reuse (in no scene)
 assets/              the user's art: pawns/ portraits/ cards/ locations/ icons/ dices/ ui/
   legacy/            original art kept usable (Classic art): board/ portraits/ pawns/ cards/
   _source/           full source sheets + drafts; .gdignore'd (not imported, not exported)

@@ -2,7 +2,7 @@ class_name PlayersSlots extends Node2D
 ## Seats players around the table. Every computer sees itself in Slot1
 ## (bottom), with the others following in turn order.
 
-@onready var player_slot_info_scn = preload("res://match/hud/player_slot_info.tscn")
+@onready var player_slot_info_scn = preload("res://match/legacy/player_slot_info.tscn")
 
 var active_chairs : Array
 

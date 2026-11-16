@@ -13,6 +13,8 @@ const MARKER := 20
 
 var _rows := {}       # damage level -> HBoxContainer holding markers
 var _markers := {}    # player id -> TextureRect
+var _right := false   # docked to the right edge (arrow on the inner side)
+var _top_right := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -132,4 +134,27 @@ func _on_player_died(player_id: int, _killer_id: int) -> void:
 
 func _on_button_pressed() -> void:
 	damage_entries.visible = not damage_entries.visible
-	collapse_button.text = "<" if damage_entries.visible else ">"
+	_update_arrow()
+	reset_size()
+
+
+## Stick to the right edge: `top_right` is where the top-right corner goes.
+func dock_right(top_right: Vector2) -> void:
+	_right = true
+	_top_right = top_right
+	move_child(collapse_button, 0)
+	_update_arrow()
+	resized.connect(_redock)
+	_redock.call_deferred()
+
+
+func _redock() -> void:
+	position = Vector2(_top_right.x - size.x, _top_right.y)
+
+
+func _update_arrow() -> void:
+	var open := damage_entries.visible
+	if _right:
+		collapse_button.text = ">" if open else "<"
+	else:
+		collapse_button.text = "<" if open else ">"

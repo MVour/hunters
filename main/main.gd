@@ -25,8 +25,12 @@ func _ready()->void :
 func _maybe_start_autotest() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--autotest="):
-			var bot: Node = load("res://tools/autotest.gd").new(arg.get_slice("=", 1))
-			add_child(bot)
+			var script: GDScript = load("res://tools/autotest.gd")
+			if script == null or not script.can_instantiate():
+				print("AUTOTEST FAIL could not load tools/autotest.gd")
+				get_tree().quit(1)
+				return
+			add_child(script.new(arg.get_slice("=", 1)))
 
 
 func set_main_screen():

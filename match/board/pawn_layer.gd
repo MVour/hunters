@@ -2,6 +2,16 @@ class_name PawnLayer extends Node2D
 ## Every player's pawn on the board. Pawns start around the campfire and
 ## hop to the standing spots in front of their location when they move.
 ## Pure visuals: where everyone is lives in GameState (set by the server).
+## While you pick a player (attack, card target…), pickable pawns get a
+## pulsing ring and can be clicked (set_pickable).
+
+signal player_picked(player_id: int)
+
+## A glowing ellipse at a pawn's feet.
+class PickRing extends Node2D:
+	var color := Color("ff7a5a")
+	func _draw() -> void:
+		draw_arc(Vector2.ZERO, 42.0, 0.0, TAU, 48, color, 6.0, true)
 
 const PAWN_SCALE := 0.65
 const FEET_OFFSET := Vector2(0, -28)  # pawn art: feet ~28px below centre
@@ -11,6 +21,9 @@ const CAMPFIRE := ""                  # "location" id of the starting spot
 var game_map: GameMap
 var pawns := {}       # player id -> Sprite2D
 var occupants := {}   # location id -> [player ids], in standing order
+var _pick_areas := {}  # player id -> Control over the pawn (clickable while picking)
+var _rings := {}       # player id -> PickRing
+var _ring_pulse: Tween
 
 
 func _ready() -> void:
@@ -32,6 +45,7 @@ func setup(map: GameMap, players: Dictionary) -> void:
 		pawn.offset = FEET_OFFSET
 		add_child(pawn)
 		pawns[id] = pawn
+		_add_pick_parts(id, pawn, players[id].name)
 		var at: String = players[id].get("location", CAMPFIRE)
 		if not occupants.has(at):
 			occupants[at] = []
@@ -40,6 +54,50 @@ func setup(map: GameMap, players: Dictionary) -> void:
 		_reflow(loc, false)
 	SignalBus.pawn_moved.connect(_on_pawn_moved)
 	SignalBus.player_died.connect(_on_player_died)
+
+
+func _add_pick_parts(id: int, pawn: Sprite2D, player_name: String) -> void:
+	var ring := PickRing.new()
+	ring.scale = Vector2(1, 0.42)  # flat on the ground
+	ring.show_behind_parent = true
+	ring.visible = false
+	pawn.add_child(ring)
+	_rings[id] = ring
+
+	var area := Control.new()  # pawn-local units (before PAWN_SCALE)
+	area.position = Vector2(-34, -66)
+	area.size = Vector2(68, 74)
+	area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	area.tooltip_text = player_name
+	area.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			player_picked.emit(id))
+	pawn.add_child(area)
+	_pick_areas[id] = area
+
+
+## Light up these players' pawns and let them be clicked; [] ends picking.
+## Pawns that can't be picked fade a little meanwhile.
+func set_pickable(ids: Array) -> void:
+	var picking := not ids.is_empty()
+	for id in pawns:
+		var on: bool = id in ids
+		_rings[id].visible = on
+		_pick_areas[id].mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
+		_pick_areas[id].mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if on else Control.CURSOR_ARROW
+		pawns[id].self_modulate = Color(1, 1, 1, 0.45) if picking and not on else Color.WHITE
+	if _ring_pulse:
+		_ring_pulse.kill()
+		_ring_pulse = null
+	if picking:
+		_ring_pulse = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
+		_ring_pulse.tween_method(_set_ring_alpha, 1.0, 0.35, 0.45)
+		_ring_pulse.tween_method(_set_ring_alpha, 0.35, 1.0, 0.45)
+
+
+func _set_ring_alpha(alpha: float) -> void:
+	for ring in _rings.values():
+		ring.modulate.a = alpha
 
 
 ## A dead player's pawn falls over and fades to grey.

@@ -7,6 +7,30 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C006 — Player list on the left; pick players by clicking them (2026-11-16)
+- **What:** The seats around the board are replaced by a player list down
+  the left edge (`match/hud/player_list.gd`, `player_row.gd`): play-order
+  number, pawn, name, known character or "?????", damage, equipment; the
+  current player highlighted; an arrow opens a drawer (character details if
+  known, location, equipment with text). Whenever the server asks you to
+  pick a player (attack, card targets) — and for handing over your green
+  card — the pickable players light up in the list and on the board (pulsing
+  ring at the pawn's feet, others faded) and you click either; the choice
+  panel only shows the prompt (+ Skip if allowed). While picking, open card
+  popups shrink to the bottom-left (still readable, no longer blocking), and
+  the Attack/End Turn/action buttons step aside (they cover the bottom pawns).
+  The life track moved to the right edge. Old seats kept in match/legacy/.
+  `tools/autotest` gained `--ui`: the bots pick players by real mouse clicks
+  on rows and pawns; the checker now also compiles tools/.
+- **Why:** User's design: a clearer table, players as clickable things
+  instead of a row of name buttons.
+- **Rejected:** Keeping name buttons alongside (two ways to do one thing);
+  closing open cards when a pick starts (you'd lose the card's text).
+- **Verified:** check_project 67/67; 4 `--ui` runs (54 clicks, all
+  registered) + normal runs pass. The click tests found two real blockers,
+  both fixed: an open card popup ate the clicks, and the turn buttons
+  covered pawns at the bottom location.
+
 ### C005 — Clearer match screen: disabled buttons, status line, card popup (2026-11-16)
 - **What:** Attack / End Turn / Use Ability / Reveal grey out when the
   server would refuse them, with a tooltip saying why (nobody in reach, give

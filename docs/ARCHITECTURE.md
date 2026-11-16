@@ -77,12 +77,19 @@ frees the play scene and returns to the menu.
 
 Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
 (`ForestBoard` or, with Classic art, `ClassicBoard`), `Locations` (`GameMap`),
-`PawnLayer`, `Hud/PlayerHud`, `DamageBoard` (life track), `PlayersSlots`
-(seats), `DecksContainer`, `DicesContainer`, `CardView` popups, and the
+`PawnLayer`, `PlayerList` (left edge, play order, drawers), `Hud/PlayerHud`,
+`DamageBoard` (life track, right edge), `DecksContainer`, `DicesContainer`,
+`CardView` popups, and the
 prompt/action/choice panels and the status line built in `play_scene.gd`.
 `_refresh_buttons()` sets every turn button's visible/enabled state and the
 status text ("waiting for …") from GameState; the server broadcasts
 `waiting_for` (who's choosing) so other screens can show it.
+
+**Picking a player:** a server choice whose options are all players (and
+handing over a green card) becomes pick mode, `_start_pick()`: `PlayerList`
+and `PawnLayer` highlight the pickable players and emit `player_picked`;
+open `CardView`s go passive (small, bottom-left, non-blocking); turn
+buttons hide until the pick ends.
 
 ## Data
 - Cards: `data/cards.gd` (spec in docs/CARDS.md). Characters: `data/characters.gd`.
@@ -95,7 +102,8 @@ status text ("waiting for …") from GameState; the server broadcasts
 - `tools/run_autotest.sh`: a host bot and a client bot play a match over
   localhost (port 18080) through the same actions as the UI; fails on any
   script error. `MAX_TURNS=N` makes the host leave mid-match;
-  `AUTOTEST_ARGS="--show-status --slow"` prints every status line the bots saw.
+  `AUTOTEST_ARGS="--show-status --slow"` prints every status line the bots saw;
+  `AUTOTEST_ARGS=--ui` makes the bots pick players by clicking rows/pawns.
 
 ## Art switch
 `Global.classic_art` picks the current art or the original Feb 2025 art (for

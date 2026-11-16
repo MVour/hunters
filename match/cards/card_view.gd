@@ -15,6 +15,11 @@ const BOTTOM_LIMIT := 800.0
 ## Heading, card and buttons stacked, so buttons always sit under the text
 ## however long the card is.
 var _layout: VBoxContainer
+var _dim: ColorRect
+var _pop: Tween
+## Shrunk into the bottom-left corner, not blocking the screen (see make_passive).
+var passive := false
+const PASSIVE_SCALE := 0.5
 var _card_panel: PanelContainer
 
 
@@ -50,6 +55,7 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP  # the card is modal
 
 	var dim := ColorRect.new()
+	_dim = dim
 	dim.color = Color(0, 0, 0, 0.55)
 	dim.size = size
 	add_child(dim)
@@ -163,15 +169,43 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	# Pop in (the whole column: a container would reset a child's scale)
 	_layout.scale = Vector2(0.4, 0.4)
 	modulate.a = 0.0
-	var tween := create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(_layout, "scale", Vector2.ONE, 0.35)
-	tween.tween_property(self, "modulate:a", 1.0, 0.2)
+	_pop = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_pop.tween_property(_layout, "scale", Vector2.ONE, 0.35)
+	_pop.tween_property(self, "modulate:a", 1.0, 0.2)
+
+
+## Shrink into the bottom-left corner and stop blocking the screen, e.g.
+## while the player has to click someone on the board. Buttons still work.
+func make_passive() -> void:
+	if passive or _closing:
+		return
+	passive = true
+	if _pop:
+		_pop.kill()
+	modulate.a = 1.0
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dim.hide()
+	_ignore_mouse(_layout)
+	_place()
+
+
+func _ignore_mouse(node: Node) -> void:
+	if node is Control and not node is BaseButton:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_ignore_mouse(child)
 
 
 ## Centre the column on screen, keeping its bottom above the choice panel.
+## Passive: small, in the bottom-left corner.
 func _place() -> void:
 	_layout.reset_size()
 	var s := _layout.size
+	if passive:
+		_layout.pivot_offset = Vector2.ZERO
+		_layout.scale = Vector2.ONE * PASSIVE_SCALE
+		_layout.position = Vector2(16.0, 1080.0 - 16.0 - s.y * PASSIVE_SCALE)
+		return
 	var y := clampf((1080.0 - s.y) / 2.0 - 60.0, 20.0, maxf(20.0, BOTTOM_LIMIT - s.y))
 	_layout.position = Vector2(960.0 - s.x / 2.0, y)
 	_layout.pivot_offset = s / 2.0
