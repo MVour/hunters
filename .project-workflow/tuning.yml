@@ -1,0 +1,10 @@
+# .project-workflow/tuning.yml — omit any key to keep the skill's default
+manifest_file: docs/MANIFEST.md
+optional_categories:
+  charter: true               # docs/VISION.md
+  plans: false
+  public_guide: false
+  feature_scoped_docs: false
+rotation:
+  log_line_threshold: 800
+  bugs_stale_days: 14
