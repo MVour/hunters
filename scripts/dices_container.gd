@@ -8,10 +8,13 @@ class_name DiceManager extends Panel
 func _ready() -> void:
 	# The dice sit on the ground by the campfire: no grey panel behind them.
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	# Don't block clicks on locations behind the (invisible) panel.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 ## Ask the server to roll; it ignores us if it's not our turn.
 func _on_roll_button_pressed() -> void:
+	$RollButton.hide()  # one roll per turn
 	game_manager.request_roll.rpc_id(1)
 
 

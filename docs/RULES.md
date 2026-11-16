@@ -13,15 +13,16 @@ Greek notes; where something isn't decided yet it says so.
    it says otherwise).
 3. **Attack (optional).** Decide whether to attack someone.
 
-> Steps 1–2 above are inferred from the location table; the original notes
-> for these steps (α, β) weren't included yet.
+> Confirmed: steps 1–2 are the original steps α and β. If the dice point at
+> the location you are already on, roll again: you always move somewhere new.
 
 ## Attacking
 
 - Roll both dice again. The **difference** between the two dice is the
   damage dealt to the target.
-- You may only attack a player in **your own area**. The 6 locations are
-  joined in pairs, forming **3 areas**.
+- You may only attack a player **within reach**: at your own location or at
+  the **next location clockwise** (1→2, 2→3 … 6→1). Since locations are
+  shuffled every game, so are these groupings.
 - Exceptions to this come only from equipment a player owns.
 
 ## Locations

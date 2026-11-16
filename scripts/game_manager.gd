@@ -8,7 +8,7 @@ class_name GameManager extends Node
 ##   Network.sender_id() (never trust an id passed as an argument).
 ## - The server tells peers what happened via "authority" RPCs.
 
-enum TurnPhase { ROLL, ACTION }  # MOVE will go between these
+enum TurnPhase { ROLL, CHOOSE_LOCATION, ACTION }
 
 @onready var players_slots: PlayersSlots = $"../PlayersSlots"
 @onready var dices_container: DiceManager = $"../DicesContainer"
@@ -132,10 +132,66 @@ func request_roll() -> void:
 	if not _is_current_player(Network.sender_id()) or current_turn.phase != TurnPhase.ROLL:
 		return
 
-	var roll := dices_container.throw_dices()
+	var player_id: int = current_turn.playing_id
+	var here: String = GameState.players[player_id].location
+
+	# You always move somewhere new: if the dice point at where you already
+	# are, roll again. A 7 means you choose.
+	var roll := {}
+	var total := 0
+	var destination := ""
+	for attempt in 50:
+		roll = dices_container.throw_dices()
+		total = roll.val6 + roll.val4
+		if total == Global.ROLL_ANY_LOCATION:
+			break
+		destination = GameState.location_for_total(total)
+		if destination != here:
+			break
+
 	current_turn.roll = roll
-	current_turn.phase = TurnPhase.ACTION
 	dices_container.roll_dices.rpc(roll.val6, roll.val4)
+
+	if total == Global.ROLL_ANY_LOCATION:
+		current_turn.phase = TurnPhase.CHOOSE_LOCATION
+		var options := []
+		for loc in GameState.locations:
+			if loc.id != here:
+				options.append(loc.id)
+		prompt_choose_location.rpc_id(player_id, options)
+	else:
+		_move_player(player_id, destination)
+
+
+## Server -> the player who rolled a 7: pick a location.
+@rpc("authority", "call_local", "reliable")
+func prompt_choose_location(options: Array) -> void:
+	SignalBus.choose_location.emit(options)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_choose_location(location_id: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	if not _is_current_player(sender) or current_turn.phase != TurnPhase.CHOOSE_LOCATION:
+		return
+	if location_id == GameState.players[sender].location or GameState.location_index(location_id) == -1:
+		return
+	_move_player(sender, location_id)
+
+
+func _move_player(player_id: int, location_id: String) -> void:
+	current_turn.phase = TurnPhase.ACTION
+	move_pawn.rpc(player_id, location_id)
+
+
+## Server -> everyone: this player's pawn is now at this location.
+@rpc("authority", "call_local", "reliable")
+func move_pawn(player_id: int, location_id: String) -> void:
+	if GameState.players.has(player_id):
+		GameState.players[player_id].location = location_id
+	SignalBus.pawn_moved.emit(player_id, location_id)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -143,7 +199,8 @@ func request_end_turn() -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := Network.sender_id()
-	if not _is_current_player(sender):
+	# You have to move before you can end your turn.
+	if not _is_current_player(sender) or current_turn.phase != TurnPhase.ACTION:
 		return
 	players_lock.rpc(sender, false)
 	_start_turn()

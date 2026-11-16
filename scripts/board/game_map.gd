@@ -2,6 +2,8 @@ class_name GameMap extends Node2D
 ## Places the location tiles on the forest trail (see ForestBoard). The
 ## server shuffles their order every game.
 
+signal location_chosen(location_id: String)
+
 @onready var location_scn : PackedScene = preload("res://scenes/location_sprite.tscn")
 
 ## Art for each location, keyed by the "name" in Global.deck.locations.
@@ -14,6 +16,8 @@ const TEXTURES := {
 	"magic_forest": preload("res://assets/locations/magic_forest.png"),
 }
 
+var _nodes := {}  # location id -> LocationSprite
+
 
 func locations_spawn():
 	var index := 1
@@ -22,4 +26,16 @@ func locations_spawn():
 		add_child(new_loc)
 		new_loc.set_location(loc, TEXTURES[loc.name])
 		new_loc.position = ForestBoard.location_position(index)
+		new_loc.chosen.connect(func(id): location_chosen.emit(id))
+		_nodes[loc.id] = new_loc
 		index += 1
+
+
+func get_location(location_id: String) -> LocationSprite:
+	return _nodes.get(location_id)
+
+
+## Highlight these locations and let the player click one (rolled a 7).
+func set_choosable(location_ids: Array) -> void:
+	for id in _nodes:
+		_nodes[id].set_selectable(id in location_ids)

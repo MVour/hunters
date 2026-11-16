@@ -1,13 +1,13 @@
-[gd_scene load_steps=44 format=3 uid="uid://buama3fol0eb6"]
+[gd_scene load_steps=33 format=3 uid="uid://buama3fol0eb6"]
 
 [ext_resource type="PackedScene" uid="uid://d3ev876e5fbof" path="res://scenes/health_board.tscn" id="1_2f02m"]
 [ext_resource type="Script" path="res://scripts/play_scene.gd" id="1_uvvkh"]
 [ext_resource type="Script" path="res://scripts/board/game_map.gd" id="2_bl4s0"]
 [ext_resource type="Script" path="res://scripts/game_manager.gd" id="2_kvevl"]
-[ext_resource type="Texture2D" path="res://assets/portraits/vampire.png" id="3_8w2fw"]
+[ext_resource type="Texture2D" uid="uid://bbkr172x6dv1r" path="res://assets/portraits/vampire.png" id="3_8w2fw"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="3_dot8f"]
 [ext_resource type="Script" path="res://scripts/player_hud.gd" id="3_kph0c"]
-[ext_resource type="Texture2D" path="res://assets/portraits/werewolf.png" id="6_ee57v"]
+[ext_resource type="Texture2D" uid="uid://b1kbeamx0aiky" path="res://assets/portraits/werewolf.png" id="6_ee57v"]
 [ext_resource type="Script" path="res://scripts/players_slots.gd" id="7_nceq5"]
 [ext_resource type="Texture2D" uid="uid://3l8ywfisy5tp" path="res://assets/cards/blue_card.png" id="8_hvili"]
 [ext_resource type="PackedScene" uid="uid://cg8cceqjwmtk4" path="res://scenes/card_deck.tscn" id="9_edp6p"]
@@ -111,50 +111,6 @@ region = Rect2(0, 76, 38, 38)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_hum6"]
 atlas = ExtResource("21_human")
-region = Rect2(38, 76, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_bqq6g"]
-atlas = ExtResource("3_8w2fw")
-region = Rect2(0, 0, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_bs1hb"]
-atlas = ExtResource("3_8w2fw")
-region = Rect2(38, 0, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_y0i5t"]
-atlas = ExtResource("3_8w2fw")
-region = Rect2(0, 38, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_rpdox"]
-atlas = ExtResource("3_8w2fw")
-region = Rect2(38, 38, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_3hvic"]
-atlas = ExtResource("3_8w2fw")
-region = Rect2(0, 76, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ydgpm"]
-atlas = ExtResource("6_ee57v")
-region = Rect2(0, 0, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_sesht"]
-atlas = ExtResource("6_ee57v")
-region = Rect2(38, 0, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_jangc"]
-atlas = ExtResource("6_ee57v")
-region = Rect2(0, 38, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_78o03"]
-atlas = ExtResource("6_ee57v")
-region = Rect2(38, 38, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_8oylf"]
-atlas = ExtResource("6_ee57v")
-region = Rect2(0, 76, 38, 38)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ualbj"]
-atlas = ExtResource("6_ee57v")
 region = Rect2(38, 76, 38, 38)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_dv3dq"]

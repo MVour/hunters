@@ -9,7 +9,13 @@ const PAWN_SPOTS := [
 	Vector2(-97, 67), Vector2(97, 67), Vector2(-118, 54), Vector2(118, 54),
 ]
 
+## Clicked while selectable (e.g. choosing where to go after rolling a 7).
+signal chosen(location_id: String)
+
 var _size := Vector2(128, 128)  # art size, set from the texture
+var _selectable := false
+var _pulse: Tween
+var _hover_area: Control
 
 @export var location := {}
 @onready var index_label: Label = $IndexLabel
@@ -105,4 +111,26 @@ func _add_hover_area(loc: Dictionary, action: Dictionary) -> void:
 	area.size = _size
 	area.mouse_filter = Control.MOUSE_FILTER_PASS
 	area.tooltip_text = "%s\nRoll %s to come here.\n%s" % [loc.label, rolls_text(loc.rolls, " or "), action.text]
+	area.gui_input.connect(_on_area_input)
 	add_child(area)
+	_hover_area = area
+
+
+func _on_area_input(event: InputEvent) -> void:
+	if _selectable and event is InputEventMouseButton and event.pressed \
+			and event.button_index == MOUSE_BUTTON_LEFT:
+		chosen.emit(location.id)
+
+
+## Pulse and accept clicks while the player picks a location.
+func set_selectable(on: bool) -> void:
+	_selectable = on
+	if _pulse:
+		_pulse.kill()
+	modulate = Color.WHITE
+	if _hover_area:
+		_hover_area.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if on else Control.CURSOR_ARROW
+	if on:
+		_pulse = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
+		_pulse.tween_property(self, "modulate", Color(1.5, 1.45, 1.2), 0.45)
+		_pulse.tween_property(self, "modulate", Color.WHITE, 0.45)

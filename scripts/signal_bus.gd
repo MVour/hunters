@@ -14,6 +14,10 @@ signal _end_game
 signal _set_character
 signal _attach_deck
 signal set_locations
+## A player's pawn moved to a location: (player_id, location_id)
+signal pawn_moved
+## You rolled a 7: pick one of these location ids. (options: Array)
+signal choose_location
 
 ## Avatar Creation signals (might include avatar movement or actions as well)
 signal _avatar_created

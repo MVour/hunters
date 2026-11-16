@@ -56,7 +56,35 @@ func new_player(id: int) -> Dictionary:
 		"hidden": true,
 		"playing": false,
 		"dmg": 0,
+		"location": "",  # location id, "" = still at the campfire
 	}
+
+
+## Which location a dice total sends you to ("" for 7 = your choice).
+func location_for_total(total: int) -> String:
+	for loc in locations:
+		if total in loc.rolls:
+			return loc.id
+	return ""
+
+
+## Board position (0-5) of a location, or -1 if unknown.
+func location_index(location_id: String) -> int:
+	for i in locations.size():
+		if locations[i].id == location_id:
+			return i
+	return -1
+
+
+## Reach: every location is grouped with the next one clockwise
+## (1->2, 2->3, ... 6->1). From a location you reach players there and at
+## the next location. Attacks use this; equipment may extend it later.
+func can_reach(from_id: String, to_id: String) -> bool:
+	var from := location_index(from_id)
+	var to := location_index(to_id)
+	if from == -1 or to == -1:
+		return false
+	return to == from or to == (from + 1) % locations.size()
 
 
 ## Server only. Copies the master card lists so shuffling and dealing never
