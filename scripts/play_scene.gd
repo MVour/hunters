@@ -15,7 +15,12 @@ var game_finished := false
 var pawn_layer: PawnLayer
 var prompt_label: Label
 var action_bar: HBoxContainer
-var toast_label: Label
+var toast_box: VBoxContainer
+var choice_panel: PanelContainer
+var choice_title: Label
+var choice_buttons: HFlowContainer
+## Values offered by the open choice panel (empty when closed).
+var asked_options := []
 var decks := {}  # card type -> CardDeck
 ## Locations you may pick after rolling a 7 (empty when not choosing).
 var choice_options := []
@@ -52,6 +57,11 @@ func _ready():
 	SignalBus.question_answered.connect(_on_question_answered)
 	SignalBus.card_drawn_secretly.connect(_on_card_drawn_secretly)
 	SignalBus.card_revealed.connect(_on_card_revealed)
+	SignalBus.choice_requested.connect(_on_choice_requested)
+	SignalBus.notice.connect(toast)
+	SignalBus.private_info.connect(_show_info)
+	SignalBus.private_character.connect(_on_private_character)
+	SignalBus.equipment_changed.connect(_on_equipment_changed)
 
 	action_bar = HBoxContainer.new()
 	action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -60,15 +70,39 @@ func _ready():
 	action_bar.size = Vector2(800, 50)
 	add_child(action_bar)
 
-	toast_label = Label.new()
-	toast_label.position = Vector2(560, 196)
-	toast_label.size = Vector2(800, 40)
-	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	toast_label.add_theme_font_size_override("font_size", 22)
-	toast_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	toast_label.add_theme_constant_override("outline_size", 8)
-	toast_label.modulate.a = 0.0
-	add_child(toast_label)
+	toast_box = VBoxContainer.new()
+	toast_box.position = Vector2(460, 190)
+	toast_box.size = Vector2(1000, 0)
+	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast_box.z_index = 15
+	add_child(toast_box)
+
+	# Choice panel (above the HUD): "choose a player", "which deck?", ...
+	choice_panel = PanelContainer.new()
+	var choice_style := StyleBoxFlat.new()
+	choice_style.bg_color = Color(0.04, 0.05, 0.08, 0.94)
+	choice_style.border_color = Color("c8a85a")
+	choice_style.set_border_width_all(2)
+	choice_style.set_corner_radius_all(10)
+	choice_style.set_content_margin_all(14)
+	choice_panel.add_theme_stylebox_override("panel", choice_style)
+	choice_panel.z_index = 25
+	choice_panel.hide()
+	add_child(choice_panel)
+	var choice_column := VBoxContainer.new()
+	choice_column.add_theme_constant_override("separation", 10)
+	choice_panel.add_child(choice_column)
+	choice_title = Label.new()
+	choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	choice_title.add_theme_font_size_override("font_size", 22)
+	choice_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	choice_title.custom_minimum_size = Vector2(560, 0)
+	choice_column.add_child(choice_title)
+	choice_buttons = HFlowContainer.new()
+	choice_buttons.alignment = FlowContainer.ALIGNMENT_CENTER
+	choice_buttons.add_theme_constant_override("h_separation", 10)
+	choice_buttons.add_theme_constant_override("v_separation", 8)
+	choice_column.add_child(choice_buttons)
 
 	prompt_label = Label.new()
 	prompt_label.position = Vector2(560, 446)
@@ -171,12 +205,19 @@ func _player_color(id: int) -> Color:
 	return Color(Global.pawns[pawn].hex) if Global.pawns.has(pawn) else Color.WHITE
 
 
+## Short messages stack under the top seats and fade out.
 func toast(text: String) -> void:
-	toast_label.text = text
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 21)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 8)
+	toast_box.add_child(label)
 	var tween := create_tween()
-	tween.tween_property(toast_label, "modulate:a", 1.0, 0.2)
-	tween.tween_interval(2.8)
-	tween.tween_property(toast_label, "modulate:a", 0.0, 0.5)
+	tween.tween_interval(3.5)
+	tween.tween_property(label, "modulate:a", 0.0, 0.6)
+	tween.tween_callback(label.queue_free)
 
 
 func _clear_action_bar() -> void:
@@ -218,7 +259,8 @@ func _on_location_action_offered(action: String) -> void:
 			func(): game_manager.request_draw.rpc_id(1, card_type))
 		decks[card_type].set_highlight(true)
 	if draws.is_empty():
-		prompt_label.text += "  (coming soon)"
+		_add_action_button("Use", Color(Global.LOCATION_ACTIONS[action].color).lightened(0.3),
+			func(): game_manager.request_location_action.rpc_id(1))
 	_add_action_button("Skip", Color(0.8, 0.8, 0.8),
 		func(): game_manager.request_skip_action.rpc_id(1))
 
@@ -262,3 +304,78 @@ func _on_card_drawn_secretly(pl_id: int, card_type: String) -> void:
 func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
 	var who := "You" if pl_id == GameState.local_id else _player_name(pl_id)
 	CardView.open(self, card, "%s drew:" % who, [["OK", func(): pass]])
+
+
+# --- Choices & private info --------------------------------------------------
+
+## The server asks you to pick (a player, a deck, a piece of equipment...).
+func _on_choice_requested(prompt: String, options: Array, allow_skip: bool) -> void:
+	_open_choice(prompt, options, allow_skip,
+		func(value): game_manager.request_choice.rpc_id(1, value))
+
+
+func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Callable) -> void:
+	for child in choice_buttons.get_children():
+		child.queue_free()
+	choice_title.text = prompt
+	asked_options = options.map(func(o): return o.value)
+	var entries := options.duplicate()
+	if allow_skip:
+		entries.append({"value": null, "label": "Skip", "color": "b0b0b0"})
+	for option in entries:
+		var button := Button.new()
+		button.text = option.label
+		button.custom_minimum_size = Vector2(140, 44)
+		button.add_theme_font_size_override("font_size", 19)
+		if option.has("color"):
+			button.add_theme_color_override("font_color", Color(option.color).lightened(0.25))
+		var value = option.value
+		button.pressed.connect(func():
+			choice_panel.hide()
+			asked_options = []
+			on_pick.call(value))
+		choice_buttons.add_child(button)
+	choice_panel.reset_size()
+	choice_panel.show()
+	await get_tree().process_frame
+	choice_panel.position = Vector2(960 - choice_panel.size.x / 2.0, 812)
+
+
+## A message only for you, with an OK button.
+func _show_info(title: String, text: String) -> void:
+	_open_choice("%s\n%s" % [title, text], [{"value": "ok", "label": "OK"}], false, func(_v): pass)
+
+
+func _on_private_character(pl_id: int, character: Dictionary) -> void:
+	_show_info("You secretly see %s's character:" % _player_name(pl_id),
+		"%s, %s, %d health\n%s" % [character.get("name", "?"), character.get("species", "?"),
+			character.get("health", 0), character.get("goal", "")])
+
+
+func _on_equipment_changed(pl_id: int) -> void:
+	if pl_id == GameState.local_id:
+		_refresh_my_cards()
+
+
+## The HUD "CARDS" tab lists your equipment.
+func _refresh_my_cards() -> void:
+	var panel: Control = $Hud/PlayerCards
+	for child in panel.get_children():
+		child.queue_free()
+	var list := VBoxContainer.new()
+	list.position = Vector2(24, 16)
+	list.size = Vector2(panel.size.x - 48, 0)
+	list.add_theme_constant_override("separation", 6)
+	panel.add_child(list)
+	var equipment: Array = GameState.local_player.equipment
+	if equipment.is_empty():
+		var none := Label.new()
+		none.text = "No equipment yet.  ·  Κανένας εξοπλισμός."
+		list.add_child(none)
+	for card in equipment:
+		var line := Label.new()
+		line.text = "%s  ·  %s — %s" % [card.name, card.get("name_el", ""), card.text]
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.custom_minimum_size = Vector2(panel.size.x - 48, 0)
+		line.add_theme_color_override("font_color", Color(Global.CARD_COLORS[card.deck].color).lightened(0.35))
+		list.add_child(line)

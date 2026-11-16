@@ -14,6 +14,43 @@ func _ready():
 	SignalBus.damage_changed.connect(_on_damage_changed)
 	SignalBus.character_revealed.connect(_on_character_revealed)
 	SignalBus.player_died.connect(_on_player_died)
+	SignalBus.equipment_changed.connect(_on_equipment_changed)
+
+
+var _chips: HBoxContainer
+
+
+## Face-up equipment as small coloured chips along the bottom of the plate.
+func _on_equipment_changed(pl_id) -> void:
+	if not _is_mine(pl_id):
+		return
+	if not _chips:
+		_chips = HBoxContainer.new()
+		_chips.position = Vector2(8, size.y - 24)
+		_chips.add_theme_constant_override("separation", 4)
+		add_child(_chips)
+	for child in _chips.get_children():
+		child.queue_free()
+	var player: Dictionary = GameState.players[pl_id]
+	if player.get("protected", false):
+		var shield := Label.new()
+		shield.text = "🛡"
+		shield.tooltip_text = "Protected until their next turn"
+		shield.mouse_filter = Control.MOUSE_FILTER_STOP
+		_chips.add_child(shield)
+	for card in player.equipment:
+		var chip := Label.new()
+		chip.text = card.name
+		chip.tooltip_text = "%s  ·  %s\n%s" % [card.name, card.get("name_el", ""), card.text]
+		chip.mouse_filter = Control.MOUSE_FILTER_STOP
+		chip.add_theme_font_size_override("font_size", 12)
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(Global.CARD_COLORS[card.deck].color).darkened(0.35)
+		style.set_corner_radius_all(4)
+		style.content_margin_left = 4
+		style.content_margin_right = 4
+		chip.add_theme_stylebox_override("normal", style)
+		_chips.add_child(chip)
 
 
 func sit(player):

@@ -127,6 +127,29 @@ func _start_turn() -> void:
 
 	print("Starting turn %d (round %d), player %d" % [current_turn.turn_count, GameState.game_info.round, playing_id])
 	players_lock.rpc(playing_id, true)
+	_turn_start_effects(playing_id)
+
+
+## Protection wears off; always-on equipment that acts each turn.
+func _turn_start_effects(player_id: int) -> void:
+	if GameState.players[player_id].get("protected", false):
+		sync_protected.rpc(player_id, false)
+	var m := effects.mods(player_id)
+	if m.get("heal_per_turn", 0) > 0 and GameState.players[player_id].dmg > 0:
+		heal(player_id, m.heal_per_turn)
+		notice.rpc("%s's Healer's Satchel heals %d." % [GameState.players[player_id].name, m.heal_per_turn])
+	if m.get("upkeep_damage", 0) > 0:
+		notice.rpc("%s's Cursed Ring bites." % GameState.players[player_id].name)
+		apply_damage(player_id, m.upkeep_damage)
+
+
+## After an effect finishes: if the current player died meanwhile, move on.
+func _after_resolution() -> void:
+	if busy() or game_finished:
+		return
+	if GameState.players[current_turn.playing_id].dead:
+		players_lock.rpc(current_turn.playing_id, false)
+		_start_turn()
 
 
 func _is_current_player(id: int) -> bool:
@@ -137,14 +160,48 @@ func _is_current_player(id: int) -> bool:
 func request_roll() -> void:
 	if not multiplayer.is_server():
 		return
-	if not _is_current_player(Network.sender_id()) or current_turn.phase != TurnPhase.ROLL:
+	if not _is_current_player(Network.sender_id()) or current_turn.phase != TurnPhase.ROLL or busy():
 		return
 
 	var player_id: int = current_turn.playing_id
 	var here: String = GameState.players[player_id].location
+	var result := _roll_move(here)
+	var total: int = result.total
+	var destination: String = result.destination
 
-	# You always move somewhere new: if the dice point at where you already
-	# are, roll again. A 7 means you choose.
+	# Old Map: may roll a second time and pick either result.
+	if total != Global.ROLL_ANY_LOCATION and effects.mods(player_id).get("reroll_move", false):
+		_busy += 1
+		var first_label := _location_label(destination)
+		var again = await ask(player_id, "Old Map: go to %s, or roll again?" % first_label, [
+			{"value": "keep", "label": "Go to %s" % first_label},
+			{"value": "reroll", "label": "Roll again"}], false)
+		if again == "reroll":
+			await get_tree().create_timer(1.0).timeout  # let the first roll land
+			var second := _roll_move(here)
+			if second.total == Global.ROLL_ANY_LOCATION:
+				total = second.total
+			elif second.destination != destination:
+				var pick = await ask(player_id, "Old Map: pick where you go", [
+					{"value": destination, "label": first_label},
+					{"value": second.destination, "label": _location_label(second.destination)}], false)
+				destination = pick
+		_busy -= 1
+
+	if total == Global.ROLL_ANY_LOCATION:
+		current_turn.phase = TurnPhase.CHOOSE_LOCATION
+		var options := []
+		for loc in GameState.locations:
+			if loc.id != here:
+				options.append(loc.id)
+		prompt_choose_location.rpc_id(player_id, options)
+	else:
+		_move_player(player_id, destination)
+
+
+## Rolls the dice (shown to everyone) until they point somewhere new.
+## A 7 means "your choice".
+func _roll_move(here: String) -> Dictionary:
 	var roll := {}
 	var total := 0
 	var destination := ""
@@ -156,19 +213,14 @@ func request_roll() -> void:
 		destination = GameState.location_for_total(total)
 		if destination != here:
 			break
-
 	current_turn.roll = roll
 	dices_container.roll_dices.rpc(roll.val6, roll.val4)
+	return {"total": total, "destination": destination}
 
-	if total == Global.ROLL_ANY_LOCATION:
-		current_turn.phase = TurnPhase.CHOOSE_LOCATION
-		var options := []
-		for loc in GameState.locations:
-			if loc.id != here:
-				options.append(loc.id)
-		prompt_choose_location.rpc_id(player_id, options)
-	else:
-		_move_player(player_id, destination)
+
+func _location_label(location_id: String) -> String:
+	var i := GameState.location_index(location_id)
+	return GameState.locations[i].label if i != -1 else "?"
 
 
 ## Server -> the player who rolled a 7: pick a location.
@@ -225,20 +277,53 @@ func request_skip_action() -> void:
 		current_turn.action_used = true
 
 
+func _can_act(sender: int) -> bool:
+	return _is_current_player(sender) and current_turn.phase == TurnPhase.ACTION \
+		and not current_turn.action_used and not busy()
+
+
 @rpc("any_peer", "call_local", "reliable")
 func request_draw(card_type: String) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := Network.sender_id()
-	if not _is_current_player(sender) or current_turn.phase != TurnPhase.ACTION or current_turn.action_used:
+	if not _can_act(sender):
 		return
 	if not card_type in DRAW_ACTIONS.get(_location_action_of(sender), []):
 		return
-	draw_for(sender, card_type)
 	current_turn.action_used = true
+	await draw_for(sender, card_type)
 
 
-## Server only. A player draws a card (also used by card effects later).
+## Magic Forest (heal 1 or deal 2) and Stone Circle (steal equipment).
+@rpc("any_peer", "call_local", "reliable")
+func request_location_action() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	if not _can_act(sender):
+		return
+	var action := _location_action_of(sender)
+	var steps := []
+	match action:
+		"heal_or_damage":
+			var mode = await ask(sender, "Magic Forest: heal or harm?", [
+				{"value": "heal", "label": "Heal 1", "color": "4fe0d0"},
+				{"value": "damage", "label": "Deal 2", "color": "e8402e"}])
+			if mode == null:
+				return
+			steps = [{"do": "heal", "amount": 1, "target": "chosen_any"}] if mode == "heal" \
+				else [{"do": "damage", "amount": 2, "target": "chosen"}]
+		"steal_equipment":
+			steps = [{"do": "steal_equipment"}]
+		_:
+			return
+	current_turn.action_used = true
+	var label: String = GameState.locations[GameState.location_index(GameState.players[sender].location)].label
+	await _resolve({"name": label, "deck": "", "kind": "location", "effect": steps}, {"actor": sender})
+
+
+## Server only. A player draws a card (location action, or a card effect).
 func draw_for(player_id: int, card_type: String) -> void:
 	var card := GameState.draw_card(card_type)
 	if card.is_empty():
@@ -252,15 +337,133 @@ func draw_for(player_id: int, card_type: String) -> void:
 		current_turn.pending_question = {"card": card, "from": player_id, "to": 0}
 		question_drawn.rpc_id(player_id, card)
 		card_drawn_secretly.rpc(player_id, card_type)
-	else:
-		# Red/blue: read aloud. Everyone sees it.
-		card_revealed.rpc(player_id, card)
-		if card.kind == "equipment":
-			GameState.players[player_id].equipment.append(card)
-			equipment_gained.rpc(player_id, card)
-		else:
-			# TODO (step 3): resolve the event's effect before discarding.
+		return
+
+	# Red/blue: read aloud. Everyone sees it.
+	card_revealed.rpc(player_id, card)
+	if card.kind == "equipment":
+		GameState.players[player_id].equipment.append(card)
+		set_equipment.rpc(player_id, GameState.players[player_id].equipment)
+		return
+	# Events: "must" ones happen; the others the player may decline.
+	if not card.get("must", false):
+		var use = await ask(player_id, "%s: use it now?" % card.name,
+			[{"value": "use", "label": "Use it", "color": Global.CARD_COLORS[card.deck].color}])
+		if use == null:
 			GameState.discard(card)
+			return
+	await _resolve(card, {"actor": player_id})
+	GameState.discard(card)
+
+
+## Runs an effect while marking the game busy (no ending the turn meanwhile).
+func _resolve(card: Dictionary, ctx: Dictionary) -> void:
+	_busy += 1
+	await effects.run(card, ctx)
+	_busy -= 1
+	_after_resolution()
+
+
+# --- Choices, messages, equipment -------------------------------------------
+
+signal choice_made(player_id: int, value)
+
+var effects: CardEffects
+var _busy := 0
+var _awaiting := {}  # player id -> {"values": [...], "skip": bool}
+
+
+func _ready() -> void:
+	effects = CardEffects.new(self)
+
+
+func busy() -> bool:
+	return _busy > 0 or not _awaiting.is_empty()
+
+
+## Server only. Ask a player to pick one option; returns its value, or null
+## if they skip. options: [{"value", "label", "color" (hex, optional)}].
+func ask(player_id: int, prompt: String, options: Array, allow_skip := true):
+	_awaiting[player_id] = {"values": options.map(func(o): return o.value), "skip": allow_skip}
+	present_choice.rpc_id(player_id, prompt, options, allow_skip)
+	while true:
+		var result: Array = await choice_made
+		if result[0] == player_id:
+			return result[1]
+	return null
+
+
+@rpc("authority", "call_local", "reliable")
+func present_choice(prompt: String, options: Array, allow_skip: bool) -> void:
+	SignalBus.choice_requested.emit(prompt, options, allow_skip)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_choice(value) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	if not _awaiting.has(sender):
+		return
+	var waiting: Dictionary = _awaiting[sender]
+	if value == null and not waiting.skip:
+		return
+	if value != null and not value in waiting.values:
+		return
+	_awaiting.erase(sender)
+	choice_made.emit(sender, value)
+
+
+## Server -> everyone: a short public message.
+@rpc("authority", "call_local", "reliable")
+func notice(text: String) -> void:
+	SignalBus.notice.emit(text)
+
+
+## Server -> one player: something only they get to know.
+@rpc("authority", "call_local", "reliable")
+func private_info(title: String, text: String) -> void:
+	SignalBus.private_info.emit(title, text)
+
+
+## Server -> one player: a look at someone's character card.
+@rpc("authority", "call_local", "reliable")
+func private_character(player_id: int, character: Dictionary) -> void:
+	SignalBus.private_character.emit(player_id, character)
+
+
+@rpc("authority", "call_local", "reliable")
+func set_equipment(player_id: int, equipment: Array) -> void:
+	if GameState.players.has(player_id):
+		GameState.players[player_id].equipment = equipment
+	SignalBus.equipment_changed.emit(player_id)
+
+
+## Server only.
+func transfer_equipment(from_id: int, to_id: int, uid) -> void:
+	var from_list: Array = GameState.players[from_id].equipment
+	for i in from_list.size():
+		if from_list[i].uid == uid:
+			var card: Dictionary = from_list.pop_at(i)
+			GameState.players[to_id].equipment.append(card)
+			set_equipment.rpc(from_id, from_list)
+			set_equipment.rpc(to_id, GameState.players[to_id].equipment)
+			notice.rpc("%s takes %s from %s" % [GameState.players[to_id].name, card.name, GameState.players[from_id].name])
+			return
+
+
+## Guardian Spirit: can't be attacked until their next turn.
+func set_protected(player_id: int, on: bool) -> void:
+	sync_protected.rpc(player_id, on)
+	if on:
+		notice.rpc("%s is protected until their next turn." % GameState.players[player_id].name)
+
+
+@rpc("authority", "call_local", "reliable")
+func sync_protected(player_id: int, on: bool) -> void:
+	if GameState.players.has(player_id):
+		GameState.players[player_id].protected = on
+	SignalBus.equipment_changed.emit(player_id)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -283,13 +486,6 @@ func card_drawn_secretly(player_id: int, card_type: String) -> void:
 @rpc("authority", "call_local", "reliable")
 func card_revealed(player_id: int, card: Dictionary) -> void:
 	SignalBus.card_revealed.emit(player_id, card)
-
-
-@rpc("authority", "call_local", "reliable")
-func equipment_gained(player_id: int, card: Dictionary) -> void:
-	if GameState.players.has(player_id) and not multiplayer.is_server():
-		GameState.players[player_id].equipment.append(card)
-	SignalBus.equipment_changed.emit(player_id)
 
 
 ## The asker hands their green card to another player.
@@ -326,12 +522,15 @@ func request_answer_question() -> void:
 	if not multiplayer.is_server():
 		return
 	var q: Dictionary = current_turn.get("pending_question", {})
-	if q.is_empty() or q.to == 0 or Network.sender_id() != q.to:
+	if q.is_empty() or q.to == 0 or Network.sender_id() != q.to or q.get("answering", false):
 		return
-	# TODO (step 3): apply the question's effect to q.to, tell q.from the result.
+	q.answering = true
+	# The server knows everyone's species, so the answer is always truthful.
+	await _resolve(q.card, {"actor": q.to, "receiver": q.to, "asker": q.from})
 	GameState.discard(q.card)
 	current_turn.pending_question = {}
 	question_answered.rpc(q.from, q.to)
+	_after_resolution()
 
 
 @rpc("authority", "call_local", "reliable")
@@ -356,7 +555,7 @@ func request_end_turn() -> void:
 	# has to be answered first.
 	if not _is_current_player(sender) or current_turn.phase != TurnPhase.ACTION:
 		return
-	if not current_turn.get("pending_question", {}).is_empty():
+	if not current_turn.get("pending_question", {}).is_empty() or busy():
 		return
 	players_lock.rpc(sender, false)
 	_start_turn()
@@ -410,11 +609,16 @@ func _kill(player_id: int, killer_id: int) -> void:
 	GameState.players[player_id].dead = true
 	reveal_character.rpc(player_id, GameState.players[player_id].character)
 	player_died.rpc(player_id, killer_id)
-	# TODO (step 6): the killer takes one of the dead player's equipment cards.
 	# TODO (step 7): check win conditions.
-	if player_id == current_turn.playing_id:
-		players_lock.rpc(player_id, false)
-		_start_turn()
+	# The killer takes one of the dead player's equipment cards.
+	if killer_id != 0 and killer_id != player_id and not GameState.players[player_id].equipment.is_empty() \
+			and not GameState.players[killer_id].dead:
+		_busy += 1
+		var uid = await effects._pick_equipment(killer_id, player_id,
+			"You killed %s! Take one of their equipment cards." % GameState.players[player_id].name, false)
+		transfer_equipment(player_id, killer_id, uid)
+		_busy -= 1
+	_after_resolution()
 
 
 ## Makes a character public (on death, or when a player reveals it).

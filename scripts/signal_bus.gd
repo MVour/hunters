@@ -42,8 +42,16 @@ signal question_asked
 signal question_passed
 ## Public: the question was answered (from_id, to_id)
 signal question_answered
-## A player's equipment changed: (player_id)
+## A player's equipment (or protection) changed: (player_id)
 signal equipment_changed
+## The server asks you to pick: (prompt, options, allow_skip)
+signal choice_requested
+## Public message: (text)
+signal notice
+## Something only you learn: (title, text)
+signal private_info
+## You get to see someone's character: (player_id, character)
+signal private_character
 
 ## Avatar Creation signals (might include avatar movement or actions as well)
 signal _avatar_created

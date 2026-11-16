@@ -84,3 +84,37 @@ sync when editing.
 | 1 | Lucky Find | Τυχερό Εύρημα | Draw a card of any colour. |
 | 1 | Peace Offering | Δώρο Ειρήνης | Give one of your equipment cards to another player; both of you heal 1. |
 | 1 | Sanctuary | Καταφύγιο | Heal 1 damage on any player of your choice. |
+
+## Effect steps (for designing new cards)
+
+A card's `effect` in `scripts/cards.gd` is a list of steps run in order by
+`scripts/rules/card_effects.gd`. Combine these to make new cards without
+writing code:
+
+| `do` | What it does |
+|------|--------------|
+| `damage` / `heal` | `amount` to every `target` (see below) that passes the conditions |
+| `give_equipment_or_damage` | (questions) the receiver gives the asker an equipment card, or takes `amount` damage if they have none |
+| `show_character_to_asker` | (questions) the asker privately sees the receiver's character |
+| `tell_health_to_asker` | (questions) the asker privately learns the receiver's starting health |
+| `steal_equipment` | take an equipment card from a living player |
+| `take_from_dead` | take an equipment card from a dead player |
+| `give_equipment_and_heal` | give one of your equipment cards away; both of you heal 1 |
+| `protect` | nobody can attack you until your next turn |
+| `move_anywhere` | move to any other location |
+| `peek_character` | secretly look at another player's character |
+| `draw_any` | draw a card from a deck of your choice |
+
+**Targets:** `self`, `receiver`, `asker`, `others` (everyone but you), `here`
+(everyone at your location), `here_and_next` (your location and the next
+one), `chosen` (a player you pick), `chosen_any` (you may pick yourself),
+`chosen_in_reach` (a player within reach). Steps that use the same chosen
+target share the pick.
+
+**Conditions** (optional): `if_species` / `unless_species` (list of
+species), `if_damage_at_least` / `if_damage_below`.
+
+**Equipment `mods`** (always on): `attack_bonus`, `ignore_reach`,
+`d6_attack`, `thorns`, `upkeep_damage`, `damage_reduction`,
+`immune_red_events`, `heal_per_turn`, `reach_back`, `reroll_move`,
+`max_attack_damage`.
