@@ -15,6 +15,11 @@ const TIME_SCALE := 4.0
 const PORT := 18080            # not the default, so a running game is left alone
 
 var role := ""
+## --leave-after=N: this bot leaves the match after N turns (BUG-001 test).
+var leave_after := 0
+## --join=wss://…/play/ROOM/TICKET: an online room (both bots join; "host"
+## is then the room's owner and starts the match).
+var join_link := ""
 var stats := {"turns": 0, "my_turns": 0, "moves": 0, "cards": 0, "choices": 0,
 	"questions": 0, "attacks": 0, "deaths": 0, "ui_picks": 0, "chat_heard": 0, "dialog_clicks": 0}
 var _last_progress := 0
@@ -36,6 +41,10 @@ func _init(p_role: String) -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--max-turns="):
 			max_turns = arg.get_slice("=", 1).to_int()
+		elif arg.begins_with("--leave-after="):
+			leave_after = arg.get_slice("=", 1).to_int()
+		elif arg.begins_with("--join="):
+			join_link = arg.trim_prefix("--join=")
 	name = "Autotest"
 
 
@@ -46,7 +55,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var mc: MultiplayerController = get_tree().root.find_child("MultiplayerController", true, false)
 	SignalBus._new_game.emit()  # main menu -> multiplayer menu
-	if role == "host":
+	if join_link != "":
+		mc.line_edit.text = join_link
+		mc._on_connect_lobby_button_pressed()
+	elif role == "host":
 		mc._on_host_pressed({"port": PORT})
 	else:
 		await get_tree().create_timer(1.0).timeout  # give the host time to listen
@@ -54,11 +66,13 @@ func _ready() -> void:
 		mc._on_connect_lobby_button_pressed()
 
 	await _until(func(): return GameState.players.has(GameState.local_id))
-	SignalBus._avatar_created.emit("Bot_" + role, "red" if role == "host" else "blue")
+	var pawn := _arg("--pawn=", "red" if role == "host" else "blue")
+	SignalBus._avatar_created.emit("Bot_%s_%s" % [role, pawn], pawn)
 	ChatNet.say("hello from the %s" % role)
 
 	if role == "host":
-		await _until(func(): return GameState.players.size() >= 2 \
+		var wanted := _arg("--players=", "2").to_int()
+		await _until(func(): return GameState.players.size() >= wanted \
 			and GameState.players.values().all(func(p): return p.pawn != ""))
 		await get_tree().create_timer(0.5).timeout
 		_start_match(mc)
@@ -139,6 +153,13 @@ func _on_begin_turn(player_id: int) -> void:
 	_last_progress = Time.get_ticks_msec()
 	if role == "host" and stats.turns > max_turns:
 		_finish(true, "left after %d turns" % max_turns)
+		return
+	if leave_after > 0 and stats.turns > leave_after:
+		_finish(true, "left mid-match after %d turns" % leave_after)
+		return
+	# Online room: the other bot may have left (the room goes on); stop too.
+	if join_link != "" and stats.turns > max_turns + 6:
+		_finish(true, "kept playing after the other bot left")
 		return
 	_my_turn = player_id == GameState.local_id
 	if not _my_turn:
@@ -318,3 +339,11 @@ func _debug_state() -> String:
 	if s == null:
 		return "my_turn=%s" % _my_turn
 	return "turn=%s busy=%s awaiting=%s" % [s.turn, s._busy, s._awaiting]
+
+
+## A command-line value: `-- --name=value` (or the default).
+func _arg(prefix: String, default: String) -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with(prefix):
+			return arg.trim_prefix(prefix)
+	return default

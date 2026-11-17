@@ -49,11 +49,30 @@ Like a Pinia store (D004):
 | `ChatNet` | `network/chat_net.gd` | Session chat: say → server checks speaker → everyone; history to newcomers. |
 
 ## Networking
-- Listen server today: the host is peer 1 and a player (`Network.server_is_player`).
-- Transport: `EnetTransport` behind `NetworkTransport` (invite code = `address:port`,
-  default port 8080), so a lobby service can replace it without touching game code.
-- The lobby's owner is the first player to join (the host today); only they
-  change role counts and start.
+Two setups, chosen per game by what's typed in the Join box (D007):
+- **Direct**: a listen server; the host is peer 1 and a player
+  (`Network.server_is_player`). `EnetTransport`, invite code `address:port`
+  (default port 8080).
+- **Online room**: `WsTransport` (WebSocket). The invite code is the room
+  link `wss://DOMAIN/play/ROOM/TICKET`; `Network.ticket` holds the ticket
+  and `LobbyNet.join()` sends it. The server is a dedicated headless Godot
+  (`-- --server --port=N --room=CODE`, `network/room_server.gd`,
+  `server_is_player = false`) started by the lobby service (online/, see
+  docs/DEPLOY.md). It listens on 127.0.0.1 only, verifies tickets with
+  `RoomTicket` (HMAC, room secret from `BOARD2D_ROOM_SECRET`), reports
+  `ROOM_STATUS {json}` lines on stdout, and quits 2 min after it empties.
+  `main.gd` skips all screens in this mode. The browser build reads
+  `#room=…&ticket=…` (`main/online_launch.gd`) and goes back to the lobby page on leave.
+- WebSocket gives a client its id only once connected:
+  `MultiplayerController._on_connected_to_host` resets `GameState.local_id` then.
+- **Owner** (`LobbyNet._owner_id`, mirrored to `GameState.owner_id` by
+  `owner_changed`): the ticket's owner flag in online rooms, else the first
+  to join; passed on when they leave the lobby. Only the owner changes role
+  counts, starts, and kicks (`request_kick`, lobby only).
+- **Leaving mid-match** (BUG-001): `LobbyNet._on_peer_left` →
+  `MatchServer.player_left()`: the player is out (`Combat.leave`, card
+  revealed, no killer), pending questions/asks/rolls are answered for them
+  (skip if allowed, else the first option), and the turn moves on.
 
 ## Match server (`server/`, server only)
 - `MatchNet.create_server()` (called by `LobbyNet` on start) makes a

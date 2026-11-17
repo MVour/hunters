@@ -17,6 +17,10 @@ _Last updated: 2026-11-16_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
+2026-11-17: online rooms on the user's server — lobby service, Vue lobby
+page, dedicated Godot room servers, Docker + Caddy, GitHub deploy (C011,
+D007/D008, docs/DEPLOY.md). Built and tested locally; not deployed yet.
+BUG-001 fixed.
 2026-11-16: you press the dice to throw them for attacks; showier pawn moves — see C010.
 Before that: all text in `i18n/strings.csv`, server sends message keys (C009).
 Before that: language switch, chat, card dialogs, tighter packs (C008).
@@ -24,12 +28,14 @@ Before that: player list + click to pick (C006/C007).
 Before that: clearer match screen (C005), network/state refactor (C004).
 
 ## Next
-- **Deployment and a lobby/matchmaking service** (user's stated next goal).
-  Shape decided in D007: lobby/relay service + one dedicated headless Godot
-  server per room, WebSocket transport, private/open rooms with an owner.
-  Waiting on server details (OS, access) from the user.
-- BUG-001 (player drops mid-match) matters for online play; fix before or with deployment.
+- **First deploy** (user): follow docs/DEPLOY.md → One-time setup (server
+  script, GoDaddy A record, GitHub variables/secrets, run the workflow).
+  Server OS/specs still unknown; ports 80/443 must be free.
+- Docker stack test in WSL (`online/deploy/local-test.sh`): Ubuntu WSL has
+  no Docker engine yet; the user installs one or runs it on the server.
+- First real browser session: open `/game/` from the lobby page and play.
+- Later: reconnect to the same seat (IDEAS).
 
 ## Open bugs
-BUG-001 (player drops mid-match), BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
-after a network session, harmless). BUG-003 fixed. See BUGS.md.
+BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
+after a network session, harmless). BUG-001 and BUG-003 fixed. See BUGS.md.

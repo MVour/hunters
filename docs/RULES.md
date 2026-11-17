@@ -64,6 +64,9 @@ Names and action texts in both languages live in `autoload/global.gd`
 - They must reveal their character card (if they haven't already).
 - The player who killed them takes **one equipment card** from the dead
   character.
+- *As built:* a player who **leaves** (disconnects) during a match is out
+  the same way, with no killer: their card is revealed and nobody takes
+  their equipment. Anything waiting on them is skipped; the game goes on.
 
 ## Characters (Χαρακτήρες)
 

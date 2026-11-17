@@ -24,6 +24,9 @@ var local_player: Dictionary:
 
 var game_settings := _empty_settings()
 
+## The lobby's owner (changes settings, starts, kicks). 0 = not known yet.
+var owner_id := 0
+
 var game_info := {
 	"players_turn": [],
 	"round": 0,
@@ -43,6 +46,7 @@ func reset_session(my_id := 0) -> void:
 	players = {}
 	_no_player = new_player(my_id)
 	game_settings = _empty_settings()
+	owner_id = 0
 	game_info = {"players_turn": [], "round": 0, "waiting_for": []}
 	locations = []
 

@@ -10,7 +10,16 @@ extends Node2D
 @onready var play_scene_pack : PackedScene = preload("res://match/play_scene.tscn")
 var play_scene
 
+## Opened from the lobby web page: leaving the game goes back there.
+var _from_lobby_page := false
+
+
 func _ready()->void :
+	# Dedicated server for an online room: no screens at all (D007).
+	if RoomServer.wanted():
+		canvas_layer.hide()
+		add_child(RoomServer.new())
+		return
 	SignalBus.connect("_exit_game", _on_exit_game)
 	SignalBus.connect("_new_game", _on_new_game)
 	SignalBus.connect("_return_to_main_menu", _on_main_menu)
@@ -20,6 +29,21 @@ func _ready()->void :
 	set_main_screen()
 	_add_overlay()
 	_maybe_start_autotest()
+	_maybe_join_from_page()
+
+
+## Browser build started from the lobby page: straight into that room.
+func _maybe_join_from_page() -> void:
+	var link := OnlineLaunch.link_from_page()
+	if link == "":
+		return
+	_from_lobby_page = true
+	for sig in [Network.session_closed, Network.host_disconnected]:
+		sig.connect(OnlineLaunch.back_to_lobby)
+	Network.connection_failed.connect(func(_reason): OnlineLaunch.back_to_lobby())
+	SignalBus._new_game.emit()
+	multiplayer_controller.line_edit.text = link
+	multiplayer_controller._on_connect_lobby_button_pressed()
 
 
 ## Always on top, on every screen: the language button (bottom-left) and,
@@ -76,6 +100,8 @@ func _on_new_game():
 	
 	
 func _on_start_game(id):
+	if not Network.server_is_player:
+		return  # a dedicated server has no match screen
 	play_scene = play_scene_pack.instantiate()
 	
 	canvas_layer.add_child(play_scene)

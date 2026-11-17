@@ -7,6 +7,39 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C011 — Online rooms on your own server; players can leave mid-match (2026-11-17)
+- **What:** D007/D008 built.
+  - Godot: `WsTransport` (WebSocket) next to ENet, chosen per game by the
+    Join box (`IP:port` vs room link); dedicated room server mode
+    (`-- --server`, `network/room_server.gd`); join tickets checked in-game
+    (`network/room_ticket.gd`, names come from the login); a lobby owner
+    everyone sees (`owner_changed`), owner-only kick; the browser build joins
+    straight from the lobby page (`main/online_launch.gd`); export presets
+    (Web, Linux Server, Windows Desktop). BUG-001 fixed (see BUGS.md).
+  - `online/lobby-service` (Node 22, only dependency `ws`): logins (users /
+    shared codes / admins, signed cookies), rooms (private/open, owner,
+    limits), one Godot process per room, single-use tickets, WebSocket
+    forwarding, rate limits, strict headers. 13 tests + an end-to-end script.
+  - `online/lobby-ui` (Vue 3 + Vite): log in, make/join/list rooms, play in
+    the browser or copy a desktop link, owner controls; English/Greek.
+  - `online/docker` + `online/deploy`: Dockerfile (Godot export, page build,
+    two images), Caddyfile, locked-down compose, server setup and deploy
+    scripts, a WSL local stack test. `.github/workflows/online.yml`: tests,
+    images to GHCR, SSH deploy to a configurable host/domain, Windows build.
+  - Bots: `--join=<link>`, `--leave-after=N`, `--pawn=`, `--players=N`.
+  - Docs: new DEPLOY.md; ARCHITECTURE, RULES (leaving), MANIFEST updated.
+- **Why:** User's goal: game nights over the internet on their own server,
+  secure, dockerised, deployable by script.
+- **Rejected:** see D007/D008. Also: reconnecting to the same seat (later,
+  IDEAS); a Roll/lobby UI inside Godot for online rooms (the Vue page does it).
+- **Verified:** check_project 75 files + 165 keys; bots: normal, `--ui`
+  Greek, host leaves; 4 bots with one leaving mid-match (3 runs); service
+  `npm test` 13/13; `scripts/e2e.mjs`: real service + real room server, two
+  bots log in and finish a match through the forwarding (3 runs). Docker:
+  both images built and the workflow passed actionlint; the stack itself was
+  NOT run (Docker is only to be used from WSL, which has no engine yet).
+  Not deployed; the browser build not opened by a person yet.
+
 ### C010 — You throw the dice to attack; showier pawn moves (2026-11-16)
 - **What:** Attacks no longer roll by themselves: after picking a target
   (and Frederick/Gregor's ability question), the server waits for the

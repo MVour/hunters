@@ -71,4 +71,11 @@ that sit open for more than ~2 weeks.
 - **Hypothesis:** Only the lobby case was written (see `_on_peer_left`). Also: a pending
   `ask()` to the missing player would wait forever.
 - **Impact:** High for online play: one dropped connection can end the game night.
-- **Status:** open
+- **Fix (2026-11-17, C011):** `MatchServer.player_left()`: the player is out
+  like a death with no killer (character revealed, win checked), any choice,
+  dice throw or green card waiting on them is resolved for them, the turn
+  moves on; nothing is sent to the gone peer afterwards. Leaving while match
+  screens load is handled too.
+- **Status:** fix verified — 3 runs of 4 bots with one leaving after 5 turns:
+  the match went on (to 24 turns or a normal win), no script errors; 2-bot
+  leave runs end in the right win.

@@ -1,0 +1,215 @@
+# board2D online: test, build the Docker images, deploy to your server.
+# Setup and every setting: docs/DEPLOY.md.
+#
+# Repository VARIABLES (Settings > Secrets and variables > Actions > Variables):
+#   DEPLOY_HOST   server IP or hostname          (required to deploy)
+#   DOMAIN        e.g. play.example.com          (required to deploy)
+#   DEPLOY_USER   default: board2d
+#   DEPLOY_PORT   SSH port, default: 22
+# Repository SECRETS:
+#   DEPLOY_SSH_KEY      private key whose public half setup-server.sh installed
+#   DEPLOY_KNOWN_HOSTS  the server's SSH host key line (setup-server.sh prints it)
+#
+# Pushes to main build and push images; they deploy only when DEPLOY_HOST is
+# set. "Run workflow" can deploy to another host/domain for one run.
+
+name: "Online: build & deploy"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: "Server IP/hostname (blank = DEPLOY_HOST variable)"
+        required: false
+      domain:
+        description: "Domain (blank = DOMAIN variable)"
+        required: false
+      deploy:
+        description: "Deploy after building"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: online-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-services:
+    name: Lobby service + page
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            online/lobby-service/package-lock.json
+            online/lobby-ui/package-lock.json
+      - name: Lobby service tests
+        working-directory: online/lobby-service
+        run: npm ci --no-audit --no-fund && npm test && npm audit --omit=dev --audit-level=high
+      - name: Lobby page build
+        working-directory: online/lobby-ui
+        run: npm ci --no-audit --no-fund && npm run build && npm audit --omit=dev --audit-level=high
+
+  test-game:
+    name: Game checks (headless Godot)
+    runs-on: ubuntu-latest
+    container: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - name: Import
+        run: godot --headless --import || true
+      - name: Check every file + strings
+        run: |
+          godot --headless --path . tools/check_project.tscn | tee check.log
+          grep -q "CHECKED .* 0 failures" check.log
+          grep -q "translation keys, 0 problems" check.log
+      - name: Two bots play a match
+        run: bash tools/run_autotest.sh godot
+
+  images:
+    name: Build & push images
+    needs: [test-services, test-game]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      prefix: ${{ steps.names.outputs.prefix }}
+      tag: ${{ steps.names.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - id: names
+        env:
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ github.sha }}
+        run: |
+          echo "prefix=ghcr.io/$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "tag=${SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Lobby image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: online/docker/Dockerfile
+          target: lobby
+          push: true
+          provenance: false
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: |
+            ${{ steps.names.outputs.prefix }}/board2d-lobby:${{ steps.names.outputs.tag }}
+            ${{ steps.names.outputs.prefix }}/board2d-lobby:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: online/docker/Dockerfile
+          target: web
+          push: true
+          provenance: false
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: |
+            ${{ steps.names.outputs.prefix }}/board2d-web:${{ steps.names.outputs.tag }}
+            ${{ steps.names.outputs.prefix }}/board2d-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to the server
+    needs: images
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name == 'push' || inputs.deploy) &&
+      (inputs.host != '' || vars.DEPLOY_HOST != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    environment: production
+    env:
+      HOST: ${{ inputs.host || vars.DEPLOY_HOST }}
+      DOMAIN: ${{ inputs.domain || vars.DOMAIN }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'board2d' }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      PREFIX: ${{ needs.images.outputs.prefix }}
+      TAG: ${{ needs.images.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - name: Check settings
+        run: |
+          [[ "$HOST" =~ ^[A-Za-z0-9.:-]+$ ]] || { echo "::error::DEPLOY_HOST is not a host/IP"; exit 1; }
+          [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "::error::Set the DOMAIN variable"; exit 1; }
+          [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo "::error::bad DEPLOY_USER"; exit 1; }
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]] || { echo "::error::bad DEPLOY_PORT"; exit 1; }
+      - name: SSH key and pinned host key
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          [[ -n "$KEY" && -n "$KNOWN" ]] || { echo "::error::Set DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS secrets"; exit 1; }
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+      - name: Copy compose file and deploy script
+        run: |
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            online/deploy/docker-compose.yml online/deploy/deploy.sh "$DEPLOY_USER@$HOST:/opt/board2d/"
+      - name: Pull and restart
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          # The registry token goes over stdin, never on a command line.
+          printf '%s\n' "$GHCR_TOKEN" | ssh -p "$DEPLOY_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$HOST" \
+            "read -r GHCR_TOKEN && export GHCR_TOKEN GHCR_USER='$GHCR_USER' && chmod 750 /opt/board2d/deploy.sh && /opt/board2d/deploy.sh '$PREFIX' '$TAG' '$DOMAIN'"
+      - name: Smoke test over the internet
+        run: |
+          for _ in $(seq 1 20); do
+            curl -fsS "https://$DOMAIN/api/health" && exit 0
+            sleep 6
+          done
+          echo "::error::https://$DOMAIN/api/health did not answer (DNS? firewall? certificate?)"
+          exit 1
+      - name: Forget the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  desktop:
+    name: Windows desktop build (download)
+    needs: test-game
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    container: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - run: |
+          godot --headless --import || true
+          mkdir -p build/windows
+          godot --headless --export-release "Windows Desktop" build/windows/board2D.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: board2D-windows
+          path: build/windows/
+          retention-days: 30

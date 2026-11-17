@@ -1,0 +1,37 @@
+{
+  "publicOrigin": "https://play.example.com",
+  "listen": { "host": "0.0.0.0", "port": 8787 },
+  "trustProxy": true,
+  "sessionEpoch": 1,
+  "sessionDays": 14,
+  "access": {
+    "sharedCodes": [],
+    "users": [
+      { "name": "Alex", "code": "change-me-please" },
+      { "name": "Sam", "codeHash": "scrypt$<run: npm run hash-code -- \"sams code\">" }
+    ],
+    "admins": ["Alex"]
+  },
+  "rooms": {
+    "maxRooms": 6,
+    "maxRoomsPerUser": 1,
+    "maxPlayers": 8,
+    "maxHours": 8,
+    "portFrom": 20000,
+    "portTo": 20049,
+    "startTimeoutSeconds": 30
+  },
+  "godot": {
+    "command": "/app/game-server/board2D.x86_64",
+    "args": ["--headless"]
+  },
+  "limits": {
+    "loginAttemptsPerIp": 10,
+    "loginFailuresPerName": 8,
+    "apiRequestsPerMinute": 120,
+    "socketsPerIp": 10,
+    "messagesPerSecond": 80,
+    "maxMessageBytes": 65536,
+    "ticketSeconds": 60
+  }
+}

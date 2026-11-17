@@ -30,6 +30,13 @@ assets/              the user's art: pawns/ portraits/ cards/ locations/ icons/ 
 i18n/                owns: every UI text, strings.csv (keys,en,el); .translation files are generated
 tools/               dev tools: check_project (loads every file + checks i18n), autotest (bots play a match)
 docs/                project docs (see MANIFEST.md)
+online/              owns: everything for online rooms on the server (D007/D008); .gdignore'd
+  lobby-service/     Node service: logins, rooms, tickets, starts room servers, forwards WebSockets
+  lobby-ui/          Vue lobby page (log in, rooms, play in browser / desktop link)
+  docker/            Dockerfile (game export, page build, two images), Caddyfile
+  deploy/            server setup, deploy script, docker-compose.yml, WSL local stack test
+.github/workflows/   online.yml: tests, images to GHCR, SSH deploy, Windows build
+export_presets.cfg   Godot exports: Web, Linux Server (room server), Windows Desktop
 ```
 
 ## Key-file roles
@@ -39,7 +46,9 @@ docs/                project docs (see MANIFEST.md)
 | `network/match_net.gd` / `network/lobby_net.gd` | The only `@rpc` code. Every client action, server request and server message. |
 | `server/match_server.gd` | The match on the server: lifecycle, turns, moving, choices. Helpers: `card_flow.gd` (cards, questions, equipment), `combat.gd` (health, attacks, abilities, winning). |
 | `server/server_state.gd` | The server's full truth for a match (secret characters, deck order). |
-| `network/network.gd` | Hosting/joining/leaving; the only code that picks a transport. |
+| `network/network.gd` | Hosting/joining/leaving; the only code that picks a transport (ENet or WebSocket, per game). |
+| `network/room_server.gd` | Dedicated server mode for one online room (`-- --server`). |
+| `online/lobby-service/src/app.js` | The lobby service's API and WebSocket entrance (all access checks). |
 | `autoload/game_state.gd` | The client store: what this computer may know. Written only by LobbyNet/MatchNet messages. |
 | `autoload/global.gd` | Static data (pawns, locations, card colours, defaults) and the Classic art setting. |
 | `data/cards.gd` / `data/characters.gd` | The card list and the character list (EN + EL text). |

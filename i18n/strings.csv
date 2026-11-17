@@ -9,7 +9,7 @@ keys,en,el
 "ability.your_turn_only","Only on your turn.","Μόνο στη σειρά σου."
 "Back","Back","Πίσω"
 "BACK","BACK","ΠΙΣΩ"
-"blank = this computer","blank = this computer","κενό = αυτός ο υπολογιστής"
+"blank = this computer","IP:port, a room link, or blank = this computer","IP:θύρα, σύνδεσμος δωματίου ή κενό = αυτός ο υπολογιστής"
 "card.equipment","EQUIPMENT","ΕΞΟΠΛΙΣΜΟΣ"
 "card.event","EVENT","ΓΕΓΟΝΟΣ"
 "card.must","MUST","ΥΠΟΧΡΕΩΤΙΚΟ"
@@ -27,7 +27,7 @@ keys,en,el
 "HELP","HELP","ΒΟΗΘΕΙΑ"
 "HIDE","HIDE","ΑΠΟΚΡΥΨΗ"
 "Host","Host","Φιλοξενία"
-"Host's code","Host's code","Κωδικός οικοδεσπότη"
+"Host's code","Host's code or room link","Κωδικός οικοδεσπότη ή σύνδεσμος δωματίου"
 "hud.help","Turn order:
 
 1. Roll the dice and move to the location they point to (7 = any other location).
@@ -56,6 +56,7 @@ Use your ability whenever its card says. Reveal your character to make passive a
 "Join","Join","Σύνδεση"
 "Lobby:","Lobby:","Λόμπι:"
 "lobby.copied","Copied!","Αντιγράφηκε!"
+"lobby.kick","Remove from the room","Αφαίρεση από το δωμάτιο"
 "lobby.need_two","Need at least 2 players.","Χρειάζονται τουλάχιστον 2 παίκτες."
 "lobby.not_enough_characters","Only {count} {species} characters exist. Design more, or lower the count!","Υπάρχουν μόνο {count} χαρακτήρες ({species}). Φτιάξε κι άλλους ή μείωσε τον αριθμό!"
 "lobby.roles_mismatch","Roles add up to {roles}, but there are {players} players.","Οι ρόλοι είναι {roles}, αλλά οι παίκτες είναι {players}."
@@ -107,6 +108,7 @@ Use your ability whenever its card says. Reveal your character to make passive a
 "notice.no_equipment_to_give","{card}: you have no equipment to give.","{card}: δεν έχεις εξοπλισμό να δώσεις."
 "notice.no_equipment_to_take","{card}: there's no equipment to take.","{card}: δεν υπάρχει εξοπλισμός να πάρεις."
 "notice.nobody_to_target","{card}: nobody to target.","{card}: δεν υπάρχει στόχος."
+"notice.player_left","{player} left the game and is out.","Ο/Η {player} έφυγε από το παιχνίδι και είναι εκτός."
 "notice.protected","{player} is protected until their next turn.","Ο/Η {player} προστατεύεται μέχρι τον επόμενο γύρο του/της."
 "notice.reveals","{player} reveals: {character} the {species}!","Ο/Η {player} αποκαλύπτεται: {character}, {species}!"
 "notice.ring_bites","{player}'s Cursed Ring bites.","Το Καταραμένο Δαχτυλίδι του/της {player} δαγκώνει."

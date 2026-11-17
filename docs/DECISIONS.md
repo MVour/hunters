@@ -12,8 +12,25 @@ in MANIFEST.md → Non-negotiable constraints.
 
 ---
 
+### D008 — Online stack runs in Docker behind Caddy; deployed by GitHub Actions (2026-11-17)
+- **Status:** active (refines D007's "nginx + Let's Encrypt" detail)
+- **What:** Two images from one Dockerfile (`online/docker/`): `web` (Caddy:
+  automatic HTTPS, security headers/CSP, the Vue lobby page, the browser
+  game) and `lobby` (Node service + exported Linux Godot room server, uid
+  1000, read-only, no capabilities, internal network without internet).
+  `online/deploy/docker-compose.yml` on the server; GitHub Actions tests,
+  builds, pushes to GHCR and deploys over SSH (pinned host key) to a
+  configurable host/domain. Access: names + codes in a config file
+  (users / shared codes / admins). Docker testing happens only in WSL (user's rule).
+- **Why:** User asked for dockerized, as-secure-as-possible services with
+  scripted deploys and configurable domain/IP.
+- **Rejected:** nginx + certbot on the host (more moving parts, manual
+  renewals, not containerised); email/OAuth login (needs mail or third
+  parties; the user is fine with codes in config); building on the server
+  (needs the source and toolchains there).
+
 ### D007 — Online play: dedicated server per room behind a lobby/relay service (2026-11-17)
-- **Status:** active (not built yet)
+- **Status:** active (built 2026-11-17, C011; hosting details in D008)
 - **What:** The user's own server runs everything. A small lobby service
   (Node.js) keeps the list of rooms: each has an id/code, an owner (the
   player who created it: settings, start, kick) and is private (join by

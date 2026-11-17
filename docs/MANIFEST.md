@@ -32,6 +32,7 @@ skill's setup step to re-sync this block if the skill's rules change.)
 | docs/BUGS.md | Status log | Sequential IDs (BUG-001, ...). Log area, root-cause hypothesis, impact. Update status field when addressed — distinguish fix implemented from fix verified. |
 | docs/IDEAS.md | Backlog | Reference pool, not a queue — implementing an entry only happens if the user asks. Remove on implementation + add a Log entry. |
 | docs/ARCHITECTURE.md | Living reference | Edit in place, same session as the invalidating change. No history kept — risk is drift, not bloat. |
+| docs/DEPLOY.md | Living reference (online play) | Setup, access config, security, operations, local testing for the server. Edit in place with any change under `online/`, the workflow, export presets or the online network code. |
 | docs/RULES.md, docs/CARDS.md | Living reference (game design spec) | Edit in place, same session as a rules/card change in code (`data/cards.gd`, `data/characters.gd`, `server/*.gd`). |
 | docs/FOLDER_STRUCTURE.md | Folder map | Update only when a folder's purpose changes, a top-level folder is added/removed, or a key-file-roles-table file moves/renames/is removed. Not on every file rename. |
 
@@ -47,6 +48,8 @@ Everything else — routine implementation detail that doesn't touch a constrain
 
 ### Before ending a task or session
 0. Code changed? Run `tools/check_project.tscn` and `tools/run_autotest.sh` headless (see ARCHITECTURE.md → Testing).
+   Network/online code changed? Also `npm test` and `node scripts/e2e.mjs <godot>` in `online/lobby-service` (DEPLOY.md → Testing locally).
+   Docker: only from WSL (user's rule), e.g. `bash online/deploy/local-test.sh`.
 1. Does STATE.md still match reality? Rewrite if this session's work made it stale.
 2. Any BUGS.md entry touched this session — is its status field actually updated?
 3. Any IDEAS.md entry implemented — removed, with a Log entry added?
@@ -87,6 +90,7 @@ Kept in docs/FOLDER_STRUCTURE.md (one place only).
 | docs/IDEAS.md | If task touches backlog / "what's next" | New idea, or one implemented |
 | docs/VISION.md | When a scope call is unclear | Real pivot only |
 | docs/ARCHITECTURE.md | Task touches networking, turn flow, or scene structure | Those change |
+| docs/DEPLOY.md | Task touches online rooms, the server, Docker or the workflow | Those change |
 | docs/RULES.md | Task touches game rules | Rules change in code |
 | docs/CARDS.md | Task touches cards | A card is added/changed/removed |
 | docs/FOLDER_STRUCTURE.md | If task touches unfamiliar code | Folder purpose changes, or a key-file-roles-table file moves/renames |

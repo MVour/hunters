@@ -34,6 +34,7 @@ var turn := {
 }
 
 var _loaded := {}      # player ids whose match screen is ready
+var _gone := {}        # player ids who left during the match (BUG-001)
 var _busy := 0         # effects/attacks in progress; the turn can't end meanwhile
 var _awaiting := {}    # player id -> {"id": ask id, "values": [...], "skip": bool}
 var _answers := {}     # ask id -> chosen value
@@ -74,6 +75,8 @@ func _start() -> void:
 	state.turn_order = state.players.keys()
 	state.turn_order.shuffle()
 	MatchNet.set_turn_order.rpc(state.turn_order)
+	for id in _gone:  # left while the match screens were loading
+		_drop(id)
 	_start_turn()
 
 
@@ -91,7 +94,8 @@ func _deal_characters() -> void:
 	var i := 0
 	for id in state.players:
 		state.players[id].character = chosen[i]
-		MatchNet.set_character.rpc_id(id, chosen[i])
+		if not _gone.has(id):
+			MatchNet.set_character.rpc_id(id, chosen[i])
 		i += 1
 
 
@@ -135,6 +139,53 @@ func end_turn(sender: int) -> void:
 		return
 	_finish_turn(sender)
 	_start_turn()
+
+
+## BUG-001: a player left during the match. They're out, like dying with no
+## killer: their character is shown, anything waiting on them gets a default
+## answer, and if it was their turn the next player goes. The match goes on.
+func player_left(player_id: int) -> void:
+	if not state.players.has(player_id) or _gone.has(player_id):
+		return
+	_gone[player_id] = true
+	if not started:
+		peer_loaded(player_id)  # don't wait for their screen; _start drops them
+		return
+	_drop(player_id)
+
+
+func is_gone(player_id: int) -> bool:
+	return _gone.has(player_id)
+
+
+func _drop(player_id: int) -> void:
+	if finished:
+		return
+	var p: Dictionary = state.players[player_id]
+	notice(Msg.make("notice.player_left", {"player": p.name}))
+	var q: Dictionary = turn.pending_question
+	if not q.is_empty() and not q.get("answering", false) and player_id in [q.from, q.to]:
+		state.discard(q.card)
+		turn.pending_question = {}
+		if q.to != 0:
+			MatchNet.question_answered.rpc(q.from, q.to)
+	if not p.dead:
+		combat.leave(player_id)
+	_answer_for_gone(player_id)
+	if turn.player != 0:
+		after_resolution()
+
+
+## Whatever the server was asking a player who left: skip if allowed, else
+## the first option (a dice throw just happens).
+func _answer_for_gone(player_id: int) -> void:
+	if not _awaiting.has(player_id):
+		return
+	var waiting: Dictionary = _awaiting[player_id]
+	_awaiting.erase(player_id)
+	_answers[waiting.id] = null if waiting.skip else waiting.values[0]
+	_broadcast_waiting()
+	choice_made.emit(waiting.id)
 
 
 ## After an effect finishes: if the current player died meanwhile, move on.
@@ -345,6 +396,8 @@ func ask_roll(player_id: int, prompt: Dictionary) -> void:
 
 
 func _await_answer(player_id: int, values: Array, allow_skip: bool, is_roll: bool, send: Callable):
+	if _gone.has(player_id):  # left the match: answer for them (BUG-001)
+		return null if allow_skip else values[0]
 	var ask_id := _next_ask_id
 	_next_ask_id += 1
 	_awaiting[player_id] = {"id": ask_id, "values": values, "skip": allow_skip, "roll": is_roll}
@@ -396,6 +449,8 @@ func notice(message: Dictionary) -> void:
 
 
 func private_info(player_id: int, title: Dictionary, text: Dictionary) -> void:
+	if _gone.has(player_id):
+		return
 	MatchNet.private_info.rpc_id(player_id, title, text)
 
 

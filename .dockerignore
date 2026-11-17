@@ -1,0 +1,14 @@
+# Keep the Docker build context small and free of secrets.
+.git
+.github
+.godot
+.claude
+build
+docs
+assets/_source
+**/node_modules
+online/lobby-ui/dist
+online/lobby-service/config.json
+online/deploy/.env
+online/deploy/config.json
+**/*.log

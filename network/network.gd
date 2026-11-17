@@ -2,8 +2,10 @@ extends Node
 ## Network autoload: the single place that knows how players get connected.
 ##
 ## The game is server-authoritative: peer 1 (the server) makes every decision
-## and clients only send requests. Today the server is also a player (the
-## host); set server_is_player = false to run as a dedicated server later.
+## and clients only send requests. Two setups, chosen per game:
+## - Direct: a player hosts (server_is_player), friends join by IP (ENet).
+## - Online room: a dedicated server per room on the game server, reached
+##   through the lobby service by WebSocket (RoomServer, WsTransport, D007).
 
 signal connected_to_host
 signal connection_failed(reason: String)
@@ -13,10 +15,14 @@ signal peer_left(id: int)
 ## We left a session on purpose (or started a new one). Session state resets.
 signal session_closed
 
-## Swap this for a lobby-service transport later.
+## Chosen per game: direct ENet (host on this computer / LAN / IP) or
+## WebSocket (a room on the game server, D007). See host() and join().
 var transport: NetworkTransport = EnetTransport.new()
-## False for a future dedicated server that doesn't play itself.
+## False on a dedicated room server (`-- --server`), which doesn't play itself.
 var server_is_player := true
+## Client of an online room: the join ticket from the room link (sent once
+## to the room in LobbyNet.join()). "" otherwise.
+var ticket := ""
 
 
 func _ready() -> void:
@@ -27,8 +33,11 @@ func _ready() -> void:
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 
+## options: "transport" ("enet" default, or "ws" for a room server), "port", ...
 func host(options := {}) -> Error:
 	leave()
+	transport = WsTransport.new() if options.get("transport", "enet") == "ws" else EnetTransport.new()
+	ticket = ""
 	var peer := transport.create_host_peer(options)
 	if peer == null:
 		return FAILED
@@ -36,8 +45,12 @@ func host(options := {}) -> Error:
 	return OK
 
 
+## invite_code: "address:port" (direct) or a room link "wss://…/play/ROOM/TICKET".
 func join(invite_code: String) -> Error:
 	leave()
+	var link := WsTransport.parse_link(invite_code)
+	transport = WsTransport.new() if not link.is_empty() else EnetTransport.new()
+	ticket = link.get("ticket", "")
 	var peer := transport.create_client_peer(invite_code)
 	if peer == null:
 		return FAILED

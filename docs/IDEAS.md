@@ -7,9 +7,6 @@ entry need the user's call first (see MANIFEST.md, approval gates).
 Format: `- **Name** — what and why. (added YYYY-MM-DD)`
 
 ## Play & online
-- **Online play with friends** — get a real game night working over the
-  internet: port forwarding or a VPN like Tailscale, a join-by-code screen,
-  a test session. (added 2026-11-16)
 - **Reconnect** — let a dropped player rejoin the same seat (pairs with BUG-001). (added 2026-11-16)
 - **Bot players** — fill empty seats with computer players. A start exists:
   `tools/autotest.gd` already plays full matches through the real actions

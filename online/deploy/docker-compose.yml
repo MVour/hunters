@@ -1,0 +1,63 @@
+# board2D online, on the server: /opt/board2d/docker-compose.yml
+# Values come from /opt/board2d/.env (see .env.example).
+#
+# Only "web" (Caddy) is reachable from the internet (80/443). The lobby
+# service and its game rooms sit on an internal network with no internet
+# access at all, run as an unprivileged user on a read-only filesystem
+# with every Linux capability dropped.
+
+name: board2d
+
+services:
+  web:
+    image: ${IMAGE_PREFIX}/board2d-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge, internal]
+    depends_on: [lobby]
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    pids_limit: 100
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+  lobby:
+    image: ${IMAGE_PREFIX}/board2d-lobby:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      BOARD2D_PUBLIC_ORIGIN: https://${DOMAIN}
+      BOARD2D_SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+    volumes:
+      - ./config.json:/config/config.json:ro
+    networks: [internal]
+    user: "1000:1000"
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    init: true
+    mem_limit: ${LOBBY_MEMORY:-1536m}
+    cpus: ${LOBBY_CPUS:-2}
+    pids_limit: 600
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+
+networks:
+  edge: {}
+  internal:
+    internal: true
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}

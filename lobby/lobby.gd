@@ -24,6 +24,8 @@ var question_mark_sprite : PackedScene = preload("res://lobby/question_mark_spri
 
 ## Avatar tile per player id.
 var q_marks := {}
+## The owner's "remove from the room" button on each tile.
+var kick_buttons := {}
 
 
 func _ready():
@@ -31,6 +33,7 @@ func _ready():
 	SignalBus.lobby_player_updated.connect(_on_player_updated)
 	SignalBus.lobby_player_removed.connect(_on_player_removed)
 	SignalBus.lobby_start_refused.connect(func(problem): start_error_label.text = Global.msg(problem))
+	SignalBus.lobby_owner_changed.connect(_apply_owner)
 	start_error_label.text = ""
 	# Players we already know about (messages can arrive before this screen).
 	for player in GameState.players.values():
@@ -41,10 +44,16 @@ func lobby_init(code: String):
 	lobby_code = code
 	lobby_id.text = code
 
-	# Only the host changes role counts and starts the match.
-	if not multiplayer.is_server():
-		for node in [start_game_button, vamp_dec, vamp_inc, were_dec, were_inc, humans_dec, humans_inc]:
-			node.hide()
+	_apply_owner()
+
+
+## Only the owner changes role counts, starts the match and kicks players.
+func _apply_owner(_id := 0) -> void:
+	var mine := GameState.owner_id == GameState.local_id and GameState.local_id != 0
+	for node in [start_game_button, vamp_dec, vamp_inc, were_dec, were_inc, humans_dec, humans_inc]:
+		node.visible = mine
+	for id in kick_buttons:
+		kick_buttons[id].visible = mine and id != GameState.local_id
 
 
 func _on_player_updated(player: Dictionary) -> void:
@@ -53,6 +62,17 @@ func _on_player_updated(player: Dictionary) -> void:
 		lobby_container.add_child(new_q_mark)
 		new_q_mark.init(player)
 		q_marks[player.id] = new_q_mark
+		var kick := Button.new()
+		kick.text = "✕"
+		kick.tooltip_text = Global.text("lobby.kick")
+		kick.custom_minimum_size = Vector2(28, 28)
+		kick.position = Vector2(-6, -6)
+		kick.z_index = 2
+		var id: int = player.id
+		kick.pressed.connect(func(): LobbyNet.kick(id))
+		new_q_mark.add_child(kick)
+		kick_buttons[id] = kick
+		_apply_owner()
 	else:
 		var q_mark = q_marks[player.id]
 		q_mark.set_sprite_name(player.name)
@@ -65,6 +85,7 @@ func _on_player_removed(id: int) -> void:
 	if q_marks.has(id):
 		q_marks[id].queue_free()
 		q_marks.erase(id)
+		kick_buttons.erase(id)
 	_on_players_changed()
 
 

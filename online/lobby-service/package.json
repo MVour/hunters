@@ -1,0 +1,19 @@
+{
+  "name": "board2d-lobby-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lobby, login and connection forwarding for board2D online rooms (docs/DECISIONS.md D007).",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test \"test/*.test.js\"",
+    "hash-code": "node src/hash-code.js"
+  },
+  "dependencies": {
+    "ws": "8.23.0"
+  }
+}

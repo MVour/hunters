@@ -57,6 +57,16 @@ func _kill(player_id: int, killer_id: int) -> void:
 	s.after_resolution()
 
 
+## A player left the match (BUG-001): out, card shown, nobody gets the kill.
+func leave(player_id: int) -> void:
+	var p: Dictionary = s.state.players[player_id]
+	p.dead = true
+	p.hidden = false
+	MatchNet.reveal_character.rpc(player_id, p.character)
+	MatchNet.player_died.rpc(player_id, 0)
+	check_win()
+
+
 ## Protection wears off; always-on equipment that acts each turn.
 func turn_start_effects(player_id: int) -> void:
 	var p: Dictionary = s.state.players[player_id]

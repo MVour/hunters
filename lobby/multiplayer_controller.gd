@@ -48,6 +48,9 @@ func _on_connect_lobby_button_pressed() -> void:
 		return
 	GameState.reset_session(multiplayer.get_unique_id())
 	connect_to_lobby.hide()
+	# A room link carries a private ticket: show only the room code.
+	if WsTransport.is_link(code):
+		code = Network.get_invite_code()
 	_open_lobby(code if code != "" else "this computer")
 
 
@@ -66,6 +69,8 @@ func _on_return_button_pressed() -> void:
 
 func _on_connected_to_host() -> void:
 	print("Connected to host!")
+	# WebSocket only knows our id once connected (ENet knows it at once).
+	GameState.reset_session(multiplayer.get_unique_id())
 	if lobby:
 		LobbyNet.join()
 

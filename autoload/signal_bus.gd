@@ -68,6 +68,8 @@ signal lobby_player_updated
 signal lobby_player_removed
 ## The role counts changed: (settings)
 signal lobby_settings_changed
+## The lobby's owner (settings, start, kick) changed: (player_id)
+signal lobby_owner_changed
 ## The server refused your pawn (someone took it first): (pawn)
 signal avatar_rejected
 ## The server refused to start: (reason)
