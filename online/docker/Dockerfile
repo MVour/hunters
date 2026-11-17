@@ -23,6 +23,13 @@ RUN mkdir -p /out/web /out/server \
 RUN BOARD2D_ROOM_SECRET=0123456789abcdef0123456789abcdef HOME=/tmp \
     timeout 30 /out/server/board2D.x86_64 --headless -- --server --port=20997 --room=CHECK1 --max-players=2 \
     | grep -m1 -qx ROOM_READY
+# The Windows game, offered on the lobby page (/download/board2D-windows.zip).
+# One .exe with the game packed inside; nothing to install.
+RUN mkdir -p /out/windows /out/download \
+ && godot --headless --export-release "Windows Desktop" /out/windows/board2D.exe \
+ && test -s /out/windows/board2D.exe \
+ && (command -v zip >/dev/null || (apt-get update -q && apt-get install -y -q --no-install-recommends zip)) \
+ && zip -9 -j -q /out/download/board2D-windows.zip /out/windows/board2D.exe
 
 # --- Build the lobby page (Vue) ---------------------------------------------
 FROM node:22.12-bookworm-slim AS ui
@@ -58,3 +65,4 @@ RUN DOMAIN=play.example.com ACME_EMAIL=ci@example.com sh -c \
       'caddy adapt --config /etc/caddy/Caddyfile >/dev/null && caddy adapt --config /etc/caddy/behind-proxy.Caddyfile >/dev/null'
 COPY --from=ui /ui/dist /srv/lobby
 COPY --from=godot /out/web /srv/game
+COPY --from=godot /out/download /srv/download

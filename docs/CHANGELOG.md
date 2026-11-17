@@ -7,6 +7,25 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C015 — The Windows game can be downloaded from the lobby page (2026-11-17)
+- **What:** the Docker build exports "Windows Desktop": one .exe with the
+  game packed inside. It zips it into the web image at
+  `/srv/download/board2D-windows.zip`. Caddy serves `/download/*` as a file
+  download only (`Content-Disposition: attachment` plus a sandboxing CSP).
+  The rooms page has a "Desktop game (Windows)" section with the button
+  (showing the size), three steps (unzip, the SmartScreen warning, Desktop
+  link → "Host's code or room link"), in English and Greek. It shows only if
+  a HEAD request finds the zip. `local-test.sh` checks the download header.
+- **Why:** the user wanted friends to be able to get the desktop app from
+  the site, not from GitHub.
+- **Rejected:**
+  - Code signing: a yearly cost, not worth it for a group of friends.
+  - An installer: there's nothing to install.
+  - Linking to GitHub artifacts: those need a GitHub login and expire.
+- **Notes:** about 36 MB to download (88 MB unzipped, measured on a local
+  export). The page builds; the image build and the download itself are
+  checked by the next release.
+
 ### C014 — Room servers report back on Linux release builds (2026-11-17)
 - **What:** `application/run/flush_stdout_on_print=true` fixes BUG-006, where
   no online room could start on the server. The Dockerfile's godot stage

@@ -30,6 +30,16 @@ handle @service {
 	}
 }
 
+# The desktop game to download (Windows zip, built with every release).
+# Always saved as a file, never shown or run in the page.
+handle_path /download/* {
+	root * /srv/download
+	header Content-Disposition "attachment"
+	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+	header Cache-Control "no-cache"
+	file_server
+}
+
 # The browser game (Godot web export). Godot's page needs inline/eval
 # script and WebAssembly; it may only connect back to this site.
 redir /game /game/ 308

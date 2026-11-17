@@ -100,6 +100,20 @@ async function copyCode(code) {
 }
 
 const canManage = (room) => room.mine || props.me.admin;
+
+/** The Windows game, if this server has one (built with every release). */
+const DOWNLOAD_URL = '/download/board2D-windows.zip';
+const download = ref(null); // null = none on this server, else { size: MB or 0 }
+onMounted(async () => {
+  try {
+    const res = await fetch(DOWNLOAD_URL, { method: 'HEAD', cache: 'no-store' });
+    if (!res.ok) return;
+    const bytes = Number(res.headers.get('content-length')) || 0;
+    download.value = { size: bytes ? Math.max(1, Math.round(bytes / 1048576)) : 0 };
+  } catch {
+    /* no download offered */
+  }
+});
 </script>
 
 <template>
@@ -142,6 +156,19 @@ const canManage = (room) => room.mine || props.me.admin;
         <input v-model="joinCode" :placeholder="t('roomCode')" maxlength="16" autocapitalize="characters" spellcheck="false" />
         <button class="primary" type="submit" :disabled="busy || !joinCode.trim()">{{ t('join') }}</button>
       </form>
+
+      <template v-if="download">
+        <h2 class="spaced">{{ t('desktopTitle') }}</h2>
+        <p class="muted small">{{ t('desktopIntro') }}</p>
+        <a class="button primary" :href="DOWNLOAD_URL" download>
+          {{ download.size ? t('downloadSize', { size: download.size }) : t('download') }}
+        </a>
+        <ol class="steps small">
+          <li>{{ t('desktopStep1') }}</li>
+          <li>{{ t('desktopStep2') }}</li>
+          <li>{{ t('desktopStep3') }}</li>
+        </ol>
+      </template>
     </section>
 
     <section class="panel grow">

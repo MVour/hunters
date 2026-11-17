@@ -7,9 +7,14 @@ reference: update it in the same session as anything under `online/`,
 ## What players need
 - **Nothing to install.** They open `https://<your domain>`, log in with
   their name + access code, make or join a room, and press **Play in browser**.
-- Optional: the **desktop game** (Windows build, made by every release or
-  "Run workflow", artifact `board2D-windows`). In the lobby page press
-  **Desktop link**, then paste it into the game's Join box within a minute.
+- Optional: the **desktop game for Windows**. It's built with every release
+  and offered on the lobby page under "Desktop game (Windows)", at
+  `/download/board2D-windows.zip`, about 36 MB. Unzip it and run
+  `board2D.exe`; there's nothing to install. Windows shows "Windows protected
+  your PC" the first time, because the game isn't code-signed: More info →
+  Run anyway. To join, press **Desktop link** on a room, then paste it into
+  the game's "Host's code or room link" box within a minute. The same game is
+  also attached to each workflow run as the artifact `board2D-windows`.
 - LAN / direct play is unchanged: Host on one computer, others join by `IP:port`.
 
 So each game is either a **direct game** (someone hosts, no server) or an
