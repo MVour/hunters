@@ -238,20 +238,23 @@ func _click_pick() -> bool:
 	else:
 		target = scene.player_list._rows[id]._card
 	var centre: Vector2 = target.get_global_transform_with_canvas() * (target.size / 2.0)
+	# Input arrives in window pixels; the game is drawn at 1920x1080 and scaled
+	# to the window (stretch), so convert like a real mouse position would be.
+	var at: Vector2 = get_viewport().get_final_transform() * centre
 	for pressed in [true, false]:
 		var e := InputEventMouseButton.new()
 		e.button_index = MOUSE_BUTTON_LEFT
 		e.pressed = pressed
-		e.position = centre
-		e.global_position = centre
+		e.position = at
+		e.global_position = at
 		get_viewport().push_input(e)
 		await get_tree().process_frame
 	# Still the same pick open = the click didn't land (a new pick may follow
 	# right away, e.g. a card that targets twice: that's fine).
 	if not scene.pick_ids.is_empty() and scene.pick_serial == serial:
 		var motion := InputEventMouseMotion.new()
-		motion.position = centre
-		motion.global_position = centre
+		motion.position = at
+		motion.global_position = at
 		get_viewport().push_input(motion)
 		await get_tree().process_frame
 		var under: Control = get_viewport().gui_get_hovered_control()

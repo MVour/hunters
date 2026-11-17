@@ -66,6 +66,9 @@ that sit open for more than ~2 weeks.
   one frame after the pick opens, while the attacker's pawn is still in its
   (now longer, ~3 s) landing animation at the same spot (raised z_index).
   A person would rarely click that fast.
+- **2026-11-17:** seen once more in 3 `--ui` runs after the switch to
+  fractional scaling (C017), same pattern: the right pawn was under the mouse a
+  frame later. The bot now converts its clicks to window pixels.
 - **Status:** open (partly fixed, watching)
 
 ### BUG-004 — Godot crashes on exit after a network session (headless)

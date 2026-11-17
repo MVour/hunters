@@ -7,6 +7,23 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C017 — The game shrinks to fit smaller windows and screens (2026-11-17)
+- **What:** `display/window/stretch/scale_mode` changed from `integer` (set
+  2025-01-27) to `fractional`. The game is drawn at 1920×1080. Before, in
+  any smaller window (laptops, browser windows) it couldn't scale below 1×,
+  so it was cut off. Now it scales to fit and keeps its shape, with bars on
+  the sides when needed. Screenshots at 1280×650 confirm both behaviours.
+  The `--ui` bot converts its clicks to window pixels
+  (`get_final_transform()`), because real mouse input arrives in window
+  pixels too.
+- **Why:** the user said it was awkward on smaller screens in the browser.
+- **Rejected:**
+  - Fractional scaling only on the web: desktop windows smaller or larger
+    than 1080p had the same problem.
+  - "expand" aspect: the screens are laid out for 16:9.
+- **Note:** browser zoom (Ctrl +/-) doesn't change the game's size, because
+  the game always fills the window. Use F11 for fullscreen.
+
 ### C016 — Browser game fixes: clean join screen, current art, no dead page (2026-11-17)
 - **What:** fixes BUG-007:
   - joining by link hides the Host/Join buttons;
