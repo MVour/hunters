@@ -12,8 +12,8 @@ config_version=5
 
 config/name="board"
 run/main_scene="res://main/main.tscn"
-run/flush_stdout_on_print=true
 config/features=PackedStringArray("4.3", "Forward Plus")
+run/flush_stdout_on_print=true
 config/icon="res://icon.svg"
 
 [autoload]
@@ -34,7 +34,6 @@ window/size/viewport_height=1080
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
-window/stretch/scale_mode="fractional"
 
 [dotnet]
 
@@ -51,7 +50,6 @@ esc={
 [internationalization]
 
 locale/translations=PackedStringArray("res://i18n/strings.en.translation", "res://i18n/strings.el.translation")
-locale/fallback="en"
 
 [rendering]
 
