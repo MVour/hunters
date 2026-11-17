@@ -31,6 +31,7 @@ var turn := {
 	"action_used": false,
 	"attacked": false,
 	"pending_question": {},
+	"step": "",  # what everyone sees: roll, choose_location, location, attack_or_end, end
 }
 
 var _loaded := {}      # player ids whose match screen is ready
@@ -128,6 +129,7 @@ func _start_turn() -> void:
 	print("Starting turn %d (round %d), player %d" % [turn.count, state.round, player_id])
 	state.players[player_id].playing = true
 	MatchNet.turn_changed.rpc(player_id, true, state.round)
+	set_step("roll")
 	combat.turn_start_effects(player_id)
 	if bots.has(player_id):
 		bots[player_id].take_turn()
@@ -251,6 +253,7 @@ func roll(sender: int) -> void:
 
 	if total == Global.ROLL_ANY_LOCATION:
 		turn.phase = TurnPhase.CHOOSE_LOCATION
+		set_step("choose_location")
 		var options := []
 		for loc in state.locations:
 			if loc.id != here:
@@ -295,6 +298,7 @@ func _move_player(player_id: int, location_id: String) -> void:
 	turn.phase = TurnPhase.ACTION
 	turn.action_used = false
 	move_pawn(player_id, location_id)
+	set_step("location")
 	var loc: Dictionary = state.locations[state.location_index(location_id)]
 	tell(player_id, &"offer_location_action", [loc.action])
 
@@ -313,8 +317,22 @@ func _location_action_of(player_id: int) -> String:
 
 
 func skip_action(sender: int) -> void:
-	if is_current(sender):
-		turn.action_used = true
+	if is_current(sender) and turn.phase == TurnPhase.ACTION:
+		_location_done()
+
+
+## The location step is over (used or skipped): next, attack or end the turn.
+func _location_done() -> void:
+	turn.action_used = true
+	if turn.step == "location":
+		set_step("attack_or_end")
+
+
+## Tell everyone which step of the turn we're at (the narrator's step strip,
+## and what the turn player's buttons offer).
+func set_step(step: String) -> void:
+	turn.step = step
+	MatchNet.turn_step.rpc(turn.player, step)
 
 
 func draw(sender: int, card_type: String) -> void:
@@ -322,7 +340,7 @@ func draw(sender: int, card_type: String) -> void:
 		return
 	if not card_type in Global.DRAW_ACTIONS.get(_location_action_of(sender), []):
 		return
-	turn.action_used = true
+	_location_done()
 	await cards.draw_for(sender, card_type)
 
 
@@ -337,6 +355,7 @@ func location_action(sender: int) -> void:
 				{"value": "heal", "label": Msg.make("option.heal_1"), "color": "4fe0d0"},
 				{"value": "damage", "label": Msg.make("option.deal_2"), "color": "e8402e"}])
 			if mode == null:
+				_location_done()  # skipped it after all
 				return
 			steps = [{"do": "heal", "amount": 1, "target": "chosen_any"}] if mode == "heal" \
 				else [{"do": "damage", "amount": 2, "target": "chosen"}]
@@ -344,7 +363,7 @@ func location_action(sender: int) -> void:
 			steps = [{"do": "steal_equipment"}]
 		_:
 			return
-	turn.action_used = true
+	_location_done()
 	var here: Dictionary = state.locations[state.location_index(state.players[sender].location)]
 	await resolve({"name": here.label, "name_el": here.get("label_el", ""), "deck": "", "kind": "location",
 		"effect": steps}, {"actor": sender})

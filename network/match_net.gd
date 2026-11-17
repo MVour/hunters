@@ -165,10 +165,18 @@ func turn_changed(player_id: int, playing: bool, round_number: int) -> void:
 	if GameState.players.has(player_id):
 		GameState.players[player_id].playing = playing
 	GameState.game_info.round = round_number
+	GameState.game_info.step = ""
 	if playing:
 		SignalBus.begin_turn.emit(player_id)
 	else:
 		SignalBus.end_turn.emit(player_id)
+
+## Which step of the turn player's turn we're at (public): "roll",
+## "choose_location", "location", "attack_or_end", "end".
+@rpc("authority", "call_local", "reliable")
+func turn_step(player_id: int, step: String) -> void:
+	GameState.game_info.step = step
+	SignalBus.turn_step.emit(player_id, step)
 
 @rpc("authority", "call_local", "reliable")
 func dice_rolled(val6: int, val4: int) -> void:

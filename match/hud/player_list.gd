@@ -8,7 +8,8 @@ class_name PlayerList extends PanelContainer
 signal player_picked(player_id: int)
 
 const WIDTH := 290.0
-const MAX_HEIGHT := 600.0
+## Tall enough for 8 players without scrolling (a hidden row is easy to miss).
+const MAX_HEIGHT := 680.0
 
 var _rows := {}  # player id -> PlayerRow
 var _column: VBoxContainer
@@ -81,7 +82,7 @@ func set_pickable(ids: Array) -> void:
 		_rows[id].set_pick_state(id in ids, not ids.is_empty())
 
 
-## Grow with the rows (and open drawers), scroll beyond MAX_HEIGHT.
+## Grow with the rows, scroll beyond MAX_HEIGHT.
 func _fit_height() -> void:
 	_scroll.custom_minimum_size = Vector2(WIDTH - 12, minf(_column.size.y, MAX_HEIGHT))
 	reset_size()

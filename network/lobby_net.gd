@@ -481,7 +481,7 @@ func lobby_state(players: Array, settings: Dictionary, owner: int) -> void:
 
 
 func _reset_match_info() -> void:
-	GameState.game_info = {"players_turn": [], "round": 0, "waiting_for": []}
+	GameState.game_info = {"players_turn": [], "round": 0, "waiting_for": [], "step": ""}
 	GameState.locations = []
 
 

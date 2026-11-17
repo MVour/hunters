@@ -12,7 +12,7 @@ const CARD_WIDTH := 380.0
 ## Keep the card above this line: the choice panel ("use it now?") sits below.
 const BOTTOM_LIMIT := 800.0
 ## And below the narrator bar at the top.
-const TOP_LIMIT := 64.0
+const TOP_LIMIT := 112.0  # the narrator: its line + the step strip
 
 ## Heading, card and buttons stacked, so buttons always sit under the text
 ## however long the card is.

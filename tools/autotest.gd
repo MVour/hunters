@@ -22,7 +22,8 @@ var leave_after := 0
 ## is then the room's owner and starts the match).
 var join_link := ""
 var stats := {"turns": 0, "my_turns": 0, "moves": 0, "cards": 0, "choices": 0,
-	"questions": 0, "attacks": 0, "deaths": 0, "ui_picks": 0, "chat_heard": 0, "dialog_clicks": 0}
+	"questions": 0, "attacks": 0, "deaths": 0, "ui_picks": 0, "chat_heard": 0, "dialog_clicks": 0,
+	"ui_attacks": 0, "ui_ends": 0}
 var _last_progress := 0
 var _my_turn := false
 var _done := false
@@ -274,12 +275,35 @@ func _on_location_action(action: String) -> void:
 
 func _after_action() -> void:
 	await get_tree().create_timer(1.0).timeout
+	if _ui_mode():
+		await _ui_attack_and_end()
+		return
 	if randf() < 0.6:
 		MatchNet.attack()
 	# Keep asking to end the turn; the server refuses while anything is pending.
 	while _my_turn and not _done:
 		await get_tree().create_timer(0.6).timeout
 		MatchNet.end_turn()
+
+
+## --ui: press the screen's Attack / End Turn buttons, only when they're shown
+## and enabled, like a person. A turn that never offers End Turn stalls (and fails).
+func _ui_attack_and_end() -> void:
+	var scene := get_tree().root.find_child("PlayScene", true, false)
+	var tried_attack := false
+	while _my_turn and not _done and is_instance_valid(scene):
+		await get_tree().create_timer(0.6).timeout
+		if not is_instance_valid(scene) or not _my_turn:
+			return
+		if not tried_attack and scene.attack_button.is_visible_in_tree() and not scene.attack_button.disabled:
+			tried_attack = true
+			if randf() < 0.6:
+				scene.attack_button.pressed.emit()
+				stats.ui_attacks += 1
+				continue
+		if scene.end_turn_button.is_visible_in_tree() and not scene.end_turn_button.disabled:
+			scene.end_turn_button.pressed.emit()
+			stats.ui_ends += 1
 
 
 func _on_question_drawn(_card: Dictionary) -> void:
@@ -334,6 +358,8 @@ func _click_pick() -> bool:
 		await get_tree().process_frame
 	# Still the same pick open = the click didn't land (a new pick may follow
 	# right away, e.g. a card that targets twice: that's fine).
+	if not is_instance_valid(scene):
+		return true  # the match ended meanwhile
 	if not scene.pick_ids.is_empty() and scene.pick_serial == serial:
 		var motion := InputEventMouseMotion.new()
 		motion.position = at
@@ -422,9 +448,16 @@ func _finish(ok: bool, why: String, already_left := false) -> void:
 ## What the server is waiting on (only meaningful on the host).
 func _debug_state() -> String:
 	var s: MatchServer = MatchNet.server
-	if s == null:
-		return "my_turn=%s" % _my_turn
-	return "turn=%s busy=%s awaiting=%s" % [s.turn, s._busy, s._awaiting]
+	var text := "my_turn=%s" % _my_turn
+	var scene := get_tree().root.find_child("PlayScene", true, false)
+	if scene:
+		text += " step=%s end=%s/%s attack=%s/%s status='%s' picking=%s choice_open=%s offer=%s" % [
+			GameState.game_info.get("step"), scene.end_turn_button.is_visible_in_tree(), scene.end_turn_button.disabled,
+			scene.attack_button.is_visible_in_tree(), scene.attack_button.disabled, scene.status_label.text,
+			scene.pick_ids, scene.server_choice_open, scene.offered_action]
+	if s:
+		text += " | turn=%s busy=%s awaiting=%s" % [s.turn, s._busy, s._awaiting]
+	return text
 
 
 ## A command-line value: `-- --name=value` (or the default).

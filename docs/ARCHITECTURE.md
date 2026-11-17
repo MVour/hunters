@@ -94,7 +94,10 @@ Two setups, chosen per game by what's typed in the Join box (D007):
   `MatchServer` child of MatchNet with a `ServerState` copied from the lobby.
   The match begins when every player's screen reports `loaded`.
 - `MatchServer` (`match_server.gd`): lifecycle, turns
-  (roll → move → location action → optional attack → end turn), server-side
+  (roll → move → location action → optional attack → end turn; each step is
+  announced with `set_step` → `MatchNet.turn_step`, kept in
+  `GameState.game_info.step`, which the screen uses for its buttons, the
+  narrator and the step strip), server-side
   dice, the choice system (`ask()` → `present_choice` → `choice()`; an early
   answer is kept, never lost), `ask_roll()` (same system: waits for that
   player to press Roll — `prompt_roll` → their `MatchNet.roll()` — before

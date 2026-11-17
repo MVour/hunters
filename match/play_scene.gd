@@ -46,8 +46,12 @@ var roll_pending := false
 var question_waiting_on := 0
 ## This player gave you a green card you haven't answered yet (0 = none).
 var question_from := 0
+## A green card handed from one player to another, not answered yet
+## ([from, to]; [] = none). Everyone sees who's answering.
+var green_card_between := []
 ## The narrator line (top centre): what's happening and who we're waiting on.
 var narrator: PanelContainer
+var step_strip: HBoxContainer
 var status_label: Label
 ## This turn's cards, small (click to see one again).
 var turn_cards: TurnCards
@@ -134,6 +138,9 @@ func _ready():
 	# The game log (every action, newest at the bottom; folds to one line).
 	game_log = GameLog.new()
 	game_log.position = GAME_LOG_POSITION
+	# Many players make the list longer: the log moves down, never over a row.
+	player_list.resized.connect(_place_game_log)
+	_place_game_log.call_deferred()
 	game_log.z_index = 12
 	add_child(game_log)
 
@@ -234,7 +241,18 @@ func _ready():
 	status_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	status_label.add_theme_constant_override("outline_size", 6)
 	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	narrator.add_child(status_label)
+	var narrator_column := VBoxContainer.new()
+	narrator_column.add_theme_constant_override("separation", 2)
+	narrator_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	narrator.add_child(narrator_column)
+	narrator_column.add_child(status_label)
+	# The turn's steps, the current one lit, for everyone to follow.
+	step_strip = HBoxContainer.new()
+	step_strip.alignment = BoxContainer.ALIGNMENT_CENTER
+	step_strip.add_theme_constant_override("separation", 6)
+	step_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	narrator_column.add_child(step_strip)
+	SignalBus.turn_step.connect(_queue_refresh.unbind(2))
 	narrator.resized.connect(_place_narrator)
 	status_label.visibility_changed.connect(func(): narrator.visible = status_label.visible)
 
@@ -314,6 +332,7 @@ func _on_begin_turn(pl_id):
 
 
 func _on_end_turn(pl_id):
+	green_card_between = []
 	if pl_id == GameState.local_id:
 		playing_label.hide()
 		roll_button.hide()
@@ -327,6 +346,12 @@ func _on_pawn_moved(pl_id, _location_id):
 	if pl_id == GameState.local_id and GameState.local_player.playing:
 		roll_button.hide()
 		moved_this_turn = true
+		# Moved: a 7's "pick any location" is over, however it was answered.
+		if not choice_options.is_empty():
+			choice_options = []
+			prompt_label.hide()
+			game_map.set_choosable([])
+			_queue_refresh()
 
 
 ## The server wants you to throw the dice (an attack, Old Map's second roll):
@@ -349,6 +374,8 @@ func _on_dice_rolled(_val6: int, _val4: int) -> void:
 
 ## Rolled a 7: light up every other location and wait for a click.
 func _on_choose_location(options: Array) -> void:
+	if GameState.game_info.get("step", "") != "choose_location":
+		return  # already answered (the server moved on)
 	choice_options = options
 	roll_button.hide()
 	prompt_label.text = Global.text("match.rolled_seven_prompt")
@@ -390,7 +417,10 @@ func _refresh_buttons() -> void:
 	# While picking a player, turn buttons step aside: they sit over the bottom
 	# of the board, where pawns can be the ones to click.
 	var picking := not pick_ids.is_empty()
-	attack_button.visible = my_turn and moved_this_turn and not attack_used_this_turn and not picking
+	# Attack / End Turn only once the location step is done (used or skipped):
+	# ending the turn early would quietly throw the location action away.
+	var step: String = GameState.game_info.get("step", "")
+	attack_button.visible = my_turn and step == "attack_or_end" and not attack_used_this_turn and not picking
 	if attack_button.visible:
 		var targets := Rules.attack_targets(GameState.players, GameState.locations,
 			GameState.game_info.players_turn, GameState.local_id)
@@ -400,7 +430,7 @@ func _refresh_buttons() -> void:
 			_set_enabled(attack_button, not targets.is_empty(),
 				Global.text("match.nobody_in_reach"))
 
-	end_turn_button.visible = my_turn and moved_this_turn and not picking
+	end_turn_button.visible = my_turn and step in ["attack_or_end", "end"] and not picking
 	_set_enabled(end_turn_button, not waiting, wait_reason)
 
 	var ability_button: Button = $Hud/PlayerHud/AbilityButton
@@ -410,6 +440,7 @@ func _refresh_buttons() -> void:
 	if status_label.text != _status_text(my_turn):
 		status_label.text = _status_text(my_turn)
 		_place_narrator.call_deferred()
+	_refresh_step_strip(step)
 	status_label.visible = not game_finished
 
 	reveal_button.visible = me.get("hidden", true) and not me.get("character", {}).is_empty()
@@ -438,16 +469,80 @@ func _status_text(my_turn: bool) -> String:
 	if not deciding.is_empty():
 		return Global.text("status.waiting_decide") \
 			% ", ".join(deciding.map(_player_name))
+	var step: String = GameState.game_info.get("step", "")
 	if my_turn:
-		if not moved_this_turn:
-			return Global.text("status.your_turn_roll")
-		if offered_action != "":
-			return Global.text("status.use_location")
-		return Global.text("status.attack_or_end")
+		match step:
+			"location":
+				return Global.text("status.use_location")
+			"attack_or_end":
+				return Global.text("status.attack_or_end")
+			"end":
+				return Global.text("status.end_turn_now")
+		return Global.text("status.your_turn_roll")
+	# A green card is out between two others: that's what everyone waits on.
+	if green_card_between.size() == 2:
+		return Global.text("status.other_green_card") \
+			% [_player_name(green_card_between[1]), _player_name(green_card_between[0])]
+	# Someone else's turn: what they're doing right now.
 	for id in GameState.game_info.players_turn:
 		if GameState.players[id].get("playing", false):
-			return Global.text("status.someones_turn") % _player_name(id)
+			var who := _player_name(id)
+			match step:
+				"roll":
+					return Global.text("status.other_roll") % who
+				"choose_location":
+					return Global.text("status.other_choose_location") % who
+				"location":
+					var loc := GameState.location_index(GameState.players[id].location)
+					var place := Global.field(GameState.locations[loc], "label") if loc != -1 else "?"
+					return Global.text("status.other_location") % [who, place]
+				"attack_or_end":
+					return Global.text("status.other_attack_or_end") % who
+				"end":
+					return Global.text("status.other_end") % who
+			return Global.text("status.someones_turn") % who
 	return ""
+
+
+## Roll & move → Location → Attack (optional) → End turn: done steps dim
+## with a tick, the current one lit (after the location step, Attack and End
+## are both open).
+const STEP_COUNT := 4
+
+func _step_names() -> Array:
+	return [Global.text("turn.step_roll"), Global.text("turn.step_location"),
+		Global.text("turn.step_attack"), Global.text("turn.step_end")]
+
+
+func _refresh_step_strip(step: String) -> void:
+	var at: Array = {"roll": [0], "choose_location": [0], "location": [1],
+		"attack_or_end": [2, 3], "end": [3]}.get(step, [])
+	step_strip.visible = not at.is_empty() and not game_finished
+	if not step_strip.visible:
+		return
+	if step_strip.get_child_count() != STEP_COUNT * 2 - 1:
+		for child in step_strip.get_children():
+			step_strip.remove_child(child)
+			child.queue_free()
+		for i in STEP_COUNT:
+			if i > 0:
+				var arrow := Label.new()
+				arrow.text = "›"
+				arrow.add_theme_color_override("font_color", Color(1, 1, 1, 0.35))
+				step_strip.add_child(arrow)
+			var label := Label.new()
+			label.add_theme_font_size_override("font_size", 15)
+			step_strip.add_child(label)
+	for i in STEP_COUNT:
+		var label: Label = step_strip.get_child(i * 2)
+		var done: bool = i < at[0]
+		label.text = ("✓ " if done else "") + _step_names()[i]
+		var colour := Color("ffd27a") if i in at else (Color(0.6, 0.62, 0.66) if done else Color(1, 1, 1, 0.45))
+		label.add_theme_color_override("font_color", colour)
+		if i in at:
+			label.add_theme_font_size_override("font_size", 16)
+		else:
+			label.add_theme_font_size_override("font_size", 14)
 
 
 ## Why the Use Ability button can't be used now ("" = it can). Mirrors
@@ -546,7 +641,7 @@ func _on_location_action_offered(action: String) -> void:
 		decks[card_type].set_highlight(true)
 	if draws.is_empty():
 		options.append({"value": "use", "label": Global.text("match.use"), "color": info.color})
-	options.append({"value": "skip", "label": Global.text("match.skip"), "color": "b0b0b0"})
+	options.append({"value": "skip", "label": Global.text("match.skip_location"), "color": "b0b0b0"})
 	_open_choice("%s: %s" % [loc_name, Global.field(info, "text")], options, false, func(value):
 		_clear_action_bar()
 		if value == "skip":
@@ -589,6 +684,7 @@ func _on_question_asked(from_id: int, card: Dictionary) -> void:
 
 
 func _on_question_passed(from_id: int, to_id: int) -> void:
+	green_card_between = [from_id, to_id]
 	if from_id == GameState.local_id:
 		question_to_give = false
 		question_waiting_on = to_id
@@ -599,6 +695,7 @@ func _on_question_passed(from_id: int, to_id: int) -> void:
 
 
 func _on_question_answered(from_id: int, to_id: int) -> void:
+	green_card_between = []
 	if from_id == GameState.local_id:
 		question_waiting_on = 0
 	if to_id == GameState.local_id:
@@ -729,6 +826,12 @@ func _on_player_picked(id: int) -> void:
 	choice_panel.hide()
 	_end_pick()
 	callback.call(id)
+
+
+## The game log sits under the player list (lower when the list is long).
+func _place_game_log() -> void:
+	var below_list := player_list.position.y + player_list.size.y + 8.0
+	game_log.position = Vector2(GAME_LOG_POSITION.x, maxf(GAME_LOG_POSITION.y, below_list))
 
 
 ## Keep the narrator bar centred at the top, as small as its text.

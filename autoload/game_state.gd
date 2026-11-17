@@ -31,6 +31,7 @@ var game_info := {
 	"players_turn": [],
 	"round": 0,
 	"waiting_for": [],  # players the server is waiting on for a choice
+	"step": "",  # the turn player's step (MatchNet.turn_step)
 }
 
 ## The board's locations, in board order. Public, every peer has them.
@@ -47,7 +48,7 @@ func reset_session(my_id := 0) -> void:
 	_no_player = new_player(my_id)
 	game_settings = _empty_settings()
 	owner_id = 0
-	game_info = {"players_turn": [], "round": 0, "waiting_for": []}
+	game_info = {"players_turn": [], "round": 0, "waiting_for": [], "step": ""}
 	locations = []
 
 

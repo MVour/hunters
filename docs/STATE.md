@@ -17,6 +17,10 @@ _Last updated: 2026-11-17_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
+2026-11-18: turn flow made clear to all (C023): the server announces each
+step of a turn, a step strip under the narrator shows it to everyone, the
+narrator says what the turn player is doing, and Attack / End Turn only
+appear after the location step (End Turn used to skip it silently).
 2026-11-18: playtest feedback group 2 done (C022): this turn's cards stay
 small bottom-right, a narrator bar at the top, the life track's "Who's
 who" key, a clearer one-at-a-time player drawer; BUG-010 (host's match
@@ -47,11 +51,12 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   - deploys only for `v*` tags, made with `bash tools/release.sh` from WSL
     (C013). Only WSL has the user's GitHub key.
 - **Unreleased:** bots (C019), game log (C020), play again (C021), turn
-  cards / narrator / Who's who / drawer (C022). Release with
+  cards / narrator / Who's who / drawer (C022), turn steps (C023). Release with
   `bash tools/release.sh`; then check Play again online.
-- **Playtest feedback, agreed order:** groups 1-2 done. Group 3 next:
-  hit/steal effects on screen, ambient music with on/off (needs a track
-  from the user — no generated audio). Group 4: lobby redraw (both
+- **Playtest feedback, agreed order:** groups 1-2 done, plus a turn-flow
+  clarity pass (C023). Group 3 next:
+  hit/steal effects on screen. (Ambient music: the user is doing it in another
+  session.) Group 4: lobby redraw (both
   languages, incl. the hub's Greek tabs). Notes: undecided. All in IDEAS.md.
 - Another Claude session may be working in this repo at the same time:
   commit only your own files, by path.

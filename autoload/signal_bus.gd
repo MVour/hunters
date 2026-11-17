@@ -7,6 +7,8 @@ signal _exit_game
 signal _new_game
 signal _start_game
 signal begin_turn
+## The turn player moved on to another step of their turn: (player_id, step)
+signal turn_step
 signal end_turn
 
 signal _set_character

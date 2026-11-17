@@ -7,6 +7,41 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C023 — Turn steps everyone can follow; no skipping by accident (2026-11-18)
+User: turns and options must be intuitive, with no skips or misses, and
+clear to everyone.
+- **What:**
+  - **Server announces the turn's step** (`MatchServer.set_step` →
+    `MatchNet.turn_step`, kept in `GameState.game_info.step`): roll,
+    choose_location (after a 7), location, attack_or_end, end (after the
+    attack).
+  - **Step strip** under the narrator line, for everyone: Roll & move ›
+    Location › Attack (optional) › End turn; done steps ticked, the current
+    one lit.
+  - **Narrator for other players' turns** says what they're doing: rolling,
+    picking a place after a 7, "is at X, deciding what to do there", may
+    attack or end, ending; and "Y is answering X's green card" while one is
+    out.
+  - **No skipping by accident:** Attack and End Turn only appear once the
+    location step is done (used, or "Do nothing here"). Before, End Turn
+    was clickable while the location dialog was open and silently threw
+    the location action away. The dialog's Skip now reads "Do nothing here".
+  - The game log always sits under the player list (a long list no longer
+    slides under it); the list fits 8 players without scrolling.
+  - Fixes: a 7's "pick a location" state could stay on after the pawn had
+    moved (Attack / End Turn stayed greyed); dice animations no longer
+    error when the match screen closes mid-roll (Play again); card popups
+    start below the taller narrator.
+  - Autotest `--ui` now presses the real Attack / End Turn buttons, only
+    when shown and enabled (a turn that never offers End Turn fails), and
+    its stall report shows the buttons' state.
+- **Rejected:** enforcing "location first" on the server (a location whose
+  action finds nothing to do could leave the turn unable to end; the
+  server stays lenient, the screen guides); a confirm box on End Turn
+  (one more click every turn; the step strip already shows what's left).
+
+---
+
 ### C022 — Turn cards, narrator bar, "Who's who", new player drawer (2026-11-18)
 From the user's playtest feedback, group 2.
 - **What:**

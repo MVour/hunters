@@ -100,6 +100,7 @@ func attack(sender: int) -> void:
 	var target = await s.ask(sender, Msg.make("prompt.attack_whom"), targets.map(s.player_option))
 	if target != null:
 		s.turn.attacked = true
+		s.set_step("end")  # one attack per turn: only ending is left
 		await _attack(sender, target, true)
 	s.busy_end()
 	s.after_resolution()

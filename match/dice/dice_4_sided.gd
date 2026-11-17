@@ -33,6 +33,8 @@ func roll_animation():
 		dice_right.animation = str(frame_right)
 		# Fast at first, then slowing down as the die settles.
 		var t: float = float(i) / roll_animation_frames
+		if not is_inside_tree():
+			return  # the match screen closed mid-roll (e.g. Play again)
 		await get_tree().create_timer(lerpf(0.03, 0.12, t * t)).timeout
 		#await self.animation_finished
 	
