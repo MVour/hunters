@@ -9,7 +9,12 @@ class_name PlayScene extends Node2D
 @onready var roll_button: Button = $DicesContainer/RollButton
 @onready var playing_label: Label = $PlayingLabel
 
+## Where the game log sits: the right column, under the player list (which
+## needs ~450 px for 8 players).
+const GAME_LOG_POSITION := Vector2(1622, 478)
+
 var game_finished := false
+var game_log: GameLog
 var pawn_layer: PawnLayer
 var prompt_label: Label
 var toast_box: VBoxContainer
@@ -121,6 +126,12 @@ func _ready():
 	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast_box.z_index = 15
 	add_child(toast_box)
+
+	# The game log (every action, newest at the bottom; folds to one line).
+	game_log = GameLog.new()
+	game_log.position = GAME_LOG_POSITION
+	game_log.z_index = 12
+	add_child(game_log)
 
 	# Choice panel (above the HUD): "choose a player", "which deck?", ...
 	choice_panel = PanelContainer.new()

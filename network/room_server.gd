@@ -71,11 +71,17 @@ func _tick() -> void:
 
 ## Tell the lobby service who's here (only when something changed).
 func _report() -> void:
+	# Only people count as players: the service refuses joins to a "full"
+	# room, but a bot makes way for a person (LobbyNet.request_join).
 	var names := []
+	var bots := 0
 	for player in LobbyNet.server_players().values():
-		names.append(player.name)
+		if LobbyNet.is_bot(player):
+			bots += 1
+		else:
+			names.append(player.name)
 	var owner: Dictionary = LobbyNet.server_player(LobbyNet.owner_id())
-	var status := JSON.stringify({"players": names, "owner": owner.get("name", ""),
+	var status := JSON.stringify({"players": names, "bots": bots, "owner": owner.get("name", ""),
 		"inMatch": LobbyNet.in_match(), "connected": multiplayer.get_peers().size()})
 	if status != _last_status:
 		_last_status = status

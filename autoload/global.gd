@@ -17,14 +17,17 @@ var colors_sprites = {
 }
 
 var game_settings_default = {
-	"players" : {
-		2 : {"vampires_count": 1, "werewolves_count": 1, "humans_count": 0},
-		3 : {"vampires_count": 1, "werewolves_count": 1, "humans_count": 1},
-		4 : {"vampires_count": 2, "werewolves_count": 2, "humans_count": 0},
-		5 : {"vampires_count": 2, "werewolves_count": 2, "humans_count": 1},
-		6 : {"vampires_count": 2, "werewolves_count": 2, "humans_count": 2},
-		7 : {"vampires_count": 2, "werewolves_count": 2, "humans_count": 3},
-		8 : {"vampires_count": 3, "werewolves_count": 3, "humans_count": 2}
+	## Team presets per player count, as [vampires, werewolves, humans]. The
+	## first one is the default; the lobby's Preset button cycles through them.
+	## There are 3 vampires, 3 werewolves and 4 humans to deal from.
+	"presets" : {
+		2 : [[1, 1, 0]],
+		3 : [[1, 1, 1]],
+		4 : [[2, 2, 0], [1, 1, 2]],
+		5 : [[2, 2, 1], [1, 1, 3]],
+		6 : [[2, 2, 2], [3, 3, 0], [1, 1, 4]],
+		7 : [[2, 2, 3], [3, 3, 1]],
+		8 : [[3, 3, 2], [2, 2, 4]],
 	},
 	## Seats around the clearing, clockwise from you (slot1, bottom-left):
 	## slot2 left (under the life track), slot3-5 top, slot6-8 right.

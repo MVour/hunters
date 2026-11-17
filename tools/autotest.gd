@@ -12,7 +12,8 @@ extends Node
 var max_turns := 30             # host leaves after this many turns (--max-turns=N)
 const STALL_SECONDS := 40.0     # no new turn for this long = stuck
 const TIME_SCALE := 4.0
-const PORT := 18080            # not the default, so a running game is left alone
+## Not the default, so a running game is left alone (--port=N for a second test at once).
+var port := 18080
 
 var role := ""
 ## --leave-after=N: this bot leaves the match after N turns (BUG-001 test).
@@ -45,6 +46,8 @@ func _init(p_role: String) -> void:
 			leave_after = arg.get_slice("=", 1).to_int()
 		elif arg.begins_with("--join="):
 			join_link = arg.trim_prefix("--join=")
+		elif arg.begins_with("--port="):
+			port = arg.get_slice("=", 1).to_int()
 	name = "Autotest"
 
 
@@ -59,10 +62,10 @@ func _ready() -> void:
 		mc.line_edit.text = join_link
 		mc._on_connect_lobby_button_pressed()
 	elif role == "host":
-		mc._on_host_pressed({"port": PORT})
+		mc._on_host_pressed({"port": port})
 	else:
 		await get_tree().create_timer(1.0).timeout  # give the host time to listen
-		mc.line_edit.text = "127.0.0.1:%d" % PORT
+		mc.line_edit.text = "127.0.0.1:%d" % port
 		mc._on_connect_lobby_button_pressed()
 
 	await _until(func(): return GameState.players.has(GameState.local_id))
@@ -74,7 +77,25 @@ func _ready() -> void:
 		var wanted := _arg("--players=", "2").to_int()
 		await _until(func(): return GameState.players.size() >= wanted \
 			and GameState.players.values().all(func(p): return p.pawn != ""))
+		# --bots=N: the lobby's Players + Fill with bots buttons add N bots.
+		var total := mini(wanted + _arg("--bots=", "0").to_int(), LobbyNet.MAX_PLAYERS)
+		if total > wanted:
+			for attempt in 10:  # the room may allow fewer players: it stops there
+				if LobbyNet.team_total(GameState.game_settings) == total:
+					break
+				LobbyNet.change_player_count(signi(total - LobbyNet.team_total(GameState.game_settings)))
+				await get_tree().create_timer(0.2).timeout
+			total = LobbyNet.team_total(GameState.game_settings)
+			LobbyNet.change_preset(1)  # also try the presets button
+			await get_tree().create_timer(0.1).timeout
+			LobbyNet.fill_with_bots()
+			await _until(func(): return GameState.players.size() >= total)
 		await get_tree().create_timer(0.5).timeout
+		# --shot-lobby=PATH (not headless): save a picture of the lobby.
+		var shot := _arg("--shot-lobby=", "")
+		if shot != "":
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(shot)
 		_start_match(mc)
 
 
@@ -151,6 +172,15 @@ func _connect_signals() -> void:
 func _on_begin_turn(player_id: int) -> void:
 	stats.turns += 1
 	_last_progress = Time.get_ticks_msec()
+	# --shot-match=PATH (not headless): a picture of the match at turn 8.
+	var shot := _arg("--shot-match=", "")
+	if shot != "" and stats.turns == 8:
+		var scene := get_tree().root.find_child("PlayScene", true, false)
+		if scene and "--shot-drawer" in OS.get_cmdline_user_args():
+			scene.player_list._rows.values()[2].toggle_drawer()  # open one player's drawer
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(shot)
 	if role == "host" and stats.turns > max_turns:
 		_finish(true, "left after %d turns" % max_turns)
 		return

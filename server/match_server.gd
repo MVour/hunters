@@ -39,6 +39,8 @@ var _busy := 0         # effects/attacks in progress; the turn can't end meanwhi
 var _awaiting := {}    # player id -> {"id": ask id, "values": [...], "skip": bool}
 var _answers := {}     # ask id -> chosen value
 var _next_ask_id := 1
+## Bot seats (player id -> BotSeat): players with no computer behind them.
+var bots := {}
 
 
 func _init(server_state: ServerState) -> void:
@@ -47,6 +49,10 @@ func _init(server_state: ServerState) -> void:
 	effects = CardEffects.new(self)
 	cards = CardFlow.new(self)
 	combat = Combat.new(self)
+	for id in state.players:
+		if LobbyNet.is_bot(state.players[id]):
+			bots[id] = BotSeat.new(self, id)
+			_loaded[id] = true  # no screen to wait for
 
 
 # --- Starting ------------------------------------------------------------------
@@ -94,8 +100,7 @@ func _deal_characters() -> void:
 	var i := 0
 	for id in state.players:
 		state.players[id].character = chosen[i]
-		if not _gone.has(id):
-			MatchNet.set_character.rpc_id(id, chosen[i])
+		tell(id, &"set_character", [chosen[i]])
 		i += 1
 
 
@@ -124,6 +129,8 @@ func _start_turn() -> void:
 	state.players[player_id].playing = true
 	MatchNet.turn_changed.rpc(player_id, true, state.round)
 	combat.turn_start_effects(player_id)
+	if bots.has(player_id):
+		bots[player_id].take_turn()
 
 
 func _finish_turn(player_id: int) -> void:
@@ -152,6 +159,9 @@ func player_left(player_id: int) -> void:
 		peer_loaded(player_id)  # don't wait for their screen; _start drops them
 		return
 	_drop(player_id)
+	# Only bots left: nobody is watching, stop playing.
+	if state.players.keys().all(func(id): return bots.has(id) or _gone.has(id)):
+		finished = true
 
 
 func is_gone(player_id: int) -> bool:
@@ -226,7 +236,7 @@ func roll(sender: int) -> void:
 		var first := _location_name(destination)
 		var again = await ask(sender, Msg.make("prompt.old_map_keep", {"location": first}), [
 			{"value": "keep", "label": Msg.make("option.go_to", {"location": first})},
-			{"value": "reroll", "label": Msg.make("option.roll_again")}], false)
+			{"value": "reroll", "label": Msg.make("option.roll_again")}], false, {"destination": destination})
 		if again == "reroll":
 			await ask_roll(sender, Msg.make("prompt.roll_move_again"))
 			var second := _roll_move(here)
@@ -244,7 +254,7 @@ func roll(sender: int) -> void:
 		for loc in state.locations:
 			if loc.id != here:
 				options.append(loc.id)
-		MatchNet.prompt_choose_location.rpc_id(sender, options)
+		tell(sender, &"prompt_choose_location", [options])
 	else:
 		_move_player(sender, destination)
 
@@ -285,7 +295,7 @@ func _move_player(player_id: int, location_id: String) -> void:
 	turn.action_used = false
 	move_pawn(player_id, location_id)
 	var loc: Dictionary = state.locations[state.location_index(location_id)]
-	MatchNet.offer_location_action.rpc_id(player_id, loc.action)
+	tell(player_id, &"offer_location_action", [loc.action])
 
 
 ## Moves a pawn (turn moves and card effects like Shortcut).
@@ -382,17 +392,26 @@ func busy_end() -> void:
 ## Ask a player to pick one option; returns its value, or null if they skip.
 ## options: [{"value", "label", "color" (hex, optional)}]. Always `await` it.
 ## prompt and option labels are Msg dicts (or names): each screen shows
-## them in its own language.
-func ask(player_id: int, prompt: Dictionary, options: Array, allow_skip := true):
+## them in its own language. `hint`: what the pick is for (e.g. a target to
+## help or to hurt); only bots get it, it never goes over the network.
+func ask(player_id: int, prompt: Dictionary, options: Array, allow_skip := true, hint := {}):
 	return await _await_answer(player_id, options.map(func(o): return o.value), allow_skip, false,
-		func(): MatchNet.present_choice.rpc_id(player_id, prompt, options, allow_skip))
+		func():
+			if bots.has(player_id):
+				bots[player_id].on_choice(prompt, options, allow_skip, hint)
+			else:
+				MatchNet.present_choice.rpc_id(player_id, prompt, options, allow_skip))
 
 
 ## Wait until a player presses Roll (the dice by the campfire): dice throws
 ## are something players do, not something that happens to them.
 func ask_roll(player_id: int, prompt: Dictionary) -> void:
 	await _await_answer(player_id, ["roll"], false, true,
-		func(): MatchNet.prompt_roll.rpc_id(player_id, prompt))
+		func():
+			if bots.has(player_id):
+				bots[player_id].on_roll()
+			else:
+				MatchNet.prompt_roll.rpc_id(player_id, prompt))
 
 
 func _await_answer(player_id: int, values: Array, allow_skip: bool, is_roll: bool, send: Callable):
@@ -400,6 +419,13 @@ func _await_answer(player_id: int, values: Array, allow_skip: bool, is_roll: boo
 		return null if allow_skip else values[0]
 	var ask_id := _next_ask_id
 	_next_ask_id += 1
+	# Already asked something else (e.g. a kill's equipment pick that runs
+	# alongside the rest of an attack): wait for that answer first, or the
+	# first question would be overwritten and wait forever.
+	while _awaiting.has(player_id):
+		await choice_made
+	if _gone.has(player_id):
+		return null if allow_skip else values[0]
 	_awaiting[player_id] = {"id": ask_id, "values": values, "skip": allow_skip, "roll": is_roll}
 	send.call()
 	_broadcast_waiting()
@@ -449,9 +475,24 @@ func notice(message: Dictionary) -> void:
 
 
 func private_info(player_id: int, title: Dictionary, text: Dictionary) -> void:
-	if _gone.has(player_id):
-		return
-	MatchNet.private_info.rpc_id(player_id, title, text)
+	tell(player_id, &"private_info", [title, text])
+
+
+## A MatchNet message for ONE player only (secret info, prompts). Goes over
+## the network to a person, or straight to a bot's seat (never rpc_id a bot
+## id). Players who left get nothing.
+func tell(player_id: int, method: StringName, args := []) -> void:
+	if bots.has(player_id):
+		bots[player_id].receive(method, args)
+	elif not _gone.has(player_id):
+		MatchNet.callv("rpc_id", [player_id, method] + args)
+
+
+## A public event bots learn from (everyone saw it happen): `by` hurt or
+## helped `to` ("harm" / "help"), or a question was answered.
+func observe(event: String, by: int, to: int, amount := 0) -> void:
+	for seat in bots.values():
+		seat.observe(event, by, to, amount)
 
 
 ## A location's name, shown in each player's language.

@@ -118,7 +118,8 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 		var reveal_note = Msg.make("note.reveals") if a.hidden else ""
 		var use = await s.ask(attacker, Msg.make("prompt.ability_die",
 				{"character": Msg.named(character), "die": die, "note": reveal_note}),
-			[{"value": "use", "label": Msg.make("option.use_ability"), "color": "c8a85a"}], true)
+			[{"value": "use", "label": Msg.make("option.use_ability"), "color": "c8a85a"}], true,
+			{"target": target})
 		if use == "use":
 			_mark_ability_used(attacker)
 			mode = "d" + die
@@ -148,6 +149,7 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 	s.notice(Msg.make("notice.attack", {"attacker": a.name, "target": t.name, "d6": dice.val6,
 		"d4": dice.val4, "dmg": dmg}))
 	MatchNet.attack_fx.rpc(attacker, target, dmg)
+	s.observe("harm", attacker, target, dmg)
 	apply_damage(target, dmg, attacker)
 
 	if tm.get("thorns", 0) > 0 and not a.dead:
@@ -162,7 +164,8 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 			and t.character.get("ability_id", "") == "strike_back":
 		var reveal_note = Msg.make("note.reveals") if t.hidden else ""
 		var back = await s.ask(target, Msg.make("prompt.strike_back", {"attacker": a.name, "note": reveal_note}),
-			[{"value": "yes", "label": Msg.make("option.strike_back"), "color": "e8402e"}], true)
+			[{"value": "yes", "label": Msg.make("option.strike_back"), "color": "e8402e"}], true,
+			{"attacker": attacker})
 		if back == "yes":
 			if t.hidden:
 				reveal(target)

@@ -22,7 +22,7 @@ func draw_for(player_id: int, card_type: String) -> void:
 		if not waiting.is_empty():
 			s.state.discard(waiting.card)  # never lose a card from the deck
 		s.turn.pending_question = {"card": card, "from": player_id, "to": 0}
-		MatchNet.question_drawn.rpc_id(player_id, card)
+		s.tell(player_id, &"question_drawn", [card])
 		MatchNet.card_drawn_secretly.rpc(player_id, card_type)
 		return
 
@@ -35,7 +35,8 @@ func draw_for(player_id: int, card_type: String) -> void:
 	# Events: "must" ones happen; the others the player may decline.
 	if not card.get("must", false):
 		var use = await s.ask(player_id, Msg.make("prompt.use_now", {"card": Msg.named(card)}),
-			[{"value": "use", "label": Msg.make("option.use_it"), "color": Global.CARD_COLORS[card.deck].color}])
+			[{"value": "use", "label": Msg.make("option.use_it"), "color": Global.CARD_COLORS[card.deck].color}],
+			true, {"card": card})
 		if use == null:
 			s.state.discard(card)
 			return
@@ -51,7 +52,7 @@ func give_question(sender: int, target_id: int) -> void:
 	if target_id == sender or not s.state.players.has(target_id) or s.state.players[target_id].dead:
 		return
 	q.to = target_id
-	MatchNet.question_asked.rpc_id(target_id, sender, q.card)
+	s.tell(target_id, &"question_asked", [sender, q.card])
 	MatchNet.question_passed.rpc(sender, target_id)
 
 
@@ -66,6 +67,7 @@ func answer_question(sender: int) -> void:
 	s.state.discard(q.card)
 	s.turn.pending_question = {}
 	MatchNet.question_answered.rpc(q.from, q.to)
+	s.observe("question_answered", q.from, q.to)
 	s.after_resolution()
 
 

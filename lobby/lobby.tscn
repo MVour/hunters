@@ -142,7 +142,7 @@ horizontal_alignment = 1
 offset_left = 1293.0
 offset_top = 185.0
 offset_right = 1866.0
-offset_bottom = 483.0
+offset_bottom = 600.0
 script = ExtResource("4_asuex")
 
 [node name="Label" type="Label" parent="GameSettings"]
@@ -167,10 +167,66 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -209.5
-offset_top = -213.0
+offset_top = -345.0
 offset_right = 210.5
+offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 0
+
+[node name="PlayersRow" type="HBoxContainer" parent="GameSettings/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="GameSettings/VBoxContainer/PlayersRow"]
+custom_minimum_size = Vector2(215, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 35
+text = "Players:"
+
+[node name="PlayersDec" type="Button" parent="GameSettings/VBoxContainer/PlayersRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 35
+text = "<"
+
+[node name="PlayersCount" type="Label" parent="GameSettings/VBoxContainer/PlayersRow"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 35
+text = "2"
+horizontal_alignment = 1
+
+[node name="PlayersInc" type="Button" parent="GameSettings/VBoxContainer/PlayersRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 35
+text = ">"
+
+[node name="PresetRow" type="HBoxContainer" parent="GameSettings/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="GameSettings/VBoxContainer/PresetRow"]
+custom_minimum_size = Vector2(215, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 35
+text = "Teams:"
+
+[node name="PresetDec" type="Button" parent="GameSettings/VBoxContainer/PresetRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 35
+text = "<"
+
+[node name="PresetLabel" type="Label" parent="GameSettings/VBoxContainer/PresetRow"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "1/1"
+horizontal_alignment = 1
+
+[node name="PresetInc" type="Button" parent="GameSettings/VBoxContainer/PresetRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 35
+text = ">"
+
+[node name="HSeparator" type="HSeparator" parent="GameSettings/VBoxContainer"]
+layout_mode = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="GameSettings/VBoxContainer"]
 layout_mode = 2
@@ -259,7 +315,20 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 35
 text = ">"
 
+[node name="FillBotsButton" type="Button" parent="."]
+offset_left = 1393.0
+offset_top = 615.0
+offset_right = 1766.0
+offset_bottom = 680.0
+theme_override_font_sizes/font_size = 32
+text = "Fill with bots"
+
 [connection signal="pressed" from="Back" to="." method="_on_button_pressed"]
+[connection signal="pressed" from="FillBotsButton" to="." method="_on_fill_bots_pressed"]
+[connection signal="pressed" from="GameSettings/VBoxContainer/PlayersRow/PlayersDec" to="GameSettings" method="_on_players_dec_pressed"]
+[connection signal="pressed" from="GameSettings/VBoxContainer/PlayersRow/PlayersInc" to="GameSettings" method="_on_players_inc_pressed"]
+[connection signal="pressed" from="GameSettings/VBoxContainer/PresetRow/PresetDec" to="GameSettings" method="_on_preset_dec_pressed"]
+[connection signal="pressed" from="GameSettings/VBoxContainer/PresetRow/PresetInc" to="GameSettings" method="_on_preset_inc_pressed"]
 [connection signal="pressed" from="StartGameButton" to="." method="_on_start_game_pressed"]
 [connection signal="pressed" from="CopyCodeButton" to="." method="_on_copy_code_pressed"]
 [connection signal="pressed" from="GameSettings/VBoxContainer/HBoxContainer/VampDec" to="GameSettings" method="_on_vamp_dec_pressed"]

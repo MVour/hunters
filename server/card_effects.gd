@@ -54,12 +54,16 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 	var actor: int = ctx.actor
 	match step.do:
 		"damage", "heal":
-			var targets = await _targets(step.get("target", "self"), ctx)
+			var target: String = step.get("target", "self")
+			var targets = await _targets(target, ctx, {"intent": "help" if step.do == "heal" else "harm",
+				"amount": step.amount})
 			if targets == null:
 				return false
 			for t in targets:
 				if not _condition(step, t):
 					continue
+				if target.begins_with("chosen"):  # a pick everyone saw: bots learn from it
+					s.observe("help" if step.do == "heal" else "harm", actor, t, step.amount)
 				if step.do == "heal":
 					s.combat.heal(t, step.amount)
 				elif _blocked_by_amulet(t, ctx):
@@ -79,7 +83,7 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 
 		"show_character_to_asker":
 			if _condition(step, ctx.receiver):
-				MatchNet.private_character.rpc_id(ctx.asker, ctx.receiver, s.state.players[ctx.receiver].character)
+				s.tell(ctx.asker, &"private_character", [ctx.receiver, s.state.players[ctx.receiver].character])
 
 		"tell_health_to_asker":
 			var p: Dictionary = s.state.players[ctx.receiver]
@@ -121,7 +125,7 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 			var t = await s.ask(actor, Msg.make("prompt.peek_whom", {"card": _card_title(ctx)}), others)
 			if t == null:
 				return false
-			MatchNet.private_character.rpc_id(actor, t, s.state.players[t].character)
+			s.tell(actor, &"private_character", [t, s.state.players[t].character])
 
 		"draw_any":
 			var colors := []
@@ -145,6 +149,7 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 			if t == null:
 				return false
 			s.cards.transfer_equipment(actor, t, uid)
+			s.observe("help", actor, t, 1)
 			s.combat.heal(actor, 1)
 			s.combat.heal(t, 1)
 
@@ -155,7 +160,7 @@ func _step(step: Dictionary, ctx: Dictionary) -> bool:
 
 ## Who a step applies to. Returns null when a chosen target is missing or
 ## the player backed out (stops the effect).
-func _targets(target: String, ctx: Dictionary):
+func _targets(target: String, ctx: Dictionary, hint := {}):
 	var actor: int = ctx.actor
 	match target:
 		"self":
@@ -187,7 +192,8 @@ func _targets(target: String, ctx: Dictionary):
 			if candidates.is_empty():
 				s.notice(Msg.make("notice.nobody_to_target", {"card": _card_title(ctx)}))
 				return null
-			var pick = await s.ask(actor, Msg.make("prompt.choose_player", {"card": _card_title(ctx)}), candidates.map(s.player_option))
+			var pick = await s.ask(actor, Msg.make("prompt.choose_player", {"card": _card_title(ctx)}),
+				candidates.map(s.player_option), true, hint)
 			if pick == null:
 				return null
 			ctx.chosen[target] = pick

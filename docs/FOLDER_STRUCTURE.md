@@ -16,12 +16,14 @@ network/             owns: everything sent over the network: connecting (network
                      lobby and match actions/requests/messages (lobby_net, match_net)
 server/              owns: match rules, server only (match_server, card_flow, combat,
                      card_effects, server_state)
+  bots/              owns: bot players (bot_seat, bot_mind = beliefs, bot_brain = decisions,
+                     bot_weights = every tuning number)
 data/                card list, character list (EN + EL), shared board rules
 main/                entry scene (main.tscn), main menu, chat box + language button overlay
 lobby/               host/join screen, waiting room, avatar picker, role settings
 match/               the match screen (play_scene) and its parts:
   board/             forest board, classic board, locations, pawns
-  hud/               player HUD, player list (+rows), life track
+  hud/               player HUD, player list (+rows), life track, game log
   cards/             card, deck, deck pack, CardView popup (+ card_face), card shaders
   dice/              d6, d4, dice panel
   legacy/            old damage-board HUD and old seats, kept for possible reuse (in no scene)
@@ -58,5 +60,6 @@ export_presets.cfg   Godot exports: Web, Linux Server (room server), Windows Des
 | `data/rules.gd` | Rules both sides need (reach, attack targets, equipment mods). Never duplicate these in UI or server. |
 | `i18n/strings.csv` | Every player-facing UI text, English + Greek. No hard-coded text elsewhere. |
 | `server/card_effects.gd` | Applying card effects. |
+| `server/bots/bot_weights.gd` | Every number bots decide with (tune here, not in the logic). |
 | `autoload/signal_bus.gd` | Every cross-scene signal. |
 | `match/play_scene.gd` | The match screen UI: prompts, action bar, choices, toasts, game-over overlay. |

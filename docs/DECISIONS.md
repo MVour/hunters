@@ -12,6 +12,27 @@ in MANIFEST.md → Non-negotiable constraints.
 
 ---
 
+### D009 — Bots are seats inside the match server, and play fair (2026-11-17)
+- **Status:** active (built 2026-11-17, C019)
+- **What:** A bot is a player entry in the lobby (`bot: true`, an id from
+  `LobbyNet.BOT_ID_BASE`) with no computer behind it. In the match, a
+  `BotSeat` (`server/bots/`) answers everything the server asks that seat
+  and plays its turns through the same `MatchServer` entry points a
+  person's requests reach. Messages for one player go through
+  `MatchServer.tell()`, which sends an RPC to a person or hands it to the
+  bot's seat. Bots know only what a person in their seat would: their own
+  character, public info and what's told to them privately. They never read
+  hidden characters from `ServerState`. Decisions are scored with weighted
+  factors (`bot_weights.gd`) from a per-player species belief and the bot's
+  goal.
+- **Why:** The user wants games playable with bots, in LAN games and online
+  rooms alike, with no extra processes; cheating bots would be no fun.
+- **Rejected:** a separate headless client per bot (like `tools/autotest.gd`):
+  heavy on the server, more moving parts, and online rooms would need tickets
+  for bots. Bots that read the server's full truth: unbeatable, and against
+  the spirit of constraint 1. A learned/trained AI: overkill for a game with
+  few real choices; fixed weights can be tuned after playtests.
+
 ### D008 — Online stack runs in Docker behind Caddy; deployed by GitHub Actions (2026-11-17)
 - **Status:** active (refines D007's "nginx + Let's Encrypt" detail)
 - **What:** Two images from one Dockerfile (`online/docker/`): `web` (Caddy:

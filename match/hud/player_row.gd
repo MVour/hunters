@@ -9,6 +9,7 @@ signal picked(player_id: int)
 const C_BG := Color(0.05, 0.06, 0.09, 0.86)
 const C_CURRENT := Color("e8c060")
 const C_PICK := Color("ff7a5a")
+const DRAWER_WIDTH := 330.0
 
 var player_id := 0
 var order_number := 0
@@ -97,12 +98,21 @@ func _init(id: int, number: int) -> void:
 	drawer_style.bg_color = Color(0.03, 0.035, 0.05, 0.92)
 	drawer_style.set_corner_radius_all(6)
 	drawer_style.set_content_margin_all(8)
+	drawer_style.border_color = Color(1, 1, 1, 0.15)
+	drawer_style.set_border_width_all(1)
 	_drawer.add_theme_stylebox_override("panel", drawer_style)
 	_drawer.hide()
+	# The drawer floats to the LEFT of the row (outside the list's layout), so
+	# opening it doesn't push the list down over the game log.
+	_drawer.top_level = true
+	_drawer.z_index = 30
+	_drawer.custom_minimum_size = Vector2(DRAWER_WIDTH, 0)
+	_drawer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_drawer)
 	_drawer_text = RichTextLabel.new()
 	_drawer_text.bbcode_enabled = true
 	_drawer_text.fit_content = true
+	_drawer_text.custom_minimum_size = Vector2(DRAWER_WIDTH - 16, 0)
 	_drawer_text.scroll_active = false
 	_drawer_text.add_theme_font_size_override("normal_font_size", 13)
 	_drawer_text.add_theme_font_size_override("bold_font_size", 14)
@@ -111,8 +121,26 @@ func _init(id: int, number: int) -> void:
 
 func toggle_drawer() -> void:
 	_drawer.visible = not _drawer.visible
-	_arrow.text = "▾" if _drawer.visible else "▸"
+	_arrow.text = "◂" if _drawer.visible else "▸"
 	refresh()
+	_place_drawer()
+
+
+## Keep the open drawer beside its row (rows move when the list scrolls),
+## and on screen.
+func _process(_delta: float) -> void:
+	if _drawer.visible:
+		_place_drawer()
+
+
+func _place_drawer() -> void:
+	if not _drawer.visible or not is_inside_tree():
+		return
+	_drawer.reset_size()
+	var at := _card.global_position + Vector2(-DRAWER_WIDTH - 8, 0)
+	var screen := get_viewport_rect().size
+	at.y = clampf(at.y, 4, maxf(4, screen.y - _drawer.size.y - 4))
+	_drawer.global_position = at
 
 
 ## Redraw from GameState.
@@ -123,7 +151,8 @@ func refresh() -> void:
 	var me := player_id == GameState.local_id
 	var pawn_info: Dictionary = Global.pawns.get(p.pawn, {})
 	_pawn.texture = pawn_info.get("sprite")
-	_name.text = p.name + (Global.text("players.you") if me else "")
+	_name.text = p.name + (Global.text("players.you") if me else "") \
+		+ (Global.text("players.bot") if LobbyNet.is_bot(p) else "")
 	_name.add_theme_color_override("font_color", Color(pawn_info.get("hex", "ffffff")).lightened(0.25))
 
 	var character: Dictionary = p.get("character", {})

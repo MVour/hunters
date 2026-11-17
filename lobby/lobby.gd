@@ -15,12 +15,7 @@ var question_mark_sprite : PackedScene = preload("res://lobby/question_mark_spri
 @onready var game_settings: GameSettings = $GameSettings
 @onready var create_player: CreatePlayer = $CreatePlayer
 
-@onready var vamp_dec: Button = $GameSettings/VBoxContainer/HBoxContainer/VampDec
-@onready var vamp_inc: Button = $GameSettings/VBoxContainer/HBoxContainer/VampInc
-@onready var were_dec: Button = $GameSettings/VBoxContainer/HBoxContainer2/WereDec
-@onready var were_inc: Button = $GameSettings/VBoxContainer/HBoxContainer2/WereInc
-@onready var humans_dec: Button = $GameSettings/VBoxContainer/HBoxContainer3/HumansDec
-@onready var humans_inc: Button = $GameSettings/VBoxContainer/HBoxContainer3/HumansInc
+@onready var fill_bots_button: Button = $FillBotsButton
 
 ## Avatar tile per player id.
 var q_marks := {}
@@ -47,10 +42,10 @@ func lobby_init(code: String):
 	_apply_owner()
 
 
-## Only the owner changes role counts, starts the match and kicks players.
+## Only the owner changes the teams, adds bots, starts the match and kicks players.
 func _apply_owner(_id := 0) -> void:
 	var mine := GameState.owner_id == GameState.local_id and GameState.local_id != 0
-	for node in [start_game_button, vamp_dec, vamp_inc, were_dec, were_inc, humans_dec, humans_inc]:
+	for node in [start_game_button, fill_bots_button] + game_settings.owner_buttons():
 		node.visible = mine
 	for id in kick_buttons:
 		kick_buttons[id].visible = mine and id != GameState.local_id
@@ -62,15 +57,30 @@ func _on_player_updated(player: Dictionary) -> void:
 		lobby_container.add_child(new_q_mark)
 		new_q_mark.init(player)
 		q_marks[player.id] = new_q_mark
+		# The tile is a VBox: anything added to it squeezes the pawn, so the bot
+		# tag and the ✕ sit on top of its panel instead.
+		var tile_panel: Control = new_q_mark.get_node("Panel")
+		if LobbyNet.is_bot(player):
+			var tag := Label.new()
+			tag.text = Global.text("lobby.bot_tag")
+			tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			tag.add_theme_font_size_override("font_size", 14)
+			tag.add_theme_color_override("font_color", Color("e8c060"))
+			tag.add_theme_color_override("font_outline_color", Color.BLACK)
+			tag.add_theme_constant_override("outline_size", 4)
+			tile_panel.add_child(tag)
+			tag.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+			tag.offset_top = -20
 		var kick := Button.new()
 		kick.text = "✕"
 		kick.tooltip_text = Global.text("lobby.kick")
 		kick.custom_minimum_size = Vector2(28, 28)
+		kick.size = Vector2(28, 28)
 		kick.position = Vector2(-6, -6)
 		kick.z_index = 2
 		var id: int = player.id
 		kick.pressed.connect(func(): LobbyNet.kick(id))
-		new_q_mark.add_child(kick)
+		tile_panel.add_child(kick)
 		kick_buttons[id] = kick
 		_apply_owner()
 	else:
@@ -92,6 +102,10 @@ func _on_player_removed(id: int) -> void:
 func _on_players_changed() -> void:
 	players_in_lobby.text = str(GameState.players.size())
 	SignalBus.pawns_changed.emit()
+
+
+func _on_fill_bots_pressed() -> void:
+	LobbyNet.fill_with_bots()
 
 
 # --- Buttons -----------------------------------------------------------------

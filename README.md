@@ -16,6 +16,8 @@ It's a private hobby project made with Godot 4.3 (GDScript).
   install. The first time, Windows says "Windows protected your PC": press
   More info → Run anyway.
 - **On a LAN:** one player presses Host, and the others join with `IP:port`.
+- **With bots:** in the lobby, the room's owner sets **Players** and
+  **Teams**, then presses **Fill with bots**. Remove a bot with its ✕.
 
 The full rules are in [docs/RULES.md](docs/RULES.md).
 
@@ -27,7 +29,8 @@ Checks to run after changing code:
 
 ```bash
 godot --headless --path . tools/check_project.tscn   # loads every scene and script
-bash tools/run_autotest.sh                           # two bots play a full match over localhost
+bash tools/run_autotest.sh                           # two test players play a full match over localhost
+AUTOTEST_ARGS="--bots=6 --bot-log" MAX_TURNS=400 bash tools/run_autotest.sh   # ...with 6 bots, printing their decisions
 ```
 
 The online part has its own tests: in `online/lobby-service`, run

@@ -67,8 +67,13 @@ Two setups, chosen per game by what's typed in the Join box (D007):
   `MultiplayerController._on_connected_to_host` resets `GameState.local_id` then.
 - **Owner** (`LobbyNet._owner_id`, mirrored to `GameState.owner_id` by
   `owner_changed`): the ticket's owner flag in online rooms, else the first
-  to join; passed on when they leave the lobby. Only the owner changes role
-  counts, starts, and kicks (`request_kick`, lobby only).
+  to join; passed on when they leave the lobby. Only the owner changes the
+  teams (Players / Teams presets / role counts), fills with bots, starts, and
+  kicks (`request_kick`, lobby only; also removes a bot).
+- **Teams:** `LobbyNet._settings` holds the role counts; their total is the
+  match's player count. Presets: `Global.game_settings_default.presets`.
+  The counts only change by the owner, or grow when more players are in
+  than the teams have places for (`_fit_settings`).
 - **Leaving mid-match** (BUG-001): `LobbyNet._on_peer_left` →
   `MatchServer.player_left()`: the player is out (`Combat.leave`, card
   revealed, no killer), pending questions/asks/rolls are answered for them
@@ -90,6 +95,27 @@ Two setups, chosen per game by what's typed in the Join box (D007):
 - Everything that waits does so on signals/timers owned by `MatchServer`, so
   `MatchNet.stop()` (on leave, host disconnect, new session) frees it and
   cancels all of it.
+- **One-player messages** (your character, prompts, peeks, private info,
+  green cards) always go through `MatchServer.tell(id, method, args)`: an
+  RPC to a person, or straight to a bot's seat. Never `rpc_id` a player id
+  directly from server code (a bot id isn't a peer).
+
+## Bots (`server/bots/`, server only, D009)
+- A bot is a lobby player with `bot: true` and an id from
+  `LobbyNet.BOT_ID_BASE` (added by `request_fill_bots`). No computer, no
+  connection; `MatchServer` makes a `BotSeat` for it and counts it as loaded.
+- `BotSeat`: gets the seat's private messages (`receive`, from `tell`),
+  answers `ask()`s (`on_choice`, with the server-only `hint`) and dice
+  throws (`on_roll`), learns from public events (`observe`: who hurt or
+  helped whom, answered questions), and plays its turn (`take_turn`, started
+  by `_start_turn`). It calls the same `MatchServer` functions a person's
+  requests reach, and waits on `MatchServer.wait()`.
+- `BotMind`: beliefs. Reads only public fields of `ServerState.players` and
+  what the seat was told; a hidden character is never read.
+- `BotBrain`: one scoring function per choice point; `bot_weights.gd`: all
+  tuning numbers. `-- --bot-log` prints beliefs and decisions.
+- A match where only bots are left stops (`player_left`). Room status
+  reports list people only, plus a `bots` count.
 
 ## Scenes
 `main/main.tscn` → `MainMenu` → `MultiplayerController` (host/join) →
@@ -101,7 +127,10 @@ Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
 (`ForestBoard` or, with Classic art, `ClassicBoard`), `Locations` (`GameMap`),
 `PawnLayer`, `PlayerList` (right edge, play order, drawers), `Hud/PlayerHud`,
 `DamageBoard` (life track, left edge), `DecksContainer`, `DicesContainer`,
-`CardView` popups, and the
+`CardView` popups (a player row's details drawer floats to the row's left,
+`top_level`), `GameLog` (right column under the player list: every
+action from the events this screen gets, kept as Msgs and redrawn on a
+language switch), and the
 prompt/action/choice panels and the status line built in `play_scene.gd`.
 `_refresh_buttons()` sets every turn button's visible/enabled state and the
 status text ("waiting for …") from GameState; the server broadcasts
@@ -125,7 +154,10 @@ buttons hide until the pick ends.
   localhost (port 18080) through the same actions as the UI; fails on any
   script error. `MAX_TURNS=N` makes the host leave mid-match;
   `AUTOTEST_ARGS="--show-status --slow"` prints every status line the bots saw;
-  `AUTOTEST_ARGS=--ui` makes the bots pick players by clicking rows/pawns.
+  `AUTOTEST_ARGS=--ui` makes the bots pick players by clicking rows/pawns;
+  `AUTOTEST_ARGS="--bots=N --bot-log"` adds N real bots (through the lobby
+  buttons' actions) and prints their decisions. The online e2e takes the
+  same args (`node scripts/e2e.mjs <godot> --bots=2`).
 
 ## Language
 Like a front-end i18n file (D006):

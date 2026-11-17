@@ -7,6 +7,19 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-008 — Two questions at once to one player: the first waits forever
+- **Logged:** 2026-11-17 (found by reading, during the bot hang audit)
+- **Area:** `server/match_server.gd` `_await_answer()`
+- **What happens:** `_awaiting` holds one open question per player. A kill's
+  "take an equipment card" pick runs alongside the rest of the attack
+  (`_kill` isn't awaited), so in rare cases (e.g. a bear-trap kill in the
+  same attack) a second question to the same player overwrote the first,
+  which then waited forever: the turn could never end.
+- **Impact:** rare, but a stuck match (people and bots alike).
+- **Fix (C020):** a new question to a player who already has one open
+  waits until that one is answered.
+- **Status:** fix implemented; bot stress runs pass. Not reproduced on purpose.
+
 ### BUG-007 — Browser game: Host/Join buttons over the lobby; Classic art by default
 - **Logged:** 2026-11-17 (first browser session, v0.1.0)
 - **Area:** `lobby/multiplayer_controller.gd`, `autoload/global.gd`, `main/main.gd`
@@ -25,8 +38,8 @@ that sit open for more than ~2 weeks.
   1. Connecting now hides the buttons itself.
   2. `classic_art` defaults to `false`.
   3. On the web, Esc and Exit leave the session and go back to the lobby page.
-- **Status:** fix released in v0.1.1. check_project and a bot match pass.
-  Still to confirm in a real browser.
+- **Status:** fix verified (2026-11-17): the user played a real browser
+  game on v0.1.3 with no problems.
 
 ### BUG-006 — Online rooms never started on the server ("didn't start in time")
 - **Logged:** 2026-11-17 (first deploy)
@@ -44,7 +57,8 @@ that sit open for more than ~2 weeks.
 - **Status:** fix verified locally. Linux release export run in WSL with
   stdout piped: without the setting, 0 lines in 15 s; with it, ROOM_READY at
   once. The new build check fails on the old binary (exit 1) and passes on
-  the new one (4 s). On the server: verified after the next release.
+  the new one (4 s). Verified on the server (2026-11-17): the user started
+  and played a real online room on v0.1.3.
 
 ### BUG-005 — Rare: a bot's click on a pawn didn't register (test flake?)
 - **Logged:** 2026-11-16

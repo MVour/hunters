@@ -18,9 +18,12 @@ static func make(key: String, params := {}) -> Dictionary:
 ## language. Keeps the card's uid so the screen can tell which card a
 ## question is about.
 static func named(data: Dictionary) -> Dictionary:
+	# Locations carry both: "name" is their id, "label" the real name.
+	if data.has("label"):
+		return {"name": str(data.label), "name_el": str(data.get("label_el", "")), "uid": str(data.get("uid", ""))}
 	return {
-		"name": str(data.get("name", data.get("label", ""))),
-		"name_el": str(data.get("name_el", data.get("label_el", ""))),
+		"name": str(data.get("name", "")),
+		"name_el": str(data.get("name_el", "")),
 		"uid": str(data.get("uid", "")),
 	}
 

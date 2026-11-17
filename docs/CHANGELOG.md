@@ -7,6 +7,79 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C020 — Game log; no turn can get stuck on a bot (2026-11-17)
+- **What:**
+  - **Game log** (`match/hud/game_log.gd`, right column under the player
+    list; its header folds it to one line showing the latest entry; first
+    tried top-left, but it hid the life track): every turn (with round),
+    roll → location, card drawn, green card drawn / given / answered, every
+    server announcement (attacks with dice, reveals, steals, protection…),
+    damage and healing with totals, abilities, deaths (with killer and
+    character), game over. Your own private results (peeks, Whispered
+    Name…) appear marked "only you". Names in their pawn colour; redrawn
+    in the other language on switch. Built only from the events this
+    screen already gets, so it shows nothing a player may not know.
+  - **Hang audit (bots):** the bot now keeps trying to roll, to hand over
+    its green card, and to end its turn until the server takes it (each
+    was a single try; a refusal at a busy moment would have stuck the turn).
+  - BUG-008: a second question to a player waits for the first.
+  - **Player drawers open to the LEFT of their row** (floating, over the
+    board) instead of below it, so the list keeps its size and doesn't
+    slide under the log. The log ends above the bottom-right card spot.
+  - **Fix:** `Msg.named()` used a location's `name` (its id) before its
+    `label`, so Shortcut's options and Old Map's prompts showed
+    "old_chapel" instead of "Old Chapel" / "Παλιό Παρεκκλήσι".
+  - Autotest `--port=N` (run a second test beside another one) and
+    `--shot-match=PATH` (autotest, not headless): a match screenshot at turn 8.
+- **Why:** the user asked to be sure no bot can leave a green card (or
+  anything) hanging, and for an in-game log of who did what.
+- **Rejected:** putting the log in the chat box (chat is for people; the
+  log is long and would push messages away); building the log on the
+  server and sending it (it would need its own filtering of private info;
+  the client's events are already filtered).
+
+### C019 — Bot players; lobby Players / Teams / Fill with bots (2026-11-17)
+- **What:**
+  - **Lobby:** the owner sets **Players** (the teams' total; applies that
+    count's default teams) and cycles **Teams** presets
+    (`Global.game_settings_default.presets`, e.g. 6 = 2/2/2, 3/3/0, 1/1/4;
+    "own" when hand-tuned with the role buttons). **Fill with bots** adds
+    bots up to the player count (and removes extra bots); ✕ removes one.
+    The teams no longer reset when someone joins or leaves; they only grow
+    when more people are in than the teams have places for. A person joining
+    a full room takes a bot's place; a person with a bot's name gets it
+    (the bot takes another). With no people left in a lobby, its bots go.
+    Bots show a "(bot)" tag in the lobby and the player list.
+  - **Bots (D009, `server/bots/`):** `BotSeat` plays the turn (roll → action
+    → abilities → maybe attack → end), answers every server prompt, gives
+    and answers green cards. `BotMind` keeps species odds per player
+    (unknown characters per species × ruled out by question results and
+    told health × soft evidence from who hit / helped whom, capped) and
+    turns them into a relation for its own goal (vampire, werewolf, Elias,
+    Ada/Iris, Hope backing her neighbour). `BotBrain` scores the options at
+    each choice point. All numbers in `bot_weights.gd`.
+  - **Server:** `MatchServer.tell()` for every one-player message,
+    `ask(..., hint)` (context only bots get, never sent), `observe()` for
+    public events bots learn from. A match with only bots left stops.
+  - Room status reports count people only (+ a `bots` number), so the
+    lobby service doesn't refuse joins to a room "full" of bots.
+  - **Fix:** the role buttons were disabled for anyone but the server,
+    so an online room's owner (a client) couldn't change the teams.
+  - **Fix:** the owner's ✕ on a lobby tile went into the tile's VBox and
+    shrank that player's pawn; it now sits on the tile's corner (as meant),
+    and so does the BOT tag.
+  - `--shot-lobby=PATH` (autotest, not headless) saves a lobby screenshot.
+  - Tests: `--bots=N` for `tools/autotest.gd` (also with the online e2e),
+    `--bot-log` prints each bot's beliefs and decisions.
+- **Why:** the user's next big thing: games playable with bots.
+- **Verified:** check_project; autotest plain, `--bots=2`, `--bots=6`
+  (8 players, a full game to a win, 66 turns), `--ui --bots=2`, host leaving
+  with bots; lobby-service `npm test` (13) and online e2e with and without
+  bots.
+- **Rejected:** see D009. Also: a separate "Add bot" button (Fill with bots
+  plus ✕ covers it); keeping a separate target count next to the role counts
+  (two numbers that can disagree; the teams' total is the target).
+
 ### C018 — Login: clearer errors, codes pasted with spaces work (2026-11-17)
 - **What:**
   - The service trims spaces and line breaks around the access code.

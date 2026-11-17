@@ -14,6 +14,12 @@ extends Node
 ## can't be changed), and the ticket says who the room's owner is.
 
 const MAX_PLAYERS := 8
+## Bot seats get ids from here up. Real peer ids are random in 2..2^31-1, so
+## a clash is practically impossible (and checked). Never rpc_id a bot id:
+## MatchServer.tell() routes a bot's messages to its BotSeat instead.
+const BOT_ID_BASE := 2_100_000_000
+## Bot names (a translated "(bot)" tag is shown next to them).
+const BOT_NAMES := ["Ash", "Fern", "Moss", "Rowan", "Hazel", "Thorn", "Willow", "Birch", "Bramble", "Sorrel"]
 
 # --- Server only ---------------------------------------------------------------
 var _players := {}
@@ -61,6 +67,12 @@ func choose_avatar(player_name: String, pawn: String) -> void: request_avatar.rp
 func change_setting(key: String, delta: int) -> void: request_setting.rpc_id(1, key, delta)
 func start_match() -> void: request_start.rpc_id(1)
 func kick(player_id: int) -> void: request_kick.rpc_id(1, player_id)
+## Owner: how many players the match is for (applies that count's default teams).
+func change_player_count(delta: int) -> void: request_player_count.rpc_id(1, delta)
+## Owner: the next/previous team preset for this player count.
+func change_preset(delta: int) -> void: request_preset.rpc_id(1, delta)
+## Owner: add bots until there are as many players as the teams need.
+func fill_with_bots() -> void: request_fill_bots.rpc_id(1)
 
 
 # =============================================================================
@@ -74,7 +86,7 @@ func request_join(ticket := "") -> void:
 	var id := Network.sender_id()
 	if _players.has(id):
 		return
-	if _in_match or _players.size() >= max_players:
+	if _in_match or (_players.size() >= max_players and _bot_ids().is_empty()):
 		push_warning("join refused: %s" % ("match running" if _in_match else "room full"))
 		_refuse(id)
 		return
@@ -87,9 +99,13 @@ func request_join(ticket := "") -> void:
 			_refuse(id)
 			return
 
+	# A full room makes way for a person: one bot leaves.
+	if _players.size() >= max_players:
+		_remove_player(_bot_ids().back())
 	var player := GameState.new_player(id)
-	player.name = identity.get("name", "Player_%d" % (_players.size() + 1))
+	player.name = identity.get("name", "Player_%d" % (_human_count() + 1))
 	_players[id] = player
+	_rename_bot_named(player.name)
 	if identity.get("owner", false) or _owner_id == 0:
 		_owner_id = id
 	# Tell the newcomer who's already here, then tell everyone about them.
@@ -99,7 +115,7 @@ func request_join(ticket := "") -> void:
 	sync_player.rpc(player)
 	owner_changed.rpc(_owner_id)
 	ChatNet.send_history(id)
-	_reset_settings()
+	_fit_settings()
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -128,8 +144,45 @@ func request_setting(key: String, delta: int) -> void:
 	if not Global.SPECIES.has(key) or absi(delta) > 1:
 		return
 	var max_count: int = Global.deck.characters[Global.SPECIES[key].list].size()
-	_settings[key] = clampi(_settings.get(key, 0) + delta, 0, max_count)
+	var wanted := clampi(_settings.get(key, 0) + delta, 0, max_count)
+	if team_total(_settings) - _settings.get(key, 0) + wanted > max_players:
+		return
+	_settings[key] = wanted
 	settings_changed.rpc(_settings)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_player_count(delta: int) -> void:
+	if not multiplayer.is_server() or Network.sender_id() != _owner_id or _in_match:
+		return
+	var count := clampi(team_total(_settings) + signi(delta), maxi(2, _human_count()), max_players)
+	_apply_preset(count, 0)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func request_preset(delta: int) -> void:
+	if not multiplayer.is_server() or Network.sender_id() != _owner_id or _in_match:
+		return
+	var count := team_total(_settings)
+	var presets: Array = Global.game_settings_default.presets.get(count, [])
+	if presets.is_empty():
+		return
+	var index := preset_index(_settings)  # -1 = hand-tuned: step onto the first
+	_apply_preset(count, posmod(index + signi(delta), presets.size()) if index != -1 else 0)
+
+
+## Bots fill the seats the teams still need (people first: bots that are
+## too many for the teams leave).
+@rpc("any_peer", "call_local", "reliable")
+func request_fill_bots() -> void:
+	if not multiplayer.is_server() or Network.sender_id() != _owner_id or _in_match:
+		return
+	var wanted := mini(team_total(_settings), max_players)
+	while _players.size() > wanted and not _bot_ids().is_empty():
+		_remove_player(_bot_ids().back())
+	while _players.size() < wanted:
+		if not _add_bot():
+			break
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -157,10 +210,10 @@ func request_kick(player_id: int) -> void:
 		return
 	if player_id == multiplayer.get_unique_id():
 		return  # the host of a direct game can't kick itself off its own server
-	_players.erase(player_id)
-	remove_player.rpc(player_id)
-	_refuse(player_id)
-	_reset_settings()
+	var bot := is_bot(_players[player_id])
+	_remove_player(player_id)
+	if not bot:
+		_refuse(player_id)
 
 
 func _refuse(id: int) -> void:
@@ -176,21 +229,115 @@ func _on_peer_left(id: int) -> void:
 		if MatchNet.server:
 			MatchNet.server.player_left(id)
 		return
-	_players.erase(id)
+	_remove_player(id)
+	if _human_count() == 0:  # nobody left to play with the bots
+		for bot_id in _bot_ids():
+			_remove_player(bot_id)
 	if id == _owner_id:
-		_owner_id = _players.keys().front() if not _players.is_empty() else 0
+		var humans := _players.keys().filter(func(pid): return not is_bot(_players[pid]))
+		_owner_id = humans.front() if not humans.is_empty() else 0
 		owner_changed.rpc(_owner_id)
+
+
+func _remove_player(id: int) -> void:
+	_players.erase(id)
 	remove_player.rpc(id)
-	_reset_settings()
+	_fit_settings()
 
 
-## Role counts go back to the preset for this many players.
-func _reset_settings() -> void:
-	var preset: Dictionary = Global.game_settings_default.players.get(_players.size(), {})
+## The teams keep their size while people come and go; they only grow when
+## more players are in the room than the teams have places for.
+func _fit_settings() -> void:
+	if _settings.is_empty():
+		_apply_preset(clampi(_players.size(), 2, max_players), 0)
+	elif _players.size() > team_total(_settings):
+		_apply_preset(_players.size(), 0)
+
+
+func _apply_preset(count: int, index: int) -> void:
+	var presets: Array = Global.game_settings_default.presets.get(count, [[0, 0, 0]])
+	var counts: Array = presets[clampi(index, 0, presets.size() - 1)]
 	_settings = {}
+	var i := 0
 	for key in Global.SPECIES:
-		_settings[key] = preset.get(key, 0)
+		_settings[key] = counts[i]
+		i += 1
 	settings_changed.rpc(_settings)
+
+
+## A bot takes the next free seat, name and pawn. False if there's no room.
+func _add_bot() -> bool:
+	if _players.size() >= max_players:
+		return false
+	var pawn := ""
+	for p in Global.pawns:
+		if not _pawn_taken(p, 0):
+			pawn = p
+			break
+	var bot_name := ""
+	for n in BOT_NAMES:
+		if not _name_taken(n, true):
+			bot_name = n
+			break
+	if pawn == "" or bot_name == "":
+		return false
+	var id := BOT_ID_BASE + 1
+	while _players.has(id):
+		id += 1
+	var bot := GameState.new_player(id)
+	bot.name = bot_name
+	bot.pawn = pawn
+	bot.bot = true
+	_players[id] = bot
+	sync_player.rpc(bot)
+	return true
+
+
+## A person joined with a bot's name: the bot takes another one.
+func _rename_bot_named(player_name: String) -> void:
+	for id in _bot_ids():
+		if _players[id].name.to_lower() != player_name.to_lower():
+			continue
+		for n in BOT_NAMES:
+			if not _name_taken(n, true):
+				_players[id].name = n
+				sync_player.rpc(_players[id])
+				return
+
+
+func _bot_ids() -> Array:
+	return _players.keys().filter(func(id): return is_bot(_players[id]))
+
+
+func _human_count() -> int:
+	return _players.size() - _bot_ids().size()
+
+
+## A player dict (lobby, GameState or ServerState) that's a bot seat.
+static func is_bot(player: Dictionary) -> bool:
+	return player.get("bot", false)
+
+
+## How many players the chosen teams are for.
+static func team_total(settings: Dictionary) -> int:
+	var total := 0
+	for key in Global.SPECIES:
+		total += int(settings.get(key, 0))
+	return total
+
+
+## Which preset of this player count the teams match (-1 = hand-tuned).
+static func preset_index(settings: Dictionary) -> int:
+	var presets: Array = Global.game_settings_default.presets.get(team_total(settings), [])
+	for i in presets.size():
+		var j := 0
+		var same := true
+		for key in Global.SPECIES:
+			same = same and int(settings.get(key, 0)) == presets[i][j]
+			j += 1
+		if same:
+			return i
+	return -1
 
 
 ## Server: a player as the lobby knows them ({} if not in the session).
@@ -210,9 +357,11 @@ func _pawn_taken(pawn: String, except_id: int) -> bool:
 	return false
 
 
-func _name_taken(player_name: String) -> bool:
+## Bots give up their name to a person (see _rename_bot_named), so they only
+## count when `count_bots` (picking a bot's own name).
+func _name_taken(player_name: String, count_bots := false) -> bool:
 	for player in _players.values():
-		if player.name.to_lower() == player_name.to_lower():
+		if (count_bots or not is_bot(player)) and player.name.to_lower() == player_name.to_lower():
 			return true
 	return false
 
