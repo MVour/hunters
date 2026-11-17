@@ -7,6 +7,32 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C013 — Deploys happen only for version tags; tools/release.sh (2026-11-17)
+- **What:** the workflow now runs:
+  - pushes to `main` and PRs: tests only;
+  - `v*` tags: tests, images tagged with the version, deploy, Windows build;
+  - Run workflow (by hand): the same as a tag, for any branch or tag
+    (also used to roll back).
+  Only one deploy runs at a time (`concurrency: online-deploy`).
+  `tools/release.sh [patch|minor|major|vX.Y.Z] [-n] [-y]`:
+  - checks that you're on `main`, nothing is uncommitted, and you aren't
+    behind GitHub;
+  - works out the next version and shows the commits since the last tag;
+  - asks before going ahead;
+  - creates an annotated tag, then pushes `main` and the tag in one
+    atomic push (if the push fails, the tag is removed again).
+  Also: the Windows build finds Godot's export templates on GitHub runners
+  (HOME differs there), and the workflow reads the domain from
+  `DEPLOY_DOMAIN` (`DOMAIN` still works).
+- **Why:** the user didn't want every push to go live. A deploy restarts
+  the rooms, so a match in progress is cut off.
+- **Rejected:** approving each deploy in GitHub environments, and deploying
+  only by hand. The user chose tags plus a script.
+- **Verified:** the script was run against a throwaway repo with a local
+  stand-in for GitHub: dry run, first release v0.1.0, refusal when nothing
+  is new, minor bump to v0.2.0 with unpushed commits, refusal with
+  uncommitted changes. The workflow changes take effect on the next push.
+
 ### C012 — board2D can sit behind the server's existing Caddy (2026-11-17)
 - **What:** The user's server already runs Caddy on 80/443 (for another
   project, "oikos"). New front-door mode: `BEHIND_PROXY=127.0.0.1:8082`

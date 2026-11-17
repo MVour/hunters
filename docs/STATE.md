@@ -32,8 +32,15 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   46.225.188.241. It already runs Caddy on 80/443 plus another project
   ("oikos", in Docker), so board2D goes behind that Caddy (C012,
   `BEHIND_PROXY=127.0.0.1:8082`). Deploy key made on the user's PC
-  (`~/.ssh/board2d_deploy`). Still to do: the server script, the Caddy site
-  block, the GoDaddy A record, GitHub variables/secrets, the first push.
+  (`~/.ssh/board2d_deploy`). Done:
+  - the server script;
+  - DNS: `play.mvrtz.com` resolves to the server;
+  - GitHub repo `MVour/hunters` with its variables and secrets;
+  - CI builds pass.
+
+  Next: the Caddy site block (if not done yet), then the first release with
+  `bash tools/release.sh` from WSL. Deploys run only on `v*` tags (C013).
+  Pushing to GitHub works only from WSL, where the user's key is.
 - Docker stack test in WSL (`online/deploy/local-test.sh`): Ubuntu WSL has
   no Docker engine yet; the user installs one or runs it on the server.
 - First real browser session: open `/game/` from the lobby page and play.

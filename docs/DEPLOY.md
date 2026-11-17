@@ -7,7 +7,7 @@ reference: update it in the same session as anything under `online/`,
 ## What players need
 - **Nothing to install.** They open `https://<your domain>`, log in with
   their name + access code, make or join a room, and press **Play in browser**.
-- Optional: the **desktop game** (Windows build from the workflow's
+- Optional: the **desktop game** (Windows build, made by every release or
   "Run workflow", artifact `board2D-windows`). In the lobby page press
   **Desktop link**, then paste it into the game's Join box within a minute.
 - LAN / direct play is unchanged: Host on one computer, others join by `IP:port`.
@@ -81,10 +81,31 @@ sudo BEHIND_PROXY=127.0.0.1:8082 bash setup-server.sh play.yourdomain.com you@em
      optional `DEPLOY_USER` (default `board2d`), `DEPLOY_PORT` (default 22).
    - Secrets: `DEPLOY_SSH_KEY` (the private key file's contents),
      `DEPLOY_KNOWN_HOSTS` (the line setup-server.sh printed, with the IP).
-4. Push to `main`, or Actions → **Online: build & deploy** → Run workflow
-   (you can type another host/domain there for one run). It tests, builds
-   both images, pushes them to GitHub's registry, deploys, and checks
-   `https://DOMAIN/api/health` from the internet.
+4. Release: `bash tools/release.sh` (from WSL, where the GitHub key is).
+   See **Releasing** below.
+
+## Releasing (= deploying)
+Only version tags deploy. Pushing to `main` runs the tests and nothing else.
+```
+bash tools/release.sh            # next patch version, e.g. v0.1.0 -> v0.1.1
+bash tools/release.sh minor      # v0.1.1 -> v0.2.0   (major, or v2.0.0, also work)
+bash tools/release.sh -n         # dry run: show the version and the changes
+```
+- The script checks that you're on `main`, nothing is uncommitted, and
+  GitHub has nothing you don't have. It shows the commits since the last
+  tag and asks before going ahead.
+- It creates an annotated tag listing those commits, then pushes `main`
+  and the tag in one atomic push.
+- The tag starts the workflow: tests → images tagged with the version
+  (`board2d-lobby:v0.1.1`) → deploy → check
+  `https://DOMAIN/api/health` from the internet. It also builds the
+  Windows game (artifact `board2D-windows`).
+- A deploy restarts the rooms, so release when nobody is playing.
+- Changes to the game also need a release: the browser game and the room
+  servers are inside the images.
+- By hand: Actions → **Online: build & deploy** → Run workflow. Choose a
+  branch or tag under "Use workflow from". You can also type another
+  host/domain there for one run.
 
 ## Who may log in (`/opt/board2d/config.json`)
 ```json
@@ -129,7 +150,7 @@ sudo BEHIND_PROXY=127.0.0.1:8082 bash setup-server.sh play.yourdomain.com you@em
 - Logs: `cd /opt/board2d && docker compose logs -f lobby` (logins, rooms,
   connections; tickets are never logged). `docker compose ps` for health.
 - Restart everything: `docker compose restart`. Stop: `docker compose down`.
-- Roll back: `./deploy.sh ghcr.io/<owner> <older tag>` (tags = commit SHA, 12 chars).
+- Roll back: Actions → Run workflow → "Use workflow from" = the older tag (e.g. `v0.1.0`). Or on the server: `./deploy.sh ghcr.io/<owner> v0.1.0`.
 - A room closes by itself 2 minutes after its last player leaves, or after
   `maxHours`. Owners/admins can close it from the lobby page.
 

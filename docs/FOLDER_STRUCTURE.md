@@ -28,7 +28,8 @@ assets/              the user's art: pawns/ portraits/ cards/ locations/ icons/ 
   legacy/            original art kept usable (Classic art): board/ portraits/ pawns/ cards/
   _source/           full source sheets + drafts; .gdignore'd (not imported, not exported)
 i18n/                owns: every UI text, strings.csv (keys,en,el); .translation files are generated
-tools/               dev tools: check_project (loads every file + checks i18n), autotest (bots play a match)
+tools/               dev tools: check_project (loads every file + checks i18n), autotest (bots play a match),
+                     release.sh (tag + push = deploy)
 docs/                project docs (see MANIFEST.md)
 online/              owns: everything for online rooms on the server (D007/D008); .gdignore'd
   lobby-service/     Node service: logins, rooms, tickets, starts room servers, forwards WebSockets

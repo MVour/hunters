@@ -10,14 +10,20 @@
 #   DEPLOY_SSH_KEY      private key whose public half setup-server.sh installed
 #   DEPLOY_KNOWN_HOSTS  the server's SSH host key line (setup-server.sh prints it)
 #
-# Pushes to main build and push images; they deploy only when DEPLOY_HOST is
-# set. "Run workflow" can deploy to another host/domain for one run.
+# When things run:
+#   push to main, pull request   tests only
+#   push of a tag v*             tests, images (tagged with the version),
+#                                deploy (when DEPLOY_HOST is set), Windows build
+#   "Run workflow" (by hand)     same as a tag, for the chosen branch/tag; can
+#                                deploy to another host/domain for one run
+# Make a release with tools/release.sh (tags and pushes; docs/DEPLOY.md).
 
 name: "Online: build & deploy"
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -80,7 +86,7 @@ jobs:
   images:
     name: Build & push images
     needs: [test-services, test-game]
-    if: github.event_name != 'pull_request'
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -95,9 +101,16 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
           SHA: ${{ github.sha }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           echo "prefix=ghcr.io/$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-          echo "tag=${SHA::12}" >> "$GITHUB_OUTPUT"
+          # Releases are tagged with their version (v1.2.0), anything else with the commit.
+          if [[ "$REF_TYPE" == tag && "$REF_NAME" =~ ^v[0-9A-Za-z._-]+$ ]]; then
+            echo "tag=$REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${SHA::12}" >> "$GITHUB_OUTPUT"
+          fi
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -137,9 +150,13 @@ jobs:
     name: Deploy to the server
     needs: images
     if: >-
-      github.event_name != 'pull_request' &&
-      (github.event_name == 'push' || inputs.deploy) &&
+      (startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push' ||
+       github.event_name == 'workflow_dispatch' && inputs.deploy) &&
       (inputs.host != '' || vars.DEPLOY_HOST != '')
+    # One deploy at a time, whatever started it.
+    concurrency:
+      group: online-deploy
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -198,7 +215,7 @@ jobs:
   desktop:
     name: Windows desktop build (download)
     needs: test-game
-    if: github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     container: barichello/godot-ci:4.3
     steps:
