@@ -14,6 +14,7 @@ keys,en,el
 "card.event","EVENT","ΓΕΓΟΝΟΣ"
 "card.must","MUST","ΥΠΟΧΡΕΩΤΙΚΟ"
 "card.question","QUESTION","ΕΡΩΤΗΣΗ"
+"cards.this_turn","This turn","Σε αυτόν τον γύρο"
 "CARDS","CARDS","ΚΑΡΤΕΣ"
 "chat.placeholder","Say something… (Enter)","Γράψε κάτι… (Enter)"
 "CONNECT","CONNECT","ΣΥΝΔΕΣΗ"
@@ -30,19 +31,15 @@ keys,en,el
 "Host","Host","Φιλοξενία"
 "Host's code","Host's code or room link","Κωδικός οικοδεσπότη ή σύνδεσμος δωματίου"
 "hud.help","Turn order:
-
 1. Roll the dice and move to the location they point to (7 = any other location).
 2. Do what the location offers: draw a card, or use it. You may skip.
 3. Attack a player within reach if you like.
 4. End your turn.
-
 Use your ability whenever its card says. Reveal your character to make passive abilities work.","Σειρά γύρου:
-
 1. Ρίξε τα ζάρια και πήγαινε στην τοποθεσία που δείχνουν (7 = όποια άλλη θέλεις).
 2. Κάνε ό,τι προσφέρει η τοποθεσία: τράβα κάρτα ή χρησιμοποίησέ τη. Μπορείς να το παραλείψεις.
 3. Επιτέθηκε σε όποιον παίκτη είναι κοντά, αν θέλεις.
 4. Τελείωσε τον γύρο σου.
-
 Χρησιμοποίησε την ικανότητά σου όποτε λέει η κάρτα της. Αποκάλυψε τον χαρακτήρα σου για να λειτουργούν οι παθητικές ικανότητες."
 "Humans:","Humans:","Άνθρωποι:"
 "INFO","INFO","ΠΛΗΡΟΦ."
@@ -148,19 +145,21 @@ Use your ability whenever its card says. Reveal your character to make passive a
 "Pl in Lobby:","Players in lobby:","Παίκτες στο λόμπι:"
 "PLAY","PLAY","ΠΑΙΞΕ"
 "players.ability","Ability:","Ικανότητα:"
-"players.at","At:","Στο:"
+"players.ability_used","used","χρησιμοποιήθηκε"
 "players.bot","  (bot)","  (bot)"
 "players.campfire","the campfire","τη φωτιά"
-"players.character_line","[b]%s[/b] — %s — %d health","[b]%s[/b] — %s — %d ζωή"
+"players.damage","Damage: %d","Ζημιά: %d"
+"players.damage_of","Damage: %d / %d","Ζημιά: %d / %d"
 "players.details","Details","Λεπτομέρειες"
 "players.dmg","dmg %d%s","ζημιά %d%s"
+"players.equipment","Equipment","Εξοπλισμός"
 "players.eq","eq %d","εξοπλ. %d"
 "players.goal","Goal:","Στόχος:"
 "players.hidden_character","Hidden character","Κρυφός χαρακτήρας"
-"players.no_equipment","No equipment.","Κανένας εξοπλισμός."
 "players.out","† out","† εκτός"
 "players.players","Players","Παίκτες"
 "players.shield","shield","ασπίδα"
+"players.where","Where","Πού βρίσκεται"
 "players.you","  (you)","  (εσύ)"
 "Players:","Players:","Παίκτες:"
 "Playing ...","Your turn!","Η σειρά σου!"
@@ -203,5 +202,8 @@ Use your ability whenever its card says. Reveal your character to make passive a
 "status.waiting_answer","Waiting for %s to answer your green card. Then you can end your turn.","Περιμένεις τον/την %s να απαντήσει στην πράσινη κάρτα. Μετά μπορείς να τελειώσεις τον γύρο."
 "status.waiting_decide","Waiting for %s to decide…","Περιμένεις τον/την %s να αποφασίσει…"
 "status.your_turn_roll","Your turn: roll the dice.","Η σειρά σου: ρίξε τα ζάρια."
+"track.health","%d health","%d ζωή"
+"track.in_play","In this game:","Σε αυτό το παιχνίδι:"
+"track.key","Who's who","Ποιος είναι ποιος"
 "Vampires: ","Vampires: ","Βρικόλακες: "
 "Werewolves: ","Werewolves: ","Λυκάνθρωποι: "

@@ -7,6 +7,24 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-010 — The host's match data leaked into the lobby's player list
+- **Logged:** 2026-11-18 (found by a 2-game autotest with a Greek client)
+- **Area:** `network/lobby_net.gd` (`sync_player`, `start_game`, `_players`)
+- **What happens:** on the host, `call_local` messages hand over the same
+  dictionaries the server keeps in `LobbyNet._players`, so the match
+  writing damage / deaths / characters into `GameState.players` changed
+  the lobby's entries too. A second match on the same table started with
+  players already dead (a green card couldn't be handed over: stalled),
+  and characters from the last match were sent around with the lobby.
+- **Impact:** every "Play again" (after C021); never seen before, because a
+  table could only be played once.
+- **Fix (C022):** clients store copies; `match_over()` resets lobby
+  entries to name / pawn / bot only. Verified: 3 matches in a row, twice,
+  with bots and a Greek client.
+- **Status:** fix verified
+
+---
+
 ### BUG-009 — After a match ends, the room can't be played again
 - **Logged:** 2026-11-17 (playtest)
 - **Area:** `network/lobby_net.gd` (`_in_match`), `network/room_server.gd`

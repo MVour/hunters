@@ -7,6 +7,42 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C022 — Turn cards, narrator bar, "Who's who", new player drawer (2026-11-18)
+From the user's playtest feedback, group 2.
+- **What:**
+  - **This turn's cards** (`match/hud/turn_cards.gd`): every card shown
+    this turn (drawn by anyone, your green card, a green card you were
+    asked) stays as a small card between the player hub and the right
+    column until the next turn; click to see it big again.
+  - **Narrator bar:** the status line moved from above the hub to a
+    fixed, centred bar at the top of the board (bigger text, gold edge).
+    The pick-a-player bar sits right under it; card popups start below it;
+    announcements start lower.
+  - **Life track "Who's who":** a button on the track opens a key: how many
+    of each side are in this game, every character with their health,
+    grouped and coloured by side, and who is known to be whom (revealed,
+    dead, you). The track's initials are in the current language and in
+    their side's colour, with the names on hover.
+  - **Player drawer:** one open at a time; laid out with the name in its
+    colour, side + character, a damage bar (when the health is known),
+    and small headings for goal, ability (marked when used), where, and
+    each equipment card on its own line.
+  - The small "passive" card (while picking a player) now sits above the
+    turn cards instead of over the game log.
+  - **Fix (BUG-010):** on the host, the lobby's player entries were the
+    same dictionaries as the host's match screen data, so damage, deaths
+    and characters from a match stayed in the lobby: a second match on the
+    table started with dead players (stalled), and characters could reach
+    other players. Clients now keep copies, and `match_over()` resets the
+    lobby entries.
+  - Autotest: `--shot-key`; `--shot-match` waits a moment into turn 8.
+- **Why:** playtest feedback (items 1, 3, 7, 10).
+- **Rejected:** a separate "last card" popup that stays open (blocks the
+  board); listing only the characters actually dealt in the key (that's
+  secret: the key lists all who might be in play).
+
+---
+
 ### C021 — Play again; damage flashes in the log; pick bar on top (2026-11-17)
 From the user's first playtest with friends (group 1 of their feedback).
 - **What:**

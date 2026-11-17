@@ -3,10 +3,14 @@ class_name DamageBoard extends HBoxContainer
 ## the initials of the characters who die at that much damage, and every
 ## player's marker (their pawn, in their colour) sits on their damage row.
 ## Damage is public; who has how much health is the deduction game.
-## Collapsible with the side button.
+## Collapsible with the side button. "Who's who" opens a key beside it: how
+## many of each side are in this game, every character's health, and which
+## player turned out to be whom.
 
 const ROW_HEIGHT := 25
 const MARKER := 20
+const SPECIES_COLOURS := {"vampire": "e06a6a", "werewolf": "e0a84c", "human": "8fb8e0"}
+const KEY_WIDTH := 300.0
 
 @onready var damage_entries: VBoxContainer = $DamageEntries
 @onready var collapse_button: Button = $CollapseButton
@@ -15,11 +19,21 @@ var _rows := {}       # damage level -> HBoxContainer holding markers
 var _markers := {}    # player id -> TextureRect
 var _right := false   # docked to the right edge (arrow on the inner side)
 var _top_right := Vector2.ZERO
+var _key_button: Button
+var _key: PanelContainer
+var _key_text: RichTextLabel
 
 
 func _ready() -> void:
 	SignalBus.damage_changed.connect(_on_damage_changed)
 	SignalBus.player_died.connect(_on_player_died)
+	SignalBus.player_died.connect(_refresh_key.unbind(2))
+	SignalBus.character_revealed.connect(_refresh_key.unbind(2))
+	Global.language_changed.connect(func(_l = null):
+		_build()
+		show_players(GameState.players)
+		_refresh_key())
+	_make_key()
 	collapse_button.text = "<"
 	collapse_button.add_theme_font_size_override("font_size", 22)
 	damage_entries.add_theme_constant_override("separation", 1)
@@ -34,19 +48,23 @@ func _max_level() -> int:
 	return top
 
 
-## Initials of every character who dies at exactly this much damage.
-func _initials_at(level: int) -> String:
-	var names := []
+## Every character who dies at exactly this much damage.
+func _characters_at(level: int) -> Array:
+	var found := []
 	for list in Global.deck.characters.values():
 		for character in list:
 			if character.health == level:
-				names.append(character.name.left(1))
-	return " ".join(names)
+				found.append(character)
+	return found
 
 
 func _build() -> void:
 	for child in damage_entries.get_children():
-		child.queue_free()
+		if child != _key_button:
+			damage_entries.remove_child(child)
+			child.queue_free()
+	_markers_out()
+	_key_button.text = Global.text("track.key")
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0.03, 0.04, 0.06, 0.78)
 	bg.set_corner_radius_all(4)
@@ -56,8 +74,8 @@ func _build() -> void:
 	for level in range(_max_level(), -1, -1):
 		var row_panel := PanelContainer.new()
 		var style: StyleBoxFlat = bg.duplicate()
-		var initials := _initials_at(level)
-		if initials != "":
+		var dying := _characters_at(level)
+		if not dying.is_empty():
 			style.border_color = Color("8a2a2a")  # someone dies here
 			style.border_width_left = 3
 		row_panel.add_theme_stylebox_override("panel", style)
@@ -81,12 +99,105 @@ func _build() -> void:
 		row.add_child(markers)
 		_rows[level] = markers
 
-		var names := Label.new()
-		names.text = initials
+		# Their initials, in their side's colour; hover for the names.
+		var names := RichTextLabel.new()
+		names.bbcode_enabled = true
+		names.fit_content = true
+		names.scroll_active = false
+		names.autowrap_mode = TextServer.AUTOWRAP_OFF
 		names.custom_minimum_size = Vector2(40, 0)
-		names.add_theme_font_size_override("font_size", 14)
-		names.add_theme_color_override("font_color", Color("e06a6a"))
+		names.add_theme_font_size_override("normal_font_size", 14)
+		var initials := []
+		var full := []
+		for character in dying:
+			initials.append("[color=#%s]%s[/color]" % [SPECIES_COLOURS.get(character.species, "e06a6a"),
+				Global.field(character, "name").left(1)])
+			full.append("%s (%s)" % [Global.field(character, "name"), Global.species_name(character.species)])
+		names.text = " ".join(initials)
+		names.tooltip_text = ", ".join(full)
 		row.add_child(names)
+	# The rows were rebuilt: markers go back on them.
+	damage_entries.move_child(_key_button, 0)
+
+
+## The markers' rows are being rebuilt: take them off first (they're kept).
+func _markers_out() -> void:
+	for marker in _markers.values():
+		if marker.get_parent():
+			marker.get_parent().remove_child(marker)
+
+
+# --- The key ("Who's who") -------------------------------------------------------
+
+func _make_key() -> void:
+	_key_button = Button.new()
+	_key_button.flat = true
+	_key_button.add_theme_font_size_override("font_size", 14)
+	_key_button.add_theme_color_override("font_color", Color("e8c060"))
+	_key_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_key_button.pressed.connect(func():
+		_key.visible = not _key.visible
+		_refresh_key())
+	damage_entries.add_child(_key_button)
+
+	_key = PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.03, 0.035, 0.05, 0.94)
+	style.border_color = Color(1, 1, 1, 0.15)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(10)
+	_key.add_theme_stylebox_override("panel", style)
+	_key.top_level = true  # floats beside the track, outside its layout
+	_key.z_index = 30
+	_key.hide()
+	add_child(_key)
+	_key_text = RichTextLabel.new()
+	_key_text.bbcode_enabled = true
+	_key_text.fit_content = true
+	_key_text.scroll_active = false
+	_key_text.custom_minimum_size = Vector2(KEY_WIDTH, 0)
+	_key_text.add_theme_font_size_override("normal_font_size", 14)
+	_key_text.add_theme_font_size_override("bold_font_size", 15)
+	_key.add_child(_key_text)
+
+
+func _refresh_key() -> void:
+	if not _key.visible:
+		return
+	# Who is known to be whom (revealed, dead, or you).
+	var known := {}
+	for p in GameState.players.values():
+		var character: Dictionary = p.get("character", {})
+		if not character.is_empty() and (not p.hidden or p.id == GameState.local_id):
+			known[character.get("id", "")] = p.name
+	var lines := []
+	var counts := []
+	for key in Global.SPECIES:
+		var n: int = GameState.game_settings.get(key, 0)
+		if n > 0:
+			var species: String = Global.SPECIES[key].species
+			counts.append("[color=#%s]%s[/color] %d" % [SPECIES_COLOURS[species], Global.species_name(species), n])
+	lines.append("[b]%s[/b]  %s" % [Global.text("track.in_play"), " · ".join(counts)])
+	for key in Global.SPECIES:
+		if GameState.game_settings.get(key, 0) <= 0:
+			continue
+		var species: String = Global.SPECIES[key].species
+		var colour: String = SPECIES_COLOURS[species]
+		lines.append("")
+		lines.append("[b][color=#%s]%s[/color][/b]" % [colour, Global.species_name(species).capitalize()])
+		for character in Global.deck.characters[Global.SPECIES[key].list]:
+			var line := "[color=#%s]%s[/color]  %s · %s" % [colour, Global.field(character, "name").left(1),
+				Global.field(character, "name"), Global.text("track.health") % character.health]
+			if known.has(character.get("id", "")):
+				line += "  → [b]%s[/b]" % known[character.id].replace("[", "[lb]")
+			lines.append(line)
+	_key_text.text = "\n".join(lines)
+	_key.reset_size()
+	var screen := get_viewport_rect().size
+	var at := global_position + Vector2(size.x + 6, 0)
+	at.y = clampf(at.y, 4, maxf(4, screen.y - _key.size.y - 4))
+	_key.global_position = at
 
 
 func _marker_for(player_id: int) -> TextureRect:
@@ -134,6 +245,7 @@ func _on_player_died(player_id: int, _killer_id: int) -> void:
 
 func _on_button_pressed() -> void:
 	damage_entries.visible = not damage_entries.visible
+	_key.hide()
 	_update_arrow()
 	reset_size()
 

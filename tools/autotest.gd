@@ -217,12 +217,7 @@ func _on_begin_turn(player_id: int) -> void:
 	# --shot-match=PATH (not headless): a picture of the match at turn 8.
 	var shot := _arg("--shot-match=", "")
 	if shot != "" and stats.turns == 8:
-		var scene := get_tree().root.find_child("PlayScene", true, false)
-		if scene and "--shot-drawer" in OS.get_cmdline_user_args():
-			scene.player_list._rows.values()[2].toggle_drawer()  # open one player's drawer
-			await get_tree().process_frame
-		await RenderingServer.frame_post_draw
-		get_viewport().get_texture().get_image().save_png(shot)
+		_match_shot(shot)  # not awaited: the turn goes on meanwhile
 	if role == "host" and stats.turns > max_turns:
 		_finish(true, "left after %d turns" % max_turns)
 		return
@@ -239,6 +234,22 @@ func _on_begin_turn(player_id: int) -> void:
 	stats.my_turns += 1
 	await get_tree().create_timer(0.3).timeout
 	MatchNet.roll()
+
+
+## A little into turn 8 (its cards are out). --shot-drawer: one player's
+## drawer open; --shot-key: the life track's "Who's who" open.
+func _match_shot(path: String) -> void:
+	await get_tree().create_timer(2.5).timeout
+	var scene := get_tree().root.find_child("PlayScene", true, false)
+	if scene == null:
+		return
+	if "--shot-drawer" in OS.get_cmdline_user_args():
+		scene.player_list._rows.values()[2].toggle_drawer()
+	if "--shot-key" in OS.get_cmdline_user_args():
+		scene.damage_board._key_button.pressed.emit()
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path)
 
 
 func _on_end_turn(player_id: int) -> void:

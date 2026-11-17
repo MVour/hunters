@@ -64,6 +64,7 @@ func build(order: Array) -> void:
 	for i in order.size():
 		var row := PlayerRow.new(order[i], i + 1)
 		row.picked.connect(func(id): player_picked.emit(id))
+		row.drawer_opened.connect(_close_other_drawers)
 		_column.add_child(row)
 		_rows[order[i]] = row
 	refresh()
@@ -84,3 +85,10 @@ func set_pickable(ids: Array) -> void:
 func _fit_height() -> void:
 	_scroll.custom_minimum_size = Vector2(WIDTH - 12, minf(_column.size.y, MAX_HEIGHT))
 	reset_size()
+
+
+## One drawer open at a time: they float side by side and would cover each other.
+func _close_other_drawers(open_id: int) -> void:
+	for id in _rows:
+		if id != open_id:
+			_rows[id].close_drawer()

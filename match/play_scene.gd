@@ -12,6 +12,7 @@ class_name PlayScene extends Node2D
 ## Where the game log sits: the right column, under the player list (which
 ## needs ~450 px for 8 players).
 const GAME_LOG_POSITION := Vector2(1622, 478)
+const NARRATOR_TOP := 10.0
 
 var game_finished := false
 var game_log: GameLog
@@ -45,8 +46,11 @@ var roll_pending := false
 var question_waiting_on := 0
 ## This player gave you a green card you haven't answered yet (0 = none).
 var question_from := 0
-## One line at the bottom: what's happening and who we're waiting on.
+## The narrator line (top centre): what's happening and who we're waiting on.
+var narrator: PanelContainer
 var status_label: Label
+## This turn's cards, small (click to see one again).
+var turn_cards: TurnCards
 ## Everyone, down the right edge (replaces the old seats around the board).
 var player_list: PlayerList
 ## Players you may pick right now (attack, card target…); [] when not picking.
@@ -119,7 +123,7 @@ func _ready():
 
 	# Announcements: small black boxes stacked near the top, fading out.
 	toast_box = VBoxContainer.new()
-	toast_box.position = Vector2(560, 150)
+	toast_box.position = Vector2(560, 175)  # under the narrator and the pick bar
 	toast_box.size = Vector2(800, 0)
 	toast_box.alignment = BoxContainer.ALIGNMENT_BEGIN
 	toast_box.add_theme_constant_override("separation", 6)
@@ -205,17 +209,39 @@ func _ready():
 	reveal_button.pressed.connect(MatchNet.reveal)
 	ability_button.get_parent().add_child(reveal_button)
 
+	# The narrator: what's happening / what you can do, in a fixed bar at the
+	# top centre of the board (kept centred as its text changes).
+	narrator = PanelContainer.new()
+	narrator.name = "Narrator"
+	var narrator_style := StyleBoxFlat.new()
+	narrator_style.bg_color = Color(0.03, 0.035, 0.05, 0.88)
+	narrator_style.border_color = Color("c8a85a")
+	narrator_style.border_width_bottom = 2
+	narrator_style.set_corner_radius_all(10)
+	narrator_style.content_margin_left = 22
+	narrator_style.content_margin_right = 22
+	narrator_style.content_margin_top = 6
+	narrator_style.content_margin_bottom = 8
+	narrator.add_theme_stylebox_override("panel", narrator_style)
+	narrator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	narrator.z_index = 5
+	narrator.position = Vector2(960, NARRATOR_TOP)
+	add_child(narrator)
 	status_label = Label.new()
-	status_label.position = Vector2(410, 752)
-	status_label.size = Vector2(1100, 40)
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status_label.add_theme_font_size_override("font_size", 20)
+	status_label.add_theme_font_size_override("font_size", 24)
 	status_label.add_theme_color_override("font_color", Color("ffe2a8"))
 	status_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	status_label.add_theme_constant_override("outline_size", 8)
+	status_label.add_theme_constant_override("outline_size", 6)
 	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	status_label.z_index = 5
-	add_child(status_label)
+	narrator.add_child(status_label)
+	narrator.resized.connect(_place_narrator)
+	status_label.visibility_changed.connect(func(): narrator.visible = status_label.visible)
+
+	# This turn's cards, small, between the player hub and the right column.
+	turn_cards = TurnCards.new()
+	turn_cards.z_index = 6
+	add_child(turn_cards)
 
 	_apply_language()
 	Global.language_changed.connect(_apply_language)
@@ -381,7 +407,9 @@ func _refresh_buttons() -> void:
 	var reason := _ability_blocked_reason(me, my_turn, waiting)
 	_set_enabled(ability_button, reason == "", reason)
 
-	status_label.text = _status_text(my_turn)
+	if status_label.text != _status_text(my_turn):
+		status_label.text = _status_text(my_turn)
+		_place_narrator.call_deferred()
 	status_label.visible = not game_finished
 
 	reveal_button.visible = me.get("hidden", true) and not me.get("character", {}).is_empty()
@@ -703,6 +731,12 @@ func _on_player_picked(id: int) -> void:
 	callback.call(id)
 
 
+## Keep the narrator bar centred at the top, as small as its text.
+func _place_narrator() -> void:
+	narrator.reset_size()
+	narrator.position = Vector2(960.0 - narrator.size.x / 2.0, NARRATOR_TOP)
+
+
 func _end_pick() -> void:
 	pick_ids = []
 	player_list.set_pickable([])
@@ -766,7 +800,10 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 	choice_panel.show()
 	await get_tree().process_frame
 	choice_panel.reset_size()
-	var y := 12.0 if compact else clampf(1072.0 - choice_panel.size.y, 20.0, 812.0)
+	# Compact: just under the narrator bar.
+	var y := clampf(1072.0 - choice_panel.size.y, 20.0, 812.0)
+	if compact:
+		y = narrator.position.y + narrator.size.y + 8.0 if narrator.visible else NARRATOR_TOP
 	choice_panel.position = Vector2(960 - choice_panel.size.x / 2.0, y)
 
 

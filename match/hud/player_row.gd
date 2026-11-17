@@ -5,6 +5,7 @@ class_name PlayerRow extends VBoxContainer
 ## While picking (attack, card targets…) the row can be clickable.
 
 signal picked(player_id: int)
+signal drawer_opened(player_id: int)
 
 const C_BG := Color(0.05, 0.06, 0.09, 0.86)
 const C_CURRENT := Color("e8c060")
@@ -114,8 +115,9 @@ func _init(id: int, number: int) -> void:
 	_drawer_text.fit_content = true
 	_drawer_text.custom_minimum_size = Vector2(DRAWER_WIDTH - 16, 0)
 	_drawer_text.scroll_active = false
-	_drawer_text.add_theme_font_size_override("normal_font_size", 13)
-	_drawer_text.add_theme_font_size_override("bold_font_size", 14)
+	_drawer_text.add_theme_font_size_override("normal_font_size", 15)
+	_drawer_text.add_theme_constant_override("line_separation", 2)
+	_drawer_text.add_theme_font_size_override("bold_font_size", 15)
 	_drawer.add_child(_drawer_text)
 
 
@@ -124,6 +126,13 @@ func toggle_drawer() -> void:
 	_arrow.text = "◂" if _drawer.visible else "▸"
 	refresh()
 	_place_drawer()
+	if _drawer.visible:
+		drawer_opened.emit(player_id)  # the list closes any other open drawer
+
+
+func close_drawer() -> void:
+	if _drawer.visible:
+		toggle_drawer()
 
 
 ## Keep the open drawer beside its row (rows move when the list scrolls),
@@ -181,25 +190,59 @@ func refresh() -> void:
 		_drawer_text.text = _details(p, known, character)
 
 
+## The drawer: name, character, a damage bar, goal / ability, where they
+## are, equipment — each under its own small heading.
 func _details(p: Dictionary, known: bool, character: Dictionary) -> String:
 	var lines := []
+	var pawn_hex: String = Global.pawns.get(p.pawn, {}).get("hex", "ffffff")
+	lines.append("[font_size=19][b][color=#%s]%s[/color][/b][/font_size]%s" % [
+		Color(pawn_hex).lightened(0.25).to_html(false), _safe(p.name),
+		"  [color=#9aa]%s[/color]" % Global.text("players.out") if p.dead else ""])
 	if known:
-		lines.append(Global.text("players.character_line") % [Global.field(character, "name"),
-			Global.species_name(character.get("species", "")), character.get("health", 0)])
-		if character.has("goal"):
-			lines.append("[color=#e8c060]%s[/color] %s" % [Global.text("players.goal"), Global.field(character, "goal")])
-		if character.has("ability"):
-			lines.append("[color=#e8c060]%s[/color] %s" % [Global.text("players.ability"), Global.field(character, "ability")])
+		var species: String = character.get("species", "")
+		lines.append("[font_size=16][color=#%s]%s[/color] · [b]%s[/b][/font_size]" % [
+			DamageBoard.SPECIES_COLOURS.get(species, "ffffff"),
+			Global.species_name(species).capitalize(), Global.field(character, "name")])
 	else:
-		lines.append("[i]%s[/i]" % Global.text("players.hidden_character"))
+		lines.append("[font_size=16][i][color=#9aa]%s[/color][/i][/font_size]" % Global.text("players.hidden_character"))
+
+	# Damage: a bar when their health is known, else just the number.
+	var health: int = character.get("health", 0) if known else 0
+	if health > 0:
+		var taken := mini(p.dmg, health)
+		lines.append("%s  [color=#e06a6a]%s[/color][color=#555a66]%s[/color]" % [
+			Global.text("players.damage_of") % [p.dmg, health], "■".repeat(taken), "■".repeat(health - taken)])
+	else:
+		lines.append(Global.text("players.damage") % p.dmg)
+
+	if known and character.has("goal"):
+		lines.append(_heading(Global.text("players.goal")))
+		lines.append(Global.field(character, "goal"))
+	if known and character.has("ability"):
+		var used := "  [color=#9aa](%s)[/color]" % Global.text("players.ability_used") \
+			if p.get("ability_used", false) else ""
+		lines.append(_heading(Global.text("players.ability")) + used)
+		lines.append(Global.field(character, "ability"))
+
 	var loc := GameState.location_index(p.location)
-	lines.append("[color=#9aa]%s[/color] %s" % [Global.text("players.at"), Global.field(GameState.locations[loc], "label") if loc != -1 else Global.text("players.campfire")])
-	if p.equipment.is_empty():
-		lines.append("[color=#9aa]%s[/color]" % Global.text("players.no_equipment"))
+	lines.append(_heading(Global.text("players.where")))
+	lines.append(Global.field(GameState.locations[loc], "label") if loc != -1 else Global.text("players.campfire"))
+
+	lines.append(_heading("%s (%d)" % [Global.text("players.equipment"), p.equipment.size()]))
 	for card in p.equipment:
 		var color: String = Global.CARD_COLORS.get(card.get("deck", ""), {}).get("color", "ffffff")
-		lines.append("[color=#%s][b]%s[/b][/color] — %s" % [Color(color).lightened(0.35).to_html(false), Global.field(card, "name"), Global.field(card, "text")])
+		lines.append("[color=#%s]▌[/color][b]%s[/b]" % [Color(color).lightened(0.2).to_html(false), Global.field(card, "name")])
+		lines.append("[indent][color=#b8bcc8]%s[/color][/indent]" % Global.field(card, "text"))
 	return "\n".join(lines)
+
+
+## A small gold heading with a little space above it.
+func _heading(text: String) -> String:
+	return "[font_size=6] [/font_size]\n[font_size=14][b][color=#e8c060]%s[/color][/b][/font_size]" % text.trim_suffix(":")
+
+
+static func _safe(text: String) -> String:
+	return text.replace("[", "[lb]")
 
 
 ## Picking mode: `on` = this row can be clicked; `picking` = a pick is

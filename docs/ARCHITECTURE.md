@@ -81,7 +81,9 @@ Two setups, chosen per game by what's typed in the Join box (D007):
   whole lobby; the lobby scene was kept under the match screen); leaving
   → the menu / the web tables page. While a client is not in the LOBBY
   phase it ignores `sync_player` / `remove_player` (its match screen reads
-  the same player table); `start_game` carries the player list.
+  the same player table); `start_game` carries the player list. Clients
+  always store copies of player dicts: on the host, `call_local` hands
+  over the server's own `_players` entries (BUG-010).
 - **Leaving mid-match** (BUG-001): `LobbyNet._on_peer_left` →
   `MatchServer.player_left()`: the player is out (`Combat.leave`, card
   revealed, no killer), pending questions/asks/rolls are answered for them
@@ -134,9 +136,13 @@ frees the play scene and returns to the menu.
 Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
 (`ForestBoard` or, with Classic art, `ClassicBoard`), `Locations` (`GameMap`),
 `PawnLayer`, `PlayerList` (right edge, play order, drawers), `Hud/PlayerHud`,
-`DamageBoard` (life track, left edge), `DecksContainer`, `DicesContainer`,
+`DamageBoard` (life track, left edge; its "Who's who" key floats beside it),
+`DecksContainer`, `DicesContainer`,
 `CardView` popups (a player row's details drawer floats to the row's left,
-`top_level`), `GameLog` (right column under the player list: every
+`top_level`, one open at a time), the narrator bar (top centre: holds
+`status_label`), `TurnCards` (this turn's cards, small, between the hub
+and the right column; the passive popup sits just above them), `GameLog`
+(right column under the player list: every
 action from the events this screen gets, kept as Msgs and redrawn on a
 language switch; damage/heal/steal lines pulse for a few seconds), and the
 prompt/action/choice panels and the status line built in `play_scene.gd`.
@@ -169,7 +175,7 @@ buttons hide until the pick ends.
   matches on one table (Play again). The online e2e takes the
   same args (`node scripts/e2e.mjs <godot> --bots=2`) and fails if the room
   still says "in a match" after one ended. Pictures (windowed runs):
-  `--shot-lobby=`, `--shot-match=` (`--shot-drawer`), `--shot-pick=`, `--shot-end=`.
+  `--shot-lobby=`, `--shot-match=` (`--shot-drawer`, `--shot-key`), `--shot-pick=`, `--shot-end=`.
 
 ## Language
 Like a front-end i18n file (D006):

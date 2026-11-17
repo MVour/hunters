@@ -17,10 +17,14 @@ _Last updated: 2026-11-17_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
+2026-11-18: playtest feedback group 2 done (C022): this turn's cards stay
+small bottom-right, a narrator bar at the top, the life track's "Who's
+who" key, a clearer one-at-a-time player drawer; BUG-010 (host's match
+data leaked into the lobby, broke a 2nd match) fixed.
 2026-11-17: the user's first playtest with friends gave 10 points of
 feedback (in IDEAS/BUGS). Group 1 done (C021): **Play again** (BUG-009: a
 table could only be played once), damage/heal/steal lines flash in the
-log, the pick-a-player dialog is a small bar at the top. Uncommitted.
+log, the pick-a-player dialog is a small bar at the top.
 Before that: **bot players** (C019, D009) and the game log (C020),
 committed, not released; the user hasn't tried the bots yet.
 Earlier 2026-11-17: live at https://play.mvrtz.com — online rooms on the user's
@@ -42,14 +46,15 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   - GitHub repo MVour/hunters;
   - deploys only for `v*` tags, made with `bash tools/release.sh` from WSL
     (C013). Only WSL has the user's GitHub key.
-- **Unreleased:** bots (C019), game log (C020), play again etc. (C021).
-  Release with `bash tools/release.sh`; then check Play again online.
-- **Playtest feedback, agreed order:** group 2 next: keep your card
-  bottom-right until the turn ends, a fixed narrator bar (top-centre),
-  life-track legend, player drawer redesign. Group 3: hit/steal effects
-  on screen, ambient music with on/off (needs a track from the user — no
-  generated audio). Group 4: lobby redraw (both languages). Notes:
-  undecided. All in IDEAS.md.
+- **Unreleased:** bots (C019), game log (C020), play again (C021), turn
+  cards / narrator / Who's who / drawer (C022). Release with
+  `bash tools/release.sh`; then check Play again online.
+- **Playtest feedback, agreed order:** groups 1-2 done. Group 3 next:
+  hit/steal effects on screen, ambient music with on/off (needs a track
+  from the user — no generated audio). Group 4: lobby redraw (both
+  languages, incl. the hub's Greek tabs). Notes: undecided. All in IDEAS.md.
+- Another Claude session may be working in this repo at the same time:
+  commit only your own files, by path.
 - Bots: the user hasn't tried them yet; tune `server/bots/bot_weights.gd`
   from what they see (8-player stress runs: vampires won 3 of 4).
 - Later: per-turn cheat card in the player hub, phone proportions/zoom.
@@ -60,5 +65,5 @@ Before that: clearer match screen (C005), network/state refactor (C004).
 ## Open bugs
 BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
 after a network session, harmless). BUG-009 (play again) fixed, to verify
-online after release. BUG-001, 003, 006, 007 fixed and
+online after release. BUG-001, 003, 006, 007, 010 fixed and
 verified. See BUGS.md.

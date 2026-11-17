@@ -11,6 +11,8 @@ const BACKS := {
 const CARD_WIDTH := 380.0
 ## Keep the card above this line: the choice panel ("use it now?") sits below.
 const BOTTOM_LIMIT := 800.0
+## And below the narrator bar at the top.
+const TOP_LIMIT := 64.0
 
 ## Heading, card and buttons stacked, so buttons always sit under the text
 ## however long the card is.
@@ -141,10 +143,11 @@ func _place() -> void:
 	if passive:
 		_layout.pivot_offset = Vector2.ZERO
 		_layout.scale = Vector2.ONE * PASSIVE_SCALE
-		# Bottom-right: the chat and language button live bottom-left.
-		_layout.position = Vector2(1920.0 - 16.0 - s.x * PASSIVE_SCALE, 1080.0 - 16.0 - s.y * PASSIVE_SCALE)
+		# Bottom-right, just above this turn's cards (TurnCards) and left of the
+		# game log, so neither is covered.
+		_layout.position = Vector2(TurnCards.AREA.end.x - s.x * PASSIVE_SCALE, TurnCards.AREA.position.y - 8.0 - s.y * PASSIVE_SCALE)
 		return
-	var y := clampf((1080.0 - s.y) / 2.0 - 60.0, 20.0, maxf(20.0, BOTTOM_LIMIT - s.y))
+	var y := clampf((1080.0 - s.y) / 2.0 - 60.0, TOP_LIMIT, maxf(TOP_LIMIT, BOTTOM_LIMIT - s.y))
 	_layout.position = Vector2(960.0 - s.x / 2.0, y)
 	_layout.pivot_offset = s / 2.0
 

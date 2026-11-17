@@ -23,7 +23,7 @@ main/                entry scene (main.tscn), main menu, chat box + language but
 lobby/               host/join screen, waiting room, avatar picker, role settings
 match/               the match screen (play_scene) and its parts:
   board/             forest board, classic board, locations, pawns
-  hud/               player HUD, player list (+rows), life track, game log
+  hud/               player HUD, player list (+rows), life track, game log, turn cards
   cards/             card, deck, deck pack, CardView popup (+ card_face), card shaders
   dice/              d6, d4, dice panel
   legacy/            old damage-board HUD and old seats, kept for possible reuse (in no scene)

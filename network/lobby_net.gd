@@ -95,7 +95,20 @@ func match_over() -> void:
 	if _human_count() == 0:
 		for bot_id in _bot_ids():
 			_players.erase(bot_id)
+	# Lobby entries keep only lobby info: nothing from the last match (damage,
+	# deaths, characters) may carry into the next one, or reach anyone.
+	for id in _players:
+		_players[id] = _lobby_entry(_players[id])
 	_pass_owner_if_gone()
+
+
+static func _lobby_entry(player: Dictionary) -> Dictionary:
+	var clean := GameState.new_player(player.id)
+	clean.name = player.name
+	clean.pawn = player.pawn
+	if is_bot(player):
+		clean.bot = true
+	return clean
 
 
 # =============================================================================
@@ -435,7 +448,9 @@ static func start_problem(players: Dictionary, settings: Dictionary) -> Dictiona
 func sync_player(player: Dictionary) -> void:
 	if GameState.phase != GameState.Phase.LOBBY:
 		return  # still on the end screen: lobby_state brings everyone later
-	GameState.players[player.id] = player
+	# A copy: on the host, this dict is the server's own lobby entry (call_local),
+	# and the match writes damage, deaths and characters into GameState.
+	GameState.players[player.id] = player.duplicate(true)
 	SignalBus.lobby_player_updated.emit(player)
 
 
@@ -498,7 +513,7 @@ func start_game(players: Array) -> void:
 	# for someone who went straight from the last end screen.
 	GameState.players = {}
 	for player in players:
-		GameState.players[player.id] = player
+		GameState.players[player.id] = player.duplicate(true)  # see sync_player
 	_reset_match_info()
 	GameState.phase = GameState.Phase.PLAYING
 	SignalBus._start_game.emit("")
