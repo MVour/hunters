@@ -47,8 +47,8 @@ func _maybe_join_from_page() -> void:
 	multiplayer_controller._on_connect_lobby_button_pressed()
 
 
-## Always on top, on every screen: the language button (bottom-left) and,
-## above it, the chat (only while in a session).
+## Always on top, on every screen: the language and sound buttons
+## (bottom-left) and, above them, the chat (only while in a session).
 func _add_overlay() -> void:
 	var overlay := CanvasLayer.new()
 	overlay.name = "Overlay"
@@ -75,6 +75,11 @@ func _add_overlay() -> void:
 	lang_button.pressed.connect(func(): Global.lang = "el" if Global.lang == "en" else "en")
 	overlay.add_child(lang_button)
 
+	var sound := SoundButton.new()
+	sound.name = "SoundButton"
+	sound.position = Vector2(8 + 130 + 8, 1080 - 8 - 40)
+	overlay.add_child(sound)
+
 
 ## Dev only: `-- --autotest=host|client` lets a bot play (tools/autotest.gd).
 func _maybe_start_autotest() -> void:
@@ -91,6 +96,7 @@ func _maybe_start_autotest() -> void:
 func set_main_screen():
 	main_menu.show()
 	multiplayer_controller.hide()
+	Audio.set_screen("menu")
 	
 func _on_main_menu():
 	set_main_screen()
@@ -109,6 +115,7 @@ func _on_start_game(id):
 	canvas_layer.add_child(play_scene)
 	main_menu.hide()
 	multiplayer_controller.hide()
+	Audio.set_screen("match")
 	#create_player.show()
 
 ## "Back to menu" after a game: leave the session and return to the menu.
@@ -130,6 +137,7 @@ func _on_play_again():
 	_free_play_scene()
 	main_menu.hide()
 	multiplayer_controller.show()
+	Audio.set_screen("menu")
 	LobbyNet.back_to_lobby()
 
 

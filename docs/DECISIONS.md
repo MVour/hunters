@@ -12,6 +12,20 @@ in MANIFEST.md → Non-negotiable constraints.
 
 ---
 
+### D010 — Music and weather are local to each computer (2026-11-18)
+- **Status:** active (C024)
+- **What:** The `Audio` autoload decides the music and the rain on each
+  computer by itself, from which screen is showing. No RPCs, nothing in
+  `GameState`; a room server plays nothing. Players at one table may hear
+  different tracks and see rain at different moments.
+- **Why:** it's mood, not game state; keeping it off the network keeps the
+  server-authoritative store untouched and costs nothing online.
+- **Rejected:** server-chosen weather sent to everyone (shared rain would
+  be nice, but it adds messages for something with no effect on play;
+  easy to add later as a server message if wanted).
+
+---
+
 ### D009 — Bots are seats inside the match server, and play fair (2026-11-17)
 - **Status:** active (built 2026-11-17, C019)
 - **What:** A bot is a player entry in the lobby (`bot: true`, an id from

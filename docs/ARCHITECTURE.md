@@ -42,6 +42,7 @@ Like a Pinia store (D004):
 |---|---|---|
 | `SignalBus` | `autoload/signal_bus.gd` | Every cross-scene event (store subscriptions). |
 | `Global` | `autoload/global.gd` | Static data (cards, characters, locations, pawns, `DRAW_ACTIONS`) + the Classic art setting. |
+| `Audio` | `autoload/audio.gd` | Music per screen (crossfades), the rain that comes and goes (`rain_level`, read by `RainLayer`), sound settings. Local only, no network (D010). |
 | `GameState` | `autoload/game_state.gd` | The client store (see above). |
 | `Network` | `network/network.gd` | Connect/host/leave through a `NetworkTransport`; emits `session_closed`, `host_disconnected`, `peer_joined/left`. |
 | `LobbyNet` | `network/lobby_net.gd` | Lobby actions/requests/messages + the lobby's server truth. |

@@ -111,6 +111,12 @@ func _ready():
 	add_child(pawn_layer)
 	move_child(pawn_layer, game_map.get_index() + 1)
 
+	# Rain that comes and goes (Audio's weather): over the pawns, under the HUD.
+	var rain := RainLayer.new()
+	rain.name = "Rain"
+	add_child(rain)
+	move_child(rain, pawn_layer.get_index() + 1)
+
 	SignalBus.location_action_offered.connect(_on_location_action_offered)
 	SignalBus.deck_count_changed.connect(_on_deck_count_changed)
 	SignalBus.question_drawn.connect(_on_question_drawn)
@@ -983,6 +989,7 @@ func _on_attack_happened(attacker: int, target: int, damage: int) -> void:
 
 func _on_game_over(faction: String, winners: Array) -> void:
 	game_finished = true
+	Audio.set_screen("game_over")
 	_end_pick()
 	_clear_action_bar()
 	status_label.hide()

@@ -31,9 +31,9 @@ Format: `- **Name** — what and why. (added YYYY-MM-DD)`
 ## Art & feel
 - **User-drawn forest board** — replace the code-drawn ForestBoard placeholder
   with the user's own art, keeping its layout constants. (added 2026-11-16)
-- **Sound** — dice, card draw, hits, death, ambient night forest, music.
-  First step (playtest 2026-11-17): one calm, mysterious night-forest /
-  campfire ambient tune with an on/off button. (added 2026-11-16)
+- **Sound effects** — dice, card draw, hits, death. (Music, rain and the
+  Sound button are done: C024.) The user may look for effects on the free
+  sites (OpenGameArt, Kenney, Pixabay). (added 2026-11-16)
 - **Hit and steal feedback** — damage (cards and attacks), heals and steals
   happen without a clear sign. User's sketch: red splatter dots on the hit
   player's screen (flash 3-4 s, fade), a slash on their pawn and on the life

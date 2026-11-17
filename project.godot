@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 
 SignalBus="*res://autoload/signal_bus.gd"
 Global="*res://autoload/global.gd"
+Audio="*res://autoload/audio.gd"
 GameState="*res://autoload/game_state.gd"
 Network="*res://network/network.gd"
 LobbyNet="*res://network/lobby_net.gd"

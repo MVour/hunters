@@ -3,7 +3,7 @@
 Snapshot of where the project is right now. Rewrite in place, never append.
 Update together with any change that earns a CHANGELOG.md entry.
 
-_Last updated: 2026-11-17_
+_Last updated: 2026-11-18_
 
 ## Where things are
 - **Playable end to end** over LAN/direct IP: lobby, roles dealt in secret,
@@ -17,6 +17,10 @@ _Last updated: 2026-11-17_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
+2026-11-18: **music and rain** (C024, D010), merged: music per screen with
+crossfades (fixed match-opening and game-over tracks), rain on the board
+that comes and goes with its sound, a Sound button. 17 CC0 tracks from
+OpenGameArt, re-encoded to ~80 kbps: 19 MB.
 2026-11-18: turn flow made clear to all (C023): the server announces each
 step of a turn, a step strip under the narrator shows it to everyone, the
 narrator says what the turn player is doing, and Attack / End Turn only
@@ -51,15 +55,21 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   - deploys only for `v*` tags, made with `bash tools/release.sh` from WSL
     (C013). Only WSL has the user's GitHub key.
 - **Unreleased:** bots (C019), game log (C020), play again (C021), turn
-  cards / narrator / Who's who / drawer (C022), turn steps (C023). Release with
+  cards / narrator / Who's who / drawer (C022), turn steps (C023),
+  music and rain (C024). Release with
   `bash tools/release.sh`; then check Play again online.
+- **Music:** the user listens and adjusts the track lists (`MUSIC` /
+  `MATCH_OPENING` in `autoload/audio.gd`). New tracks: re-encode with
+  ffmpeg in WSL (`-c:a libvorbis -q:a 1`); licenses in
+  assets/audio/CREDITS.md (all CC0 so far).
 - **Playtest feedback, agreed order:** groups 1-2 done, plus a turn-flow
   clarity pass (C023). Group 3 next:
-  hit/steal effects on screen. (Ambient music: the user is doing it in another
-  session.) Group 4: lobby redraw (both
+  hit/steal effects on screen (music done: C024). Group 4: lobby redraw (both
   languages, incl. the hub's Greek tabs). Notes: undecided. All in IDEAS.md.
 - Another Claude session may be working in this repo at the same time:
-  commit only your own files, by path.
+  commit only your own files, by path. Run the bot test with
+  `AUTOTEST_ARGS="--port=18190"` so two sessions' bots don't join each
+  other's matches (it happened 2026-11-18).
 - Bots: the user hasn't tried them yet; tune `server/bots/bot_weights.gd`
   from what they see (8-player stress runs: vampires won 3 of 4).
 - Later: per-turn cheat card in the player hub, phone proportions/zoom.

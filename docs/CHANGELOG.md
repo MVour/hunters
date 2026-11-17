@@ -7,6 +7,40 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C024 — Music, the rain that comes and goes, Sound button (2026-11-18)
+From the playtest wish list (group 3, "ambient music with on/off"), with
+tracks the user downloaded.
+- **What:**
+  - **`Audio` autoload** (`autoload/audio.gd`, local only, D010): a
+    playlist per screen: **menu + lobby** (theme, Oriented, with a quiet
+    forest bed under them), **match** (opens with *Ancient Evil Awakens*,
+    then a no-repeat shuffle of the rest), **game over** (*Apocalypse*).
+    Tracks crossfade into each other (last 4 s) and when the screen
+    changes. Track lists: `MUSIC` / `MATCH_OPENING` at the top of the file.
+  - **Rain** during a match: dry for a while, then rain fades in (~10 s),
+    lasts 40-90 s, fades out; first shower 12-30 s in. The rain-and-thunder
+    loop's volume follows it (starting somewhere new each time), and
+    `match/board/rain_layer.gd` draws it over the board and pawns, under
+    the HUD: streaks, splashes, a darker night, the odd lightning flash.
+  - **Sound button** (`main/sound_button.gd`) next to the language button
+    on every screen: Music on/off + volume, Rain on/off + volume. Saved in
+    `user://settings.cfg` (`[audio]`).
+  - Audio files in `assets/audio/{music,ambience}/`, all CC0 from
+    OpenGameArt (no credit required), listed in `assets/audio/CREDITS.md`.
+  - Re-encoded with ffmpeg (WSL) to Ogg Vorbis q1 (~80 kbps): 65 MB as
+    downloaded → 19 MB (browser players download it all before the game
+    starts). MP3/WAV became .ogg; Oriented kept as is (already smaller).
+- **Why:** the playtest asked for mood music with an on/off; the user
+  wanted the rain track behind the music, switchable, with rain on the map
+  that comes and goes; one or two lobby tracks; fixed tracks for match
+  start and end; fades between tracks.
+- **Rejected:** streaming tracks from Suno or another site at runtime
+  (fragile links, terms, a download every time); playing the rain in the
+  menu (it belongs to the board).
+- **Open:** track picks are guesses from file names until the user listens.
+
+---
+
 ### C023 — Turn steps everyone can follow; no skipping by accident (2026-11-18)
 User: turns and options must be intuitive, with no skips or misses, and
 clear to everyone.

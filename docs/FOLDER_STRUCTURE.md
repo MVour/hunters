@@ -10,8 +10,9 @@ moves/renames/is removed.
 Scenes sit next to their scripts, grouped by feature.
 
 README.md            what the game is, how to play, run, test and release
-project.godot        Godot 4.3 project; autoloads: SignalBus, Global, GameState, Network, LobbyNet, MatchNet
-autoload/            static data (global), the client store (game_state), events (signal_bus)
+project.godot        Godot 4.3 project; autoloads: SignalBus, Global, Audio, GameState, Network, LobbyNet, MatchNet
+autoload/            static data (global), the client store (game_state), events (signal_bus),
+                     music + rain + sound settings (audio)
 network/             owns: everything sent over the network: connecting (network + transports),
                      lobby and match actions/requests/messages (lobby_net, match_net)
 server/              owns: match rules, server only (match_server, card_flow, combat,
@@ -28,6 +29,7 @@ match/               the match screen (play_scene) and its parts:
   dice/              d6, d4, dice panel
   legacy/            old damage-board HUD and old seats, kept for possible reuse (in no scene)
 assets/              the user's art: pawns/ portraits/ cards/ locations/ icons/ dices/ ui/
+  audio/             music/ and ambience/ (rain, forest); sources + licenses in CREDITS.md
   legacy/            original art kept usable (Classic art): board/ portraits/ pawns/ cards/
   _source/           full source sheets + drafts; .gdignore'd (not imported, not exported)
 i18n/                owns: every UI text, strings.csv (keys,en,el); .translation files are generated
