@@ -3,7 +3,7 @@
 #
 # Repository VARIABLES (Settings > Secrets and variables > Actions > Variables):
 #   DEPLOY_HOST   server IP or hostname          (required to deploy)
-#   DOMAIN        e.g. play.example.com          (required to deploy)
+#   DEPLOY_DOMAIN e.g. play.example.com          (required to deploy; DOMAIN also works)
 #   DEPLOY_USER   default: board2d
 #   DEPLOY_PORT   SSH port, default: 22
 # Repository SECRETS:
@@ -25,7 +25,7 @@ on:
         description: "Server IP/hostname (blank = DEPLOY_HOST variable)"
         required: false
       domain:
-        description: "Domain (blank = DOMAIN variable)"
+        description: "Domain (blank = DEPLOY_DOMAIN variable)"
         required: false
       deploy:
         description: "Deploy after building"
@@ -147,7 +147,7 @@ jobs:
     environment: production
     env:
       HOST: ${{ inputs.host || vars.DEPLOY_HOST }}
-      DOMAIN: ${{ inputs.domain || vars.DOMAIN }}
+      DOMAIN: ${{ inputs.domain || vars.DEPLOY_DOMAIN || vars.DOMAIN }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER || 'board2d' }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
       PREFIX: ${{ needs.images.outputs.prefix }}
@@ -158,7 +158,7 @@ jobs:
       - name: Check settings
         run: |
           [[ "$HOST" =~ ^[A-Za-z0-9.:-]+$ ]] || { echo "::error::DEPLOY_HOST is not a host/IP"; exit 1; }
-          [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "::error::Set the DOMAIN variable"; exit 1; }
+          [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "::error::Set the DEPLOY_DOMAIN variable (e.g. play.example.com, no https://)"; exit 1; }
           [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo "::error::bad DEPLOY_USER"; exit 1; }
           [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]] || { echo "::error::bad DEPLOY_PORT"; exit 1; }
       - name: SSH key and pinned host key

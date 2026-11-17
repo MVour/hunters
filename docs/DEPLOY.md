@@ -77,7 +77,7 @@ sudo BEHIND_PROXY=127.0.0.1:8082 bash setup-server.sh play.yourdomain.com you@em
 2. **DNS at GoDaddy**: DNS → Add record → type **A**, name `play` (or `@`
    for the bare domain), value = the server's public IP, TTL 1 hour.
 3. **GitHub** (repo → Settings → Secrets and variables → Actions):
-   - Variables: `DEPLOY_HOST` (IP), `DOMAIN` (`play.yourdomain.com`),
+   - Variables: `DEPLOY_HOST` (IP), `DEPLOY_DOMAIN` (`play.yourdomain.com`; `DOMAIN` also works),
      optional `DEPLOY_USER` (default `board2d`), `DEPLOY_PORT` (default 22).
    - Secrets: `DEPLOY_SSH_KEY` (the private key file's contents),
      `DEPLOY_KNOWN_HOSTS` (the line setup-server.sh printed, with the IP).
