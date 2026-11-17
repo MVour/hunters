@@ -9,6 +9,7 @@ moves/renames/is removed.
 ```
 Scenes sit next to their scripts, grouped by feature.
 
+README.md            what the game is, how to play, run, test and release
 project.godot        Godot 4.3 project; autoloads: SignalBus, Global, GameState, Network, LobbyNet, MatchNet
 autoload/            static data (global), the client store (game_state), events (signal_bus)
 network/             owns: everything sent over the network: connecting (network + transports),
