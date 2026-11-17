@@ -33,7 +33,8 @@ docs/                project docs (see MANIFEST.md)
 online/              owns: everything for online rooms on the server (D007/D008); .gdignore'd
   lobby-service/     Node service: logins, rooms, tickets, starts room servers, forwards WebSockets
   lobby-ui/          Vue lobby page (log in, rooms, play in browser / desktop link)
-  docker/            Dockerfile (game export, page build, two images), Caddyfile
+  docker/            Dockerfile (game export, page build, two images); Caddy configs:
+                     site.caddy (rules) + Caddyfile (own HTTPS) / behind-proxy.Caddyfile
   deploy/            server setup, deploy script, docker-compose.yml, WSL local stack test
 .github/workflows/   online.yml: tests, images to GHCR, SSH deploy, Windows build
 export_presets.cfg   Godot exports: Web, Linux Server (room server), Windows Desktop

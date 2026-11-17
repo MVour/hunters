@@ -46,6 +46,9 @@ CMD ["node", "src/server.js"]
 
 # --- Caddy: HTTPS + static files + proxy --------------------------------------
 FROM caddy:2.8.4-alpine AS web
-COPY online/docker/Caddyfile /etc/caddy/Caddyfile
+COPY online/docker/Caddyfile online/docker/behind-proxy.Caddyfile online/docker/site.caddy /etc/caddy/
+# Both front-door modes must parse, or the build (and so the deploy) stops here.
+RUN DOMAIN=play.example.com ACME_EMAIL=ci@example.com sh -c \
+      'caddy adapt --config /etc/caddy/Caddyfile >/dev/null && caddy adapt --config /etc/caddy/behind-proxy.Caddyfile >/dev/null'
 COPY --from=ui /ui/dist /srv/lobby
 COPY --from=godot /out/web /srv/game

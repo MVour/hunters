@@ -28,9 +28,12 @@ Before that: player list + click to pick (C006/C007).
 Before that: clearer match screen (C005), network/state refactor (C004).
 
 ## Next
-- **First deploy** (user): follow docs/DEPLOY.md → One-time setup (server
-  script, GoDaddy A record, GitHub variables/secrets, run the workflow).
-  Server OS/specs still unknown; ports 80/443 must be free.
+- **First deploy** (in progress with the user): Ubuntu server at
+  46.225.188.241. It already runs Caddy on 80/443 plus another project
+  ("oikos", in Docker), so board2D goes behind that Caddy (C012,
+  `BEHIND_PROXY=127.0.0.1:8082`). Deploy key made on the user's PC
+  (`~/.ssh/board2d_deploy`). Still to do: the server script, the Caddy site
+  block, the GoDaddy A record, GitHub variables/secrets, the first push.
 - Docker stack test in WSL (`online/deploy/local-test.sh`): Ubuntu WSL has
   no Docker engine yet; the user installs one or runs it on the server.
 - First real browser session: open `/game/` from the lobby page and play.

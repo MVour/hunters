@@ -34,10 +34,37 @@ browser / desktop game
         one headless Godot server per room (`-- --server`, network/room_server.gd)
 ```
 
+## Behind an existing Caddy (the user's server)
+The user's server already runs Caddy (a system service) on 80/443 for other
+sites. Then board2D doesn't take those ports:
+```
+sudo BEHIND_PROXY=127.0.0.1:8082 bash setup-server.sh play.yourdomain.com you@email.com "ssh-ed25519 ..."
+```
+- board2D's web container listens only on `127.0.0.1:8082`, plain HTTP
+  (`online/docker/behind-proxy.Caddyfile`, chosen by
+  `/opt/board2d/docker-compose.override.yml`, which deploys never replace).
+- The firewall and Docker's settings are left alone; Docker is never
+  restarted while other containers run.
+- Add the site to the existing Caddy and reload it (`sudo systemctl reload caddy`):
+  ```
+  play.yourdomain.com {
+      reverse_proxy 127.0.0.1:8082
+  }
+  ```
+  That Caddy gets the certificate. WebSockets pass through on their own.
+  If it logs requests, `/play/...` lines contain join tickets (single-use,
+  60 s), which is harmless.
+- Player IPs: the outer Caddy sets `X-Forwarded-For`; the inner one trusts
+  it from private (Docker) addresses and hands the service only the
+  player's address, so rate limits stay per player.
+- The site rules (headers, CSP, routes) are the same in both modes:
+  `online/docker/site.caddy`.
+
 ## One-time setup
-1. **Server**: Ubuntu 22.04+ or Debian 12+, 2 GB RAM is plenty, ports 80/443
-   free (nothing else may use them; Caddy needs both). Copy `online/deploy/`
-   there and run, as root:
+1. **Server**: Ubuntu 22.04+ or Debian 12+, 2 GB RAM is plenty. Either ports
+   80/443 are free (board2D's Caddy takes them), or the server already has a
+   front door there: see **Behind an existing Caddy** below. Copy
+   `online/deploy/` there and run, as root:
    ```
    sudo bash setup-server.sh play.yourdomain.com you@email.com "ssh-ed25519 AAAA... github-deploy"
    ```

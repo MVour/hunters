@@ -1,50 +1,11 @@
-# board2D front door. DOMAIN and ACME_EMAIL come from the environment
-# (online/deploy/.env). Caddy gets and renews the HTTPS certificate itself.
+# board2D front door, mode "own": this Caddy owns ports 80/443 and gets and
+# renews the HTTPS certificate itself. DOMAIN and ACME_EMAIL come from the
+# environment (online/deploy/.env). Site rules: site.caddy.
 {
 	email {$ACME_EMAIL}
 	admin off
 }
 
 {$DOMAIN} {
-	encode zstd gzip
-
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options "nosniff"
-		Referrer-Policy "no-referrer"
-		X-Frame-Options "DENY"
-		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
-		Cross-Origin-Opener-Policy "same-origin"
-		-Server
-	}
-
-	# API and game connections: to the lobby service (never logged here:
-	# /play URLs carry single-use tickets).
-	@service path /api/* /play/*
-	handle @service {
-		request_body {
-			max_size 16KB
-		}
-		reverse_proxy lobby:8787
-	}
-
-	# The browser game (Godot web export). Godot's page needs inline/eval
-	# script and WebAssembly; it may only connect back to this site.
-	redir /game /game/ 308
-	handle_path /game/* {
-		root * /srv/game
-		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self' wss://{$DOMAIN}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
-		header Cache-Control "no-cache"
-		file_server
-	}
-
-	# The lobby page (Vue): strict policy, no inline scripts at all.
-	handle {
-		root * /srv/lobby
-		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
-		@assets path /assets/*
-		header @assets Cache-Control "public, max-age=31536000, immutable"
-		try_files {path} /index.html
-		file_server
-	}
+	import /etc/caddy/site.caddy
 }

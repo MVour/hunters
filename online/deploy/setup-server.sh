@@ -10,6 +10,11 @@
 #   - /opt/board2d: docker-compose.yml, .env (random session secret),
 #     config.json (access list; starts with one random shared code, printed below)
 #   - with HARDEN_SSH=1: sshd allows key logins only (no passwords)
+#
+# Server that already has a front door (its own Caddy/nginx on 80/443)?
+#   sudo BEHIND_PROXY=127.0.0.1:8082 bash setup-server.sh ...
+# board2D then listens only on that local address (plain HTTP), the firewall
+# is left alone, and the script prints the lines to add to your Caddy.
 set -euo pipefail
 
 DOMAIN="${1:?usage: setup-server.sh <domain> <acme email> \"<deploy ssh public key>\"}"
@@ -21,6 +26,18 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 
 [[ $EUID -eq 0 ]] || { echo "Run as root (sudo)."; exit 1; }
 [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "Bad domain: $DOMAIN"; exit 1; }
+BEHIND_PROXY="${BEHIND_PROXY:-}"
+if [[ -n "$BEHIND_PROXY" ]]; then
+  [[ "$BEHIND_PROXY" =~ ^127\.0\.0\.1:[0-9]{2,5}$ ]] || { echo "BEHIND_PROXY must look like 127.0.0.1:8082"; exit 1; }
+  if ss -tln | awk '{print $4}' | grep -qx "$BEHIND_PROXY"; then
+    echo "Something already listens on $BEHIND_PROXY; pick another port."; exit 1
+  fi
+elif ss -tlnp | grep -qE ':(80|443)\s'; then
+  echo "Ports 80/443 are already in use:"
+  ss -tlnp | grep -E ':(80|443)\s'
+  echo "Run again with BEHIND_PROXY=127.0.0.1:8082 to sit behind that front door."
+  exit 1
+fi
 
 echo "== packages"
 export DEBIAN_FRONTEND=noninteractive
@@ -40,7 +57,13 @@ systemctl enable --now docker
 dpkg-reconfigure -f noninteractive unattended-upgrades
 
 echo "== docker daemon defaults"
-if [[ ! -f /etc/docker/daemon.json ]]; then
+if [[ -f /etc/docker/daemon.json ]]; then
+  echo "   /etc/docker/daemon.json exists; left as is"
+elif [[ -n "$(docker ps -q)" ]]; then
+  # Restarting Docker would stop the containers already running here.
+  echo "   other containers are running: Docker NOT reconfigured/restarted"
+  echo "   (board2D sets its own log limits and no-new-privileges per container)"
+else
   cat > /etc/docker/daemon.json <<'JSON'
 {
   "log-driver": "json-file",
@@ -52,6 +75,16 @@ JSON
   systemctl restart docker
 fi
 
+compose_version="$(docker compose version --short 2>/dev/null || echo 0)"
+if [[ "$(printf '%s\n2.24.0\n' "${compose_version#v}" | sort -V | head -1)" != "2.24.0" ]]; then
+  echo "docker compose $compose_version is too old (need 2.24+): apt-get install --only-upgrade docker-compose-plugin"
+  exit 1
+fi
+
+if [[ -n "$BEHIND_PROXY" ]]; then
+  echo "== firewall: left as is (behind your front door)"
+  ufw status 2>/dev/null | head -12 || true
+else
 echo "== firewall"
 ufw default deny incoming
 ufw default allow outgoing
@@ -62,6 +95,7 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 ufw allow 443/udp
 ufw --force enable
+fi
 
 echo "== deploy user"
 id "$USER_NAME" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$USER_NAME"
@@ -122,8 +156,31 @@ JSON
   echo "   (edit $DIR/config.json to add named users/admins, then: cd $DIR && docker compose restart lobby)"
 fi
 
+if [[ -n "$BEHIND_PROXY" ]]; then
+  # docker compose loads this next to docker-compose.yml on every deploy
+  # (the workflow only replaces docker-compose.yml).
+  cat > "$DIR/docker-compose.override.yml" <<YML
+# Written by setup-server.sh: this server's own front door does HTTPS for
+# $DOMAIN and forwards to board2D on $BEHIND_PROXY (local only, plain HTTP).
+services:
+  web:
+    command: ["caddy", "run", "--config", "/etc/caddy/behind-proxy.Caddyfile", "--adapter", "caddyfile"]
+    ports: !override ["$BEHIND_PROXY:80"]
+YML
+  chown "$USER_NAME:$USER_NAME" "$DIR/docker-compose.override.yml"
+  chmod 640 "$DIR/docker-compose.override.yml"
+fi
+
 echo
 echo "Done. Next:"
+if [[ -n "$BEHIND_PROXY" ]]; then
+  echo " 0. Add this to your Caddy (usually /etc/caddy/Caddyfile), then: sudo systemctl reload caddy"
+  echo
+  echo "      $DOMAIN {"
+  echo "          reverse_proxy $BEHIND_PROXY"
+  echo "      }"
+  echo
+fi
 echo " 1. DNS (GoDaddy): A record  ${DOMAIN%%.*}  ->  this server's public IP"
 echo " 2. GitHub repo settings (see docs/DEPLOY.md): DEPLOY_HOST, DEPLOY_USER=$USER_NAME, DOMAIN,"
 echo "    DEPLOY_SSH_KEY (the private half of the key above), DEPLOY_KNOWN_HOSTS:"

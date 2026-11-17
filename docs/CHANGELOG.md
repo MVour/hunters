@@ -7,6 +7,33 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C012 — board2D can sit behind the server's existing Caddy (2026-11-17)
+- **What:** The user's server already runs Caddy on 80/443 (for another
+  project, "oikos"). New front-door mode: `BEHIND_PROXY=127.0.0.1:8082`
+  for `setup-server.sh` writes `/opt/board2d/docker-compose.override.yml`.
+  The web container then serves plain HTTP on that local port
+  (`online/docker/behind-proxy.Caddyfile`), and the server's Caddy forwards
+  `play.<domain>` to it. Site rules moved to `online/docker/site.caddy`,
+  shared by both modes. The service now gets exactly one client IP via
+  `header_up X-Forwarded-For {client_ip}`; the inner Caddy trusts the outer
+  one's header from private addresses.
+- `setup-server.sh` is safer on a shared server:
+  - It refuses to run if 80/443 are taken and `BEHIND_PROXY` isn't set.
+  - It never restarts Docker while other containers run.
+  - It leaves the firewall alone in proxy mode.
+  - It checks for compose 2.24+.
+- The Dockerfile parses both Caddy configs during the build, so a broken
+  config stops the deploy.
+- **Why:** Taking over 80/443 would break the existing sites. Without the
+  IP fix, every player would share the outer proxy's address for rate limits.
+- **Rejected:**
+  - board2D's Caddy as the front door for everything: it would take over
+    the user's existing setup.
+  - A second public port: friends would have to type `:8443`.
+- **Not verified:** Docker isn't available here (only from WSL, no engine
+  yet), and downloading Caddy to check the configs was blocked. The first
+  GitHub build checks the syntax; the first deploy is the real test.
+
 ### C011 — Online rooms on your own server; players can leave mid-match (2026-11-17)
 - **What:** D007/D008 built.
   - Godot: `WsTransport` (WebSocket) next to ENet, chosen per game by the
