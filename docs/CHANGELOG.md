@@ -7,6 +7,17 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C014 — Room servers report back on Linux release builds (2026-11-17)
+- **What:** `application/run/flush_stdout_on_print=true` fixes BUG-006, where
+  no online room could start on the server. The Dockerfile's godot stage
+  now runs the exported room server and needs `ROOM_READY` through a pipe,
+  so a broken room server can never be deployed.
+- **Why:** release builds held back piped output, so the lobby service never
+  heard that a room was ready.
+- **Rejected:** having the lobby service probe the room's port instead of
+  reading `ROOM_READY`. It would hide the room's other output (`ROOM_STATUS`,
+  errors) too.
+
 ### C013 — Deploys happen only for version tags; tools/release.sh (2026-11-17)
 - **What:** the workflow now runs:
   - pushes to `main` and PRs: tests only;

@@ -17,6 +17,12 @@ RUN mkdir -p /out/web /out/server \
  && godot --headless --export-release "Web" /out/web/index.html \
  && godot --headless --export-release "Linux Server" /out/server/board2D.x86_64 \
  && test -s /out/web/index.wasm && test -x /out/server/board2D.x86_64
+# The exported room server must say ROOM_READY through a pipe, exactly as the
+# lobby service reads it (release builds hold back piped output unless
+# application/run/flush_stdout_on_print is on; that broke the first deploy).
+RUN BOARD2D_ROOM_SECRET=0123456789abcdef0123456789abcdef HOME=/tmp \
+    timeout 30 /out/server/board2D.x86_64 --headless -- --server --port=20997 --room=CHECK1 --max-players=2 \
+    | grep -m1 -qx ROOM_READY
 
 # --- Build the lobby page (Vue) ---------------------------------------------
 FROM node:22.12-bookworm-slim AS ui

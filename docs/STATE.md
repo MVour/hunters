@@ -47,5 +47,5 @@ Before that: clearer match screen (C005), network/state refactor (C004).
 - Later: reconnect to the same seat (IDEAS).
 
 ## Open bugs
-BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
+BUG-006 (rooms never started on the server: fixed, waiting for the next release), BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
 after a network session, harmless). BUG-001 and BUG-003 fixed. See BUGS.md.

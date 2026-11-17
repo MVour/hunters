@@ -7,6 +7,24 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-006 — Online rooms never started on the server ("didn't start in time")
+- **Logged:** 2026-11-17 (first deploy)
+- **Area:** exported room server (release build) ↔ `online/lobby-service/src/rooms.js`
+- **What happens:** Every room closed after 30 s with `start_timeout`. The
+  lobby log showed no output at all from the Godot process.
+- **Cause (confirmed):** release builds don't flush stdout after `print()`
+  (`application/run/flush_stdout_on_print` is off by default; only the
+  `.debug` variant is on). On Linux, stdout into a pipe is fully buffered,
+  so `ROOM_READY` stayed in the buffer. Local end-to-end tests used the
+  editor (debug) binary on Windows, so they never saw it.
+- **Fix (C014):** `run/flush_stdout_on_print=true` in project.godot. The
+  Docker build now starts the exported room server and fails unless
+  `ROOM_READY` comes through a pipe.
+- **Status:** fix verified locally. Linux release export run in WSL with
+  stdout piped: without the setting, 0 lines in 15 s; with it, ROOM_READY at
+  once. The new build check fails on the old binary (exit 1) and passes on
+  the new one (4 s). On the server: verified after the next release.
+
 ### BUG-005 — Rare: a bot's click on a pawn didn't register (test flake?)
 - **Logged:** 2026-11-16
 - **Area:** `tools/autotest.gd --ui` clicking pawns (`match/board/pawn_layer.gd` pick areas)
