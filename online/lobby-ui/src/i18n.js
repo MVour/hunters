@@ -11,6 +11,7 @@ const STRINGS = {
     loginTitle: 'Who are you?',
     name: 'Name',
     code: 'Access code',
+    nameHint: 'Up to 16 letters or numbers (spaces, _ . - allowed).',
     login: 'Enter',
     loggedInAs: 'Playing as {name}',
     newRoom: 'New room',
@@ -51,6 +52,7 @@ const STRINGS = {
     desktopStep3: 'Here, press “Desktop link” on a room. In the game, paste it into “Host’s code or room link” and press Join.',
     errors: {
       wrong_name_or_code: 'That name and code don’t match.',
+      bad_name: 'Names can only have letters, numbers, spaces and _ . - (up to 16, starting with a letter or number).',
       too_many_attempts: 'Too many tries. Wait a few minutes.',
       not_logged_in: 'Please log in again.',
       too_many_rooms: 'The server is full right now. Try again later.',
@@ -75,6 +77,7 @@ const STRINGS = {
     loginTitle: 'Ποιος είσαι;',
     name: 'Όνομα',
     code: 'Κωδικός πρόσβασης',
+    nameHint: 'Έως 16 γράμματα ή αριθμοί (επιτρέπονται κενά, _ . -).',
     login: 'Είσοδος',
     loggedInAs: 'Παίζεις ως {name}',
     newRoom: 'Νέο δωμάτιο',
@@ -115,6 +118,7 @@ const STRINGS = {
     desktopStep3: 'Εδώ, πάτα «Σύνδεσμος για desktop» σε ένα δωμάτιο. Στο παιχνίδι, επικόλλησέ τον στο «Κωδικός οικοδεσπότη ή σύνδεσμος δωματίου» και πάτα «Σύνδεση».',
     errors: {
       wrong_name_or_code: 'Το όνομα και ο κωδικός δεν ταιριάζουν.',
+      bad_name: 'Το όνομα μπορεί να έχει μόνο γράμματα, αριθμούς, κενά και _ . - (έως 16, ξεκινά με γράμμα ή αριθμό).',
       too_many_attempts: 'Πάρα πολλές προσπάθειες. Περίμενε λίγα λεπτά.',
       not_logged_in: 'Συνδέσου ξανά.',
       too_many_rooms: 'Ο server είναι γεμάτος. Δοκίμασε αργότερα.',

@@ -27,7 +27,10 @@ export class Auth {
   /** The canonical name if name + code may log in, else null. */
   check(name, code) {
     const clean = cleanName(name);
-    if (!clean || typeof code !== 'string' || code.length === 0 || code.length > 200) return null;
+    if (!clean || typeof code !== 'string') return null;
+    // Codes never contain spaces; pasting from a chat often adds one.
+    code = code.trim();
+    if (code.length === 0 || code.length > 200) return null;
     const lower = clean.toLowerCase();
     const user = this.config.access.users.find((u) => u.name.trim().toLowerCase() === lower);
     if (user) {

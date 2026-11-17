@@ -31,6 +31,7 @@ async function submit() {
       <label>
         <span>{{ t('name') }}</span>
         <input v-model="name" autocomplete="username" maxlength="16" required />
+        <small class="muted">{{ t('nameHint') }}</small>
       </label>
       <label>
         <span>{{ t('code') }}</span>

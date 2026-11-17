@@ -18,7 +18,7 @@
 // (login failures); strict security headers; tickets single-use + 60 s.
 
 import { WebSocketServer, WebSocket } from 'ws';
-import { Auth } from './auth.js';
+import { Auth, cleanName } from './auth.js';
 import { RoomManager, VISIBILITIES } from './rooms.js';
 import { makeTicket, readTicket, UsedNonces } from './tickets.js';
 import { WindowCounter, TokenBucket } from './limits.js';
@@ -133,6 +133,8 @@ export function createApp(config, { log = console, spawnProcess } = {}) {
       const body = await readJson(req);
       const nameKey = String(body.name ?? '').trim().toLowerCase().slice(0, 32);
       if (loginFailsPerName.blocked(nameKey)) throw new HttpError(429, 'too_many_attempts');
+      // The name rules are public, so say so plainly instead of "don't match".
+      if (!cleanName(body.name)) throw new HttpError(400, 'bad_name');
       const name = auth.check(body.name, body.code);
       if (!name) {
         loginFailsPerName.hit(nameKey);

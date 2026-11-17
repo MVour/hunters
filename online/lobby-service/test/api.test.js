@@ -54,6 +54,9 @@ test('login: cookie flags, wrong codes, wrong origin, non-JSON', async () => {
   assert.match(ok.cookie, /HttpOnly/);
   assert.match(ok.cookie, /SameSite=Strict/);
   assert.equal((await call('POST', '/api/login', { body: { name: 'Alex', code: 'nope' } })).status, 401);
+  const badName = await call('POST', '/api/login', { body: { name: "O'Brien!", code: 'friends-code-1' } });
+  assert.equal(badName.status, 400);
+  assert.equal(badName.body.error, 'bad_name');
   assert.equal((await call('POST', '/api/login', { body: { name: 'Alex', code: 'alex-code-123' }, origin: 'https://evil.example' })).status, 403);
   assert.equal((await call('POST', '/api/login', { body: { name: 'Alex', code: 'alex-code-123' }, origin: null })).status, 403);
   assert.equal((await call('POST', '/api/login', { body: { name: 'Alex' }, type: 'text/plain' })).status, 415);

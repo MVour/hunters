@@ -33,6 +33,9 @@ test('login: listed users need their own code; shared codes cannot take their na
   assert.equal(auth.check('Sam', 'wrong'), null);
   assert.equal(auth.check('Newbie', 'friends-code-1'), 'Newbie');
   assert.equal(auth.check('Newbie', 'nope'), null);
+  // pasted from a chat: spaces / a line break around the code
+  assert.equal(auth.check('Newbie', '  friends-code-1\n'), 'Newbie');
+  assert.equal(auth.check('Newbie', '   '), null);
   assert.equal(auth.isAdmin('ALEX'), true);
   assert.equal(auth.isAdmin('Newbie'), false);
 });

@@ -7,6 +7,20 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C018 — Login: clearer errors, codes pasted with spaces work (2026-11-17)
+- **What:**
+  - The service trims spaces and line breaks around the access code.
+    Codes never contain them, and chats often add them when copying.
+  - A name that breaks the name rules now gets `400 bad_name`, with its own
+    message in English and Greek, instead of "name and code don't match".
+  - The login page shows the name rules under the Name field.
+  - Tests cover both (unit + API).
+- **Why:** a friend of the user got "don't match". The two likeliest causes
+  were a pasted code with a trailing space, and a name with a character
+  that isn't allowed, which was reported as a wrong code.
+- **Rejected:** comparing codes without regard to case. It would weaken
+  custom codes, and phones don't capitalise password fields.
+
 ### C017 — The game shrinks to fit smaller windows and screens (2026-11-17)
 - **What:** `display/window/stretch/scale_mode` changed from `integer` (set
   2025-01-27) to `fractional`. The game is drawn at 1920×1080. Before, in
