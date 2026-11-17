@@ -74,6 +74,14 @@ Two setups, chosen per game by what's typed in the Join box (D007):
   match's player count. Presets: `Global.game_settings_default.presets`.
   The counts only change by the owner, or grow when more players are in
   than the teams have places for (`_fit_settings`).
+- **After a match** (BUG-009): `LobbyNet.match_over()` (on a win, or
+  when only bots are left) makes the table a lobby again: players who left
+  are dropped, `in_match()` is false, new players may join. The end
+  screen's Play again → `LobbyNet.back_to_lobby()` → `lobby_state` (the
+  whole lobby; the lobby scene was kept under the match screen); leaving
+  → the menu / the web tables page. While a client is not in the LOBBY
+  phase it ignores `sync_player` / `remove_player` (its match screen reads
+  the same player table); `start_game` carries the player list.
 - **Leaving mid-match** (BUG-001): `LobbyNet._on_peer_left` →
   `MatchServer.player_left()`: the player is out (`Combat.leave`, card
   revealed, no killer), pending questions/asks/rolls are answered for them
@@ -130,7 +138,7 @@ Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
 `CardView` popups (a player row's details drawer floats to the row's left,
 `top_level`), `GameLog` (right column under the player list: every
 action from the events this screen gets, kept as Msgs and redrawn on a
-language switch), and the
+language switch; damage/heal/steal lines pulse for a few seconds), and the
 prompt/action/choice panels and the status line built in `play_scene.gd`.
 `_refresh_buttons()` sets every turn button's visible/enabled state and the
 status text ("waiting for …") from GameState; the server broadcasts
@@ -138,7 +146,8 @@ status text ("waiting for …") from GameState; the server broadcasts
 
 **Picking a player:** a server choice whose options are all players (and
 handing over a green card) becomes pick mode, `_start_pick()`: `PlayerList`
-and `PawnLayer` highlight the pickable players and emit `player_picked`;
+and `PawnLayer` highlight the pickable players and emit `player_picked`; the
+dialog shrinks to a bar at the top of the screen (`compact`), clicks pass through it;
 open `CardView`s go passive (small, bottom-left, non-blocking); turn
 buttons hide until the pick ends.
 
@@ -156,8 +165,11 @@ buttons hide until the pick ends.
   `AUTOTEST_ARGS="--show-status --slow"` prints every status line the bots saw;
   `AUTOTEST_ARGS=--ui` makes the bots pick players by clicking rows/pawns;
   `AUTOTEST_ARGS="--bots=N --bot-log"` adds N real bots (through the lobby
-  buttons' actions) and prints their decisions. The online e2e takes the
-  same args (`node scripts/e2e.mjs <godot> --bots=2`).
+  buttons' actions) and prints their decisions; `--games=N` plays N
+  matches on one table (Play again). The online e2e takes the
+  same args (`node scripts/e2e.mjs <godot> --bots=2`) and fails if the room
+  still says "in a match" after one ended. Pictures (windowed runs):
+  `--shot-lobby=`, `--shot-match=` (`--shot-drawer`), `--shot-pick=`, `--shot-end=`.
 
 ## Language
 Like a front-end i18n file (D006):

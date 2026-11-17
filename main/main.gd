@@ -26,6 +26,7 @@ func _ready()->void :
 	SignalBus.connect("_start_game", _on_start_game)
 	Network.host_disconnected.connect(_on_host_disconnected)
 	SignalBus.leave_match.connect(_on_leave_match)
+	SignalBus.play_again.connect(_on_play_again)
 	set_main_screen()
 	_add_overlay()
 	_maybe_start_autotest()
@@ -102,6 +103,7 @@ func _on_new_game():
 func _on_start_game(id):
 	if not Network.server_is_player:
 		return  # a dedicated server has no match screen
+	_free_play_scene()  # a new match while still on the last one's end screen
 	play_scene = play_scene_pack.instantiate()
 	
 	canvas_layer.add_child(play_scene)
@@ -118,10 +120,24 @@ func _on_leave_match():
 
 func _on_host_disconnected():
 	if play_scene:
+		_free_play_scene()
+		set_main_screen()
+
+
+## "Play again" after a game: back to the same table's lobby (still open
+## under the match screen), with the lobby as it is now (BUG-009).
+func _on_play_again():
+	_free_play_scene()
+	main_menu.hide()
+	multiplayer_controller.show()
+	LobbyNet.back_to_lobby()
+
+
+func _free_play_scene() -> void:
+	if play_scene:
 		canvas_layer.remove_child(play_scene)
 		play_scene.queue_free()
 		play_scene = null
-		set_main_screen()
 
 
 func _on_exit_game():

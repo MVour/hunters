@@ -89,13 +89,14 @@ Use your ability whenever its card says. Reveal your character to make passive a
 "match.choose_who_to_ask","Choose who to ask","Διάλεξε σε ποιον"
 "match.end_turn","End Turn","Τέλος γύρου"
 "match.no_equipment_yet","No equipment yet.","Κανένας εξοπλισμός ακόμα."
+"match.leave_table","Leave the table","Φύγε από το τραπέζι"
 "match.nobody_in_reach","Nobody is within reach.","Κανείς δεν είναι κοντά."
 "match.nobody_s_side_survived","Nobody's side survived.","Καμία πλευρά δεν επέζησε."
+"match.play_again","Play again","Ξανά παιχνίδι"
 "match.peek_text","%s, %s, %d health
 %s","%s, %s, %d ζωή
 %s"
 "match.peek_title","You secretly see %s's character:","Βλέπεις κρυφά τον χαρακτήρα του/της %s:"
-"match.pick_hint","Click a highlighted player, on the list or on the board.","Κάνε κλικ σε έναν φωτισμένο παίκτη, στη λίστα ή στο ταμπλό."
 "match.reveal","Reveal","Αποκάλυψη"
 "match.reveal_tooltip","Show everyone your character card. Passive abilities only work once you're revealed.","Δείξε σε όλους την κάρτα χαρακτήρα σου. Οι παθητικές ικανότητες λειτουργούν μόνο αφού αποκαλυφθείς."
 "match.rolled_seven_prompt","You rolled 7! Pick any other location.","Έφερες 7! Διάλεξε όποια άλλη τοποθεσία θέλεις."

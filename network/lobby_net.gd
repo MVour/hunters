@@ -73,6 +73,29 @@ func change_player_count(delta: int) -> void: request_player_count.rpc_id(1, del
 func change_preset(delta: int) -> void: request_preset.rpc_id(1, delta)
 ## Owner: add bots until there are as many players as the teams need.
 func fill_with_bots() -> void: request_fill_bots.rpc_id(1)
+## After a match: back to this table's lobby ("Play again").
+func back_to_lobby() -> void: request_lobby.rpc_id(1)
+
+
+## Server: the match is over (someone won, or only bots were left). The table
+## is a lobby again (BUG-009): people who left during the match are removed,
+## new players may join, and the owner can start again. Players still on the
+## end screen come back with back_to_lobby() or leave.
+## The removals aren't sent now (clients are still showing the match); a
+## client gets the whole lobby with lobby_state / start_game.
+func match_over() -> void:
+	if not multiplayer.is_server() or not _in_match:
+		return
+	_in_match = false
+	var connected := multiplayer.get_peers()
+	for id in _players.keys():
+		var gone: bool = MatchNet.server != null and MatchNet.server.is_gone(id)
+		if not is_bot(_players[id]) and id != multiplayer.get_unique_id() and (gone or not id in connected):
+			_players.erase(id)
+	if _human_count() == 0:
+		for bot_id in _bot_ids():
+			_players.erase(bot_id)
+	_pass_owner_if_gone()
 
 
 # =============================================================================
@@ -198,7 +221,7 @@ func request_start() -> void:
 		return
 	_in_match = true
 	MatchNet.create_server(_players, _settings)
-	start_game.rpc()
+	start_game.rpc(_players.values())
 
 
 ## The owner removes someone from the lobby (not during a match, not themselves).
@@ -233,10 +256,27 @@ func _on_peer_left(id: int) -> void:
 	if _human_count() == 0:  # nobody left to play with the bots
 		for bot_id in _bot_ids():
 			_remove_player(bot_id)
-	if id == _owner_id:
-		var humans := _players.keys().filter(func(pid): return not is_bot(_players[pid]))
-		_owner_id = humans.front() if not humans.is_empty() else 0
-		owner_changed.rpc(_owner_id)
+	_pass_owner_if_gone()
+
+
+## The owner left: the next person in the room is the owner.
+func _pass_owner_if_gone() -> void:
+	if _owner_id != 0 and _players.has(_owner_id):
+		return
+	var humans := _players.keys().filter(func(pid): return not is_bot(_players[pid]))
+	_owner_id = humans.front() if not humans.is_empty() else 0
+	owner_changed.rpc(_owner_id)
+
+
+## A player on the end screen pressed "Play again": send them the lobby.
+@rpc("any_peer", "call_local", "reliable")
+func request_lobby() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := Network.sender_id()
+	if _in_match or not _players.has(sender):
+		return  # a new match already started (they're in it) or they're out
+	lobby_state.rpc_id(sender, _players.values(), _settings, _owner_id)
 
 
 func _remove_player(id: int) -> void:
@@ -393,14 +433,41 @@ static func start_problem(players: Dictionary, settings: Dictionary) -> Dictiona
 
 @rpc("authority", "call_local", "reliable")
 func sync_player(player: Dictionary) -> void:
+	if GameState.phase != GameState.Phase.LOBBY:
+		return  # still on the end screen: lobby_state brings everyone later
 	GameState.players[player.id] = player
 	SignalBus.lobby_player_updated.emit(player)
 
 
 @rpc("authority", "call_local", "reliable")
 func remove_player(id: int) -> void:
+	if GameState.phase != GameState.Phase.LOBBY:
+		return
 	GameState.players.erase(id)
 	SignalBus.lobby_player_removed.emit(id)
+
+
+## Back from a finished match: the whole lobby as it is now.
+@rpc("authority", "call_local", "reliable")
+func lobby_state(players: Array, settings: Dictionary, owner: int) -> void:
+	GameState.phase = GameState.Phase.LOBBY
+	_reset_match_info()
+	var now := {}
+	for player in players:
+		now[player.id] = player
+	for id in GameState.players.keys():
+		if not now.has(id):
+			GameState.players.erase(id)
+			SignalBus.lobby_player_removed.emit(id)
+	for player in players:
+		sync_player(player)
+	settings_changed(settings)
+	owner_changed(owner)
+
+
+func _reset_match_info() -> void:
+	GameState.game_info = {"players_turn": [], "round": 0, "waiting_for": []}
+	GameState.locations = []
 
 
 @rpc("authority", "call_local", "reliable")
@@ -426,6 +493,12 @@ func start_refused(problem: Dictionary) -> void:
 
 
 @rpc("authority", "call_local", "reliable")
-func start_game() -> void:
+func start_game(players: Array) -> void:
+	# Fresh player info: a second match on the same table starts clean, even
+	# for someone who went straight from the last end screen.
+	GameState.players = {}
+	for player in players:
+		GameState.players[player.id] = player
+	_reset_match_info()
 	GameState.phase = GameState.Phase.PLAYING
 	SignalBus._start_game.emit("")

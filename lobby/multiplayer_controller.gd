@@ -17,6 +17,7 @@ func _ready():
 	Network.connected_to_host.connect(_on_connected_to_host)
 	Network.connection_failed.connect(_on_connection_failed)
 	Network.host_disconnected.connect(_on_host_disconnected)
+	Network.session_closed.connect(_close_lobby)  # left the table
 
 
 func _on_back_pressed() -> void:
@@ -58,7 +59,7 @@ func _on_connect_lobby_button_pressed() -> void:
 
 
 func _on_visibility_changed() -> void:
-	if visible:
+	if visible and lobby == null:  # back from a match: the lobby stays on top
 		multiplayer_menu_container.show()
 		connect_to_lobby.hide()
 

@@ -17,9 +17,12 @@ _Last updated: 2026-11-17_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
-2026-11-17: **bot players** (C019, D009): lobby Players / Teams presets /
-Fill with bots; bots play fair from inside the match server. Not released
-yet; the user will test them.
+2026-11-17: the user's first playtest with friends gave 10 points of
+feedback (in IDEAS/BUGS). Group 1 done (C021): **Play again** (BUG-009: a
+table could only be played once), damage/heal/steal lines flash in the
+log, the pick-a-player dialog is a small bar at the top. Uncommitted.
+Before that: **bot players** (C019, D009) and the game log (C020),
+committed, not released; the user hasn't tried the bots yet.
 Earlier 2026-11-17: live at https://play.mvrtz.com — online rooms on the user's
 server: lobby service, Vue lobby page, dedicated Godot room servers, Docker +
 Caddy, tag-only GitHub deploy (C011–C013, D007/D008, docs/DEPLOY.md). Then:
@@ -39,17 +42,23 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   - GitHub repo MVour/hunters;
   - deploys only for `v*` tags, made with `bash tools/release.sh` from WSL
     (C013). Only WSL has the user's GitHub key.
-- **Bots built (C019) + game log and hang fixes (C020)**, uncommitted and
-  unreleased. Next: the user tests them (LAN and online), then tune
-  `server/bots/bot_weights.gd` from what they see (in 8-player bot
-  stress runs with 2/2/4 teams, vampires won 3 of 4: watch the balance);
-  release with `bash tools/release.sh`.
-- Then: per-turn cheat card in the player hub, phone proportions/zoom.
+- **Unreleased:** bots (C019), game log (C020), play again etc. (C021).
+  Release with `bash tools/release.sh`; then check Play again online.
+- **Playtest feedback, agreed order:** group 2 next: keep your card
+  bottom-right until the turn ends, a fixed narrator bar (top-centre),
+  life-track legend, player drawer redesign. Group 3: hit/steal effects
+  on screen, ambient music with on/off (needs a track from the user — no
+  generated audio). Group 4: lobby redraw (both languages). Notes:
+  undecided. All in IDEAS.md.
+- Bots: the user hasn't tried them yet; tune `server/bots/bot_weights.gd`
+  from what they see (8-player stress runs: vampires won 3 of 4).
+- Later: per-turn cheat card in the player hub, phone proportions/zoom.
   Reconnect is wanted but deferred (IDEAS has the user's sketch).
 - Docker stack test in WSL (`online/deploy/local-test.sh`): Ubuntu WSL has
   no Docker engine yet; the user installs one or runs it on the server.
 
 ## Open bugs
 BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
-after a network session, harmless). BUG-001, 003, 006, 007 fixed and
+after a network session, harmless). BUG-009 (play again) fixed, to verify
+online after release. BUG-001, 003, 006, 007 fixed and
 verified. See BUGS.md.

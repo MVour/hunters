@@ -667,11 +667,12 @@ func _start_pick(prompt: String, ids: Array, allow_skip: bool, on_pick: Callable
 	_passivate_cards()
 	player_list.set_pickable(ids)
 	pawn_layer.set_pickable(ids)
-	var hint := Global.text("match.pick_hint")
-	_open_choice("%s\n%s" % [prompt, hint], [], allow_skip, func(value):
+	# A small bar at the top of the screen (the status line says how to pick),
+	# so the whole board stays visible and clickable.
+	_open_choice(prompt, [], allow_skip, func(value):
 		_end_pick()
-		on_pick.call(value))
-	# Long (Greek) prompts make it taller: let clicks through to pawns under it (BUG-005).
+		on_pick.call(value), {}, true)
+	# Let clicks through everywhere but its buttons (BUG-005).
 	_set_choice_click_through(true)
 	_queue_refresh()
 
@@ -713,9 +714,16 @@ func _end_pick() -> void:
 ## The black dialog. Options become deck packs (value = a deck),
 ## whole cards (value = an equipment uid) or buttons. `context` = the card
 ## this is about, shown on the left so you can read it while choosing.
-func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Callable, context := {}) -> void:
+## `compact`: a small bar at the top (picking a player on the board).
+func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Callable, context := {},
+		compact := false) -> void:
 	_offer_open = false
 	_set_choice_click_through(false)
+	choice_title.add_theme_font_size_override("font_size", 20 if compact else 22)
+	choice_title.custom_minimum_size = Vector2(0 if compact else 560, 0)
+	# One line when compact (a wrapping label with no width would be one letter wide).
+	choice_title.autowrap_mode = TextServer.AUTOWRAP_OFF if compact else TextServer.AUTOWRAP_WORD_SMART
+	choice_buttons.custom_minimum_size = Vector2(0 if compact else 420, 0)
 	for child in choice_buttons.get_children():
 		child.queue_free()
 	for child in choice_card_slot.get_children():
@@ -748,8 +756,8 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 		else:
 			var button := Button.new()
 			button.text = Global.msg(option.get("label", str(value)))
-			button.custom_minimum_size = Vector2(140, 44)
-			button.add_theme_font_size_override("font_size", 19)
+			button.custom_minimum_size = Vector2(110, 36) if compact else Vector2(140, 44)
+			button.add_theme_font_size_override("font_size", 17 if compact else 19)
 			if option.has("color"):
 				button.add_theme_color_override("font_color", Color(option.color).lightened(0.25))
 			button.pressed.connect(pick)
@@ -758,8 +766,8 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 	choice_panel.show()
 	await get_tree().process_frame
 	choice_panel.reset_size()
-	choice_panel.position = Vector2(960 - choice_panel.size.x / 2.0,
-		clampf(1072.0 - choice_panel.size.y, 20.0, 812.0))
+	var y := 12.0 if compact else clampf(1072.0 - choice_panel.size.y, 20.0, 812.0)
+	choice_panel.position = Vector2(960 - choice_panel.size.x / 2.0, y)
 
 
 ## A whole card you can click (e.g. which equipment to steal).
@@ -838,6 +846,7 @@ func _on_game_over(faction: String, winners: Array) -> void:
 	_end_pick()
 	_clear_action_bar()
 	status_label.hide()
+	toast_box.hide()  # no announcement over the result
 	choice_panel.hide()
 	CardView._queue.clear()
 	for child in get_children():
@@ -885,9 +894,32 @@ func _on_game_over(faction: String, winners: Array) -> void:
 		row.add_theme_color_override("font_color", _player_color(id))
 		column.add_child(row)
 
-	var back := Button.new()
-	back.text = Global.text("match.back_to_menu")
-	back.custom_minimum_size = Vector2(260, 52)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# Play again = this table's lobby; leave = the menu (or, in a browser, the
+	# tables page), from where any table can be joined (BUG-009).
+	var buttons := HBoxContainer.new()
+	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	buttons.add_theme_constant_override("separation", 24)
+	column.add_child(buttons)
+	var again := _end_button(Global.text("match.play_again"), Color("c8a85a"))
+	again.name = "PlayAgainButton"
+	again.pressed.connect(func(): SignalBus.play_again.emit())
+	buttons.add_child(again)
+	var back := _end_button(Global.text("match.leave_table") if OS.has_feature("web") \
+		else Global.text("match.back_to_menu"), Color(1, 1, 1, 0.35))
 	back.pressed.connect(func(): SignalBus.leave_match.emit())
-	column.add_child(back)
+	buttons.add_child(back)
+
+
+func _end_button(text: String, border: Color) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(280, 60)
+	button.add_theme_font_size_override("font_size", 24)
+	for state in ["normal", "hover", "pressed", "focus"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.08, 0.09, 0.12, 0.95).lightened(0.08 if state == "hover" else 0.0)
+		style.border_color = border.lightened(0.2) if state == "hover" else border
+		style.set_border_width_all(2)
+		style.set_corner_radius_all(10)
+		button.add_theme_stylebox_override(state, style)
+	return button

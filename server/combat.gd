@@ -274,6 +274,7 @@ func check_win() -> bool:
 	for id in s.state.players:
 		characters[id] = s.state.players[id].character
 	MatchNet.game_over.rpc(faction, winners, characters)
+	LobbyNet.match_over()  # the table can be played again (BUG-009)
 	return true
 
 

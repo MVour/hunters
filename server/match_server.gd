@@ -162,6 +162,7 @@ func player_left(player_id: int) -> void:
 	# Only bots left: nobody is watching, stop playing.
 	if state.players.keys().all(func(id): return bots.has(id) or _gone.has(id)):
 		finished = true
+		LobbyNet.match_over()
 
 
 func is_gone(player_id: int) -> bool:

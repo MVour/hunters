@@ -26,6 +26,10 @@ var stats := {"turns": 0, "my_turns": 0, "moves": 0, "cards": 0, "choices": 0,
 var _last_progress := 0
 var _my_turn := false
 var _done := false
+## --games=N: play N matches on the same table (Play again, BUG-009).
+var _games_played := 0
+var _table_size := 0  # players (bots too) the host waits for before starting
+var _shots_taken := []
 ## Every distinct status line the match screen showed (printed with -- --show-status).
 var _statuses := []
 
@@ -96,6 +100,7 @@ func _ready() -> void:
 		if shot != "":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(shot)
+		_table_size = GameState.players.size()
 		_start_match(mc)
 
 
@@ -123,6 +128,42 @@ func _start_match(mc: MultiplayerController) -> void:
 	mc.lobby._on_start_game_pressed()
 
 
+## Dev pictures (not headless): `-- --shot-pick=PATH` the first time this bot
+## picks a player, `--shot-end=PATH` the end screen. Once each.
+func _shot_once(flag: String, wanted: Callable) -> void:
+	var path := _arg(flag, "")
+	var scene := get_tree().root.find_child("PlayScene", true, false)
+	if path == "" or flag in _shots_taken or scene == null or not wanted.call(scene):
+		return
+	_shots_taken.append(flag)
+	for i in 3:
+		await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path)
+
+
+func _on_game_over(faction: String, _winners: Array) -> void:
+	await _shot_once("--shot-end=", func(_scene): return true)
+	_games_played += 1
+	if _games_played >= _arg("--games=", "1").to_int():
+		_finish(true, "game over, %s side won (game %d)" % [faction, _games_played])
+		return
+	print("AUTOTEST [%s] game %d over, %s side won: Play again" % [role, _games_played, faction])
+	# Press the end screen's Play again, like a person (the client first).
+	await get_tree().create_timer(0.5 if role == "client" else 1.0).timeout
+	var again: Button = get_tree().root.find_child("PlayAgainButton", true, false)
+	if again == null:
+		_finish(false, "no Play again button on the end screen")
+		return
+	again.pressed.emit()
+	_last_progress = Time.get_ticks_msec()
+	if role == "host":
+		await _until(func(): return GameState.phase == GameState.Phase.LOBBY \
+			and GameState.players.size() >= _table_size)
+		await get_tree().create_timer(1.0).timeout
+		var mc: MultiplayerController = get_tree().root.find_child("MultiplayerController", true, false)
+		_start_match(mc)
+
+
 # --- Reacting to the game -----------------------------------------------------
 
 func _connect_signals() -> void:
@@ -146,6 +187,7 @@ func _connect_signals() -> void:
 	SignalBus.choice_requested.connect(func(_prompt, options, _skip):
 		stats.choices += 1
 		await _think()
+		await _shot_once("--shot-pick=", func(scene): return not scene.pick_ids.is_empty())
 		# --ui: pick players by clicking them on the list / the board, like a person.
 		if _ui_mode() and (await _click_pick() or await _press_dialog_option(false)):
 			return
@@ -163,7 +205,7 @@ func _connect_signals() -> void:
 	SignalBus.card_drawn_secretly.connect(func(_id, _t): stats.cards += 1)
 	SignalBus.attack_happened.connect(func(_a, _t, _d): stats.attacks += 1)
 	SignalBus.player_died.connect(func(_id, _k): stats.deaths += 1)
-	SignalBus.game_over.connect(func(faction, _winners): _finish(true, "game over, %s side won" % faction))
+	SignalBus.game_over.connect(_on_game_over)
 	Network.host_disconnected.connect(func():
 		if role == "client":
 			_finish(true, "host ended the session", true))

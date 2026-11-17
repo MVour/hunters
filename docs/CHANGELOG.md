@@ -7,6 +7,40 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C021 — Play again; damage flashes in the log; pick bar on top (2026-11-17)
+From the user's first playtest with friends (group 1 of their feedback).
+- **What:**
+  - **BUG-009, play again:** when a match ends, the table becomes a lobby
+    again (`LobbyNet.match_over()`, called on a win and when only bots are
+    left): people who left during the match are removed, the room reports
+    `inMatch: false` (the web page's Play works again), and the owner can
+    start a new match. The end screen has **Play again** (back to this
+    table's lobby, `LobbyNet.back_to_lobby()` → `lobby_state`) and **Back
+    to menu** / **Leave the table** (browser: back to the tables page).
+    `start_game` now carries the player list, so a second match starts
+    clean even for someone still on the last end screen. While a player
+    is on the end screen, lobby joins/leaves aren't applied to their
+    match screen (they get the whole lobby when they come back).
+  - **Game log flashes:** damage and attacks (red), heals (green) and
+    steals (amber) get a coloured dot, and pulse for 4 s when they happen;
+    the folded header takes the same colour. The user's fuller idea
+    (splatter on screen, slashes on the pawn / life track) stays in IDEAS.
+  - **Picking a player:** the dialog is a small bar at the top of the
+    screen (question + Skip) instead of a box at the bottom covering the
+    lower board; the "click a highlighted player" line was dropped from it
+    (the status line already says it).
+  - End screen buttons styled; announcements no longer sit over the result.
+  - Autotest: `--games=N` (Play again between matches; online e2e checks
+    the room isn't left "in a match"), `--shot-pick=PATH`, `--shot-end=PATH`.
+- **Why:** a table could only be played once online; damage went
+  unnoticed; the pick dialog hid pawns at the bottom of the board.
+- **Rejected:** sending lobby changes to players still on the end screen
+  (their match screen reads the same player table and would break);
+  moving the pick dialog to the middle of the board (covers the campfire
+  area and pawns there).
+
+---
+
 ### C020 — Game log; no turn can get stuck on a bot (2026-11-17)
 - **What:**
   - **Game log** (`match/hud/game_log.gd`, right column under the player

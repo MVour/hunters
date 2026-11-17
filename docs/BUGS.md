@@ -7,6 +7,26 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-009 — After a match ends, the room can't be played again
+- **Logged:** 2026-11-17 (playtest)
+- **Area:** `network/lobby_net.gd` (`_in_match`), `network/room_server.gd`
+  status, `online/lobby-ui` RoomsView
+- **What happens:** when a game ends and you pick return to lobby / exit,
+  you land on the web lobby, but the room's Play button stays disabled.
+- **Root cause:** `LobbyNet._in_match` turns true on start and only resets
+  on a new session, so the room keeps reporting `inMatch: true` after the
+  game is over; the lobby service refuses joins (`room_playing`) and the UI
+  disables Play until the room empties and quits.
+- **Wanted (user):** at the end, offer "play again" (same table) or "exit
+  to the web lobby"; after exiting you can join any table again.
+- **Impact:** every online game: a table can only be played once.
+- **Fix (C021):** `LobbyNet.match_over()` makes the table a lobby again at
+  the end; end screen has Play again / leave. Tested: two matches in a row
+  on one table, LAN and online (`--games=2`, room reports `inMatch: false`).
+- **Status:** fix implemented (verify in a real online game)
+
+---
+
 ### BUG-008 — Two questions at once to one player: the first waits forever
 - **Logged:** 2026-11-17 (found by reading, during the bot hang audit)
 - **Area:** `server/match_server.gd` `_await_answer()`

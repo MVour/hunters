@@ -22,11 +22,34 @@ Format: `- **Name** — what and why. (added YYYY-MM-DD)`
 - **Phones: proportions and zoom** — the game works on a phone, but you
   can't zoom, and the layout (made for a 1920×1080 PC screen) isn't
   comfortable there. Revisit the proportions in general. (added 2026-11-17)
+- **Keep your card until the turn ends** — the card you drew / were asked
+  stays as a small card bottom-right until your turn is over; click it to
+  bring it forward again (handy for green cards). Playtest 2026-11-17. (added 2026-11-17)
+- **Narrator line** — the status/narrator text is very useful: give it a
+  fixed, standout place (top or centre of the map). Playtest 2026-11-17. (added 2026-11-17)
+- **Player drawer redesign** — drawers opening to the left stack on each
+  other and cover other drawers, and the text inside isn't easy to read.
+  Redesign (one drawer at a time, clearer layout). Playtest 2026-11-17. (added 2026-11-17)
+- **Life track legend** — the character initials on the life track mean
+  little; add a small game-info key (initial → character, health).
+  Playtest 2026-11-17. (added 2026-11-17)
+- **Lobby redraw** — several lobby buttons are out of place or break with
+  longer (Greek) texts. Lay the lobby out again. Same for the player hub's
+  tabs in Greek (ΑΠΟΚΡΥΨΗ / ΠΛΗΡΟΦ. run together). Playtest 2026-11-17. (added 2026-11-17)
+- **Personal notes** — a notepad for your suspicions during a match. User
+  undecided ("don't love it, don't hate it"). (added 2026-11-17)
 
 ## Art & feel
 - **User-drawn forest board** — replace the code-drawn ForestBoard placeholder
   with the user's own art, keeping its layout constants. (added 2026-11-16)
-- **Sound** — dice, card draw, hits, death, ambient night forest, music. (added 2026-11-16)
+- **Sound** — dice, card draw, hits, death, ambient night forest, music.
+  First step (playtest 2026-11-17): one calm, mysterious night-forest /
+  campfire ambient tune with an on/off button. (added 2026-11-16)
+- **Hit and steal feedback** — damage (cards and attacks), heals and steals
+  happen without a clear sign. User's sketch: red splatter dots on the hit
+  player's screen (flash 3-4 s, fade), a slash on their pawn and on the life
+  track; similar for heals and steals. (The quick step, flashing log
+  lines, is done: C021.) Playtest 2026-11-17. (added 2026-11-17)
 - **Old human portrait** — there was never a classic human; draw one so
   Classic art is complete. (added 2026-11-16)
 

@@ -91,8 +91,14 @@ try {
   if (errors.length) console.log('script errors:\n' + errors.slice(0, 10).join('\n'));
   ok = /AUTOTEST PASS/.test(a) && /AUTOTEST PASS/.test(b) && errors.length === 0;
   // The room server must have refused nobody and reported the players.
+  await sleep(1500); // its status reports come once a second
   const list = (await api('GET', '/api/rooms', null, owner)).json.rooms;
   console.log('rooms after the match:', JSON.stringify(list.map((r) => ({ code: r.code, players: r.players, inMatch: r.inMatch }))));
+  // BUG-009: a finished match leaves the table playable again.
+  if (/AUTOTEST PASS.*game over/.test(a + b) && list.some((r) => r.inMatch)) {
+    console.log('BUG-009: the room still says a match is running after it ended');
+    ok = false;
+  }
 } catch (err) {
   console.log('E2E error:', err.message);
 } finally {

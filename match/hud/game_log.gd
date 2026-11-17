@@ -6,15 +6,29 @@ class_name GameLog extends PanelContainer
 ## peek, are marked "only you"). Entries are kept as Msg dicts and re-drawn
 ## in the current language when it changes. Player names are in their colour.
 ## A header button folds it to one line.
+## Damage, heals and steals are marked in their colour and flash for a few
+## seconds when they happen, so they're hard to miss.
 
 ## Ends above the bottom-right corner, where drawn / asked cards appear.
 const SIZE_OPEN := Vector2(290, 225)
 const SIZE_FOLDED := Vector2(290, 34)
+const FLASH_SECONDS := 4.0
+const FLASH_STEP := 0.25   # redraw rate while something flashes
+const TONE_COLOURS := {"harm": Color("e0483c"), "heal": Color("4cc46a"), "steal": Color("e8a33c")}
+## Which server notices are harm / heal / steal.
+const NOTICE_TONES := {
+	"notice.attack": "harm", "notice.trap_snaps": "harm", "notice.ring_bites": "harm",
+	"notice.drinks": "heal", "notice.satchel_heals": "heal",
+	"notice.takes_from": "steal",
+}
 
 var _text: RichTextLabel
 var _toggle: Button
-## [{"msg": Msg or text, "kind": "turn"/"private"/""}]
+## [{"msg": Msg or text, "kind": "turn"/"private"/"", "tone": "harm"/"heal"/"steal"/"",
+##   "born": msec, "bb": the drawn line (cached, "" = draw again)}]
 var _entries := []
+var _flash_wait := 0.0
+var _flashing := false
 var _dmg := {}            # player id -> damage we last saw (for +/- lines)
 var _roll_total := 0      # the turn player's last movement throw (0 = none)
 var _turn_player := 0
@@ -62,7 +76,9 @@ func _ready() -> void:
 		_add(Msg.make("log.gave_green", {"player": _name(from_id), "target": _name(to_id)})))
 	SignalBus.question_answered.connect(func(from_id, to_id):
 		_add(Msg.make("log.answered", {"player": _name(from_id), "target": _name(to_id)})))
-	SignalBus.notice.connect(func(message): _add(message))
+	SignalBus.notice.connect(func(message):
+		var key: String = message.get("k", "") if message is Dictionary else ""
+		_add(message, "", NOTICE_TONES.get(key, "")))
 	SignalBus.attack_happened.connect(func(_a, _t, _d): _roll_total = 0)  # not a movement throw
 	SignalBus.damage_changed.connect(_on_damage_changed)
 	SignalBus.ability_used.connect(func(id):
@@ -74,7 +90,7 @@ func _ready() -> void:
 	SignalBus.private_info.connect(func(_title, text):
 		_add(Msg.make("log.only_you", {"text": text}), "private"))
 	SignalBus.game_over.connect(func(_faction, _winners): _add(Msg.make("log.game_over"), "turn"))
-	Global.language_changed.connect(_redraw)
+	Global.language_changed.connect(_on_language_changed)
 	for id in GameState.players:
 		_dmg[id] = GameState.players[id].dmg
 	_set_open(true)
@@ -116,9 +132,9 @@ func _on_damage_changed(id: int, dmg: int) -> void:
 	var before: int = _dmg.get(id, 0)
 	_dmg[id] = dmg
 	if dmg > before:
-		_add(Msg.make("log.damage", {"player": _name(id), "amount": dmg - before, "total": dmg}))
+		_add(Msg.make("log.damage", {"player": _name(id), "amount": dmg - before, "total": dmg}), "", "harm")
 	elif dmg < before:
-		_add(Msg.make("log.heal", {"player": _name(id), "amount": before - dmg, "total": dmg}))
+		_add(Msg.make("log.heal", {"player": _name(id), "amount": before - dmg, "total": dmg}), "", "heal")
 
 
 func _on_player_died(id: int, killer_id: int) -> void:
@@ -138,16 +154,61 @@ func _name(id: int) -> String:
 	return GameState.players.get(id, {}).get("name", "?")
 
 
-func _add(message, kind := "") -> void:
-	_entries.append({"msg": message, "kind": kind})
-	if _open:
+func _on_language_changed(_lang = null) -> void:
+	for entry in _entries:
+		entry.bb = ""  # draw every line again, in the new language
+	_redraw()
+
+
+func _add(message, kind := "", tone := "") -> void:
+	_entries.append({"msg": message, "kind": kind, "tone": tone,
+		"born": Time.get_ticks_msec(), "bb": ""})
+	if tone != "":
+		_flashing = true
+		_flash_wait = 0.0  # redraw now
+	elif _open:
 		_text.append_text(_line(_entries.back()) + "\n")
-	else:
+	if not _open:
 		_toggle.text = _header()
 
 
-func _redraw(_lang = null) -> void:
+## While a line flashes, redraw a few times a second (its highlight pulses),
+## and once more when it's done.
+func _process(delta: float) -> void:
+	if not _flashing:
+		return
+	_flash_wait -= delta
+	if _flash_wait > 0.0:
+		return
+	_flash_wait = FLASH_STEP
+	_flashing = _entries.any(func(e): return _flash_strength(e) > 0.0)
+	_redraw()
+
+
+## 0 = not flashing; else how bright its highlight is right now (pulses, fades).
+func _flash_strength(entry: Dictionary) -> float:
+	if entry.tone == "":
+		return 0.0
+	var age: float = (Time.get_ticks_msec() - entry.born) / 1000.0
+	if age >= FLASH_SECONDS:
+		return 0.0
+	var pulse := 0.6 + 0.4 * cos(age * TAU * 1.2)
+	return pulse * (1.0 - age / FLASH_SECONDS)
+
+
+func _redraw() -> void:
 	_toggle.text = _header()
+	var flash := 0.0
+	var tone := ""
+	for i in range(_entries.size() - 1, maxi(-1, _entries.size() - 6), -1):
+		var s := _flash_strength(_entries[i])
+		if s > flash:
+			flash = s
+			tone = _entries[i].tone
+	if flash > 0.0:
+		_toggle.add_theme_color_override("font_color", Color.WHITE.lerp(TONE_COLOURS[tone], flash))
+	else:
+		_toggle.remove_theme_color_override("font_color")
 	_text.clear()
 	if not _open:
 		return
@@ -166,8 +227,21 @@ func _header() -> String:
 
 
 func _line(entry: Dictionary) -> String:
+	if entry.bb == "":
+		entry.bb = _draw_line(entry)
+	var flash := _flash_strength(entry)
+	if flash <= 0.0:
+		return entry.bb
+	var bg: Color = TONE_COLOURS[entry.tone]
+	bg.a = 0.35 * flash  # light: a name in the same colour stays readable
+	return "[bgcolor=#%s]%s[/bgcolor]" % [bg.to_html(true), entry.bb]
+
+
+func _draw_line(entry: Dictionary) -> String:
 	var text := Global.msg(entry.msg).replace("[", "[lb]")  # no formatting from names
 	text = _colour_names(text)
+	if entry.tone != "":
+		text = "[color=#%s]●[/color] %s" % [TONE_COLOURS[entry.tone].to_html(false), text]
 	match entry.kind:
 		"turn":
 			return "[b][color=#c8a85a]%s[/color][/b]" % text

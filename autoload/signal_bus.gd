@@ -95,3 +95,5 @@ signal ability_used
 signal game_over
 ## Leave the finished match and go back to the main menu.
 signal leave_match
+## Go back to the same table's lobby after a finished match.
+signal play_again
