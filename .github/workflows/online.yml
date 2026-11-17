@@ -205,6 +205,10 @@ jobs:
       - uses: actions/checkout@v4
         with: { persist-credentials: false }
       - run: |
+          # GitHub runs the container with HOME=/github/home; the image keeps
+          # its export templates under /root.
+          mkdir -p ~/.local/share/godot/export_templates
+          ln -sfn /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
           godot --headless --import || true
           mkdir -p build/windows
           godot --headless --export-release "Windows Desktop" build/windows/board2D.exe
