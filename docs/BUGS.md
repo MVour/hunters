@@ -25,8 +25,8 @@ that sit open for more than ~2 weeks.
   1. Connecting now hides the buttons itself.
   2. `classic_art` defaults to `false`.
   3. On the web, Esc and Exit leave the session and go back to the lobby page.
-- **Status:** fix implemented. check_project and a bot match pass. Can only
-  be verified in a real browser, after the next release.
+- **Status:** fix released in v0.1.1. check_project and a bot match pass.
+  Still to confirm in a real browser.
 
 ### BUG-006 — Online rooms never started on the server ("didn't start in time")
 - **Logged:** 2026-11-17 (first deploy)
