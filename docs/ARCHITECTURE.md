@@ -133,7 +133,7 @@ Two setups, chosen per game by what's typed in the Join box (D007):
 
 ## Scenes
 `main/main.tscn` → `MainMenu` → `MultiplayerController` (host/join) →
-`lobby/lobby.tscn` (players, avatar picker, role counts) → on `start_game`,
+`lobby/lobby.tscn` (built in `lobby.gd`: seats + free seats, `CreatePlayer` name/pawn, `GameSettings` grid; look in `LobbyStyle`) → on `start_game`,
 `main.gd` instances `match/play_scene.tscn`. Leaving or a host disconnect
 frees the play scene and returns to the menu.
 

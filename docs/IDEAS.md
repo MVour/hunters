@@ -22,9 +22,6 @@ Format: `- **Name** — what and why. (added YYYY-MM-DD)`
 - **Phones: proportions and zoom** — the game works on a phone, but you
   can't zoom, and the layout (made for a 1920×1080 PC screen) isn't
   comfortable there. Revisit the proportions in general. (added 2026-11-17)
-- **Lobby redraw** — several lobby buttons are out of place or break with
-  longer (Greek) texts. Lay the lobby out again. Same for the player hub's
-  tabs in Greek (ΑΠΟΚΡΥΨΗ / ΠΛΗΡΟΦ. run together). Playtest 2026-11-17. (added 2026-11-17)
 - **Personal notes** — a notepad for your suspicions during a match. User
   undecided ("don't love it, don't hate it"). (added 2026-11-17)
 

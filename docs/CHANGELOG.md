@@ -7,6 +7,33 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C026 — Lobby laid out again; hub tabs fit in Greek (2026-11-18)
+Playtest feedback group 4.
+- **What:**
+  - The lobby is built in code (`lobby.gd`, `create_player.gd`,
+    `game_settings.gd`, look in `lobby/lobby_style.gd`), the scene is just
+    the root: Back top-left; the room code + Copy centred on top; left, a
+    "Players in lobby  n / total" panel of seats (full name with "…" if too
+    long, pawn, a you / BOT tag, the owner's ✕ in the corner, border in the
+    pawn's colour, yours gold) followed by faint free seats up to the
+    teams' total (the user's animated question mark); under it your name
+    and pawn picker (selected pawn framed gold, taken ones faded, a gold
+    Lock); right, the teams as a 4-column grid (name | < | value | >, side
+    names in their colours) so the columns line up in both languages, then
+    Fill with bots and a gold START. Dark panels with a thin gold edge, as
+    in the match dialogs.
+  - Copy turned back into "Copy" in English after copying; now in the
+    current language.
+  - The player hub's tab buttons are as wide as their text (Greek ones
+    ran into each other).
+  - Removed: `create_player.tscn`, `question_mark_sprite.tscn/.gd` (now
+    built in code), the unused "MIN 3 / MAX 8" text.
+- **Why:** buttons were out of place and broke with Greek texts.
+- **Rejected:** fixing the old fixed-position scene in place (any longer
+  text breaks it again; containers size themselves).
+
+---
+
 ### C025 — Hits you can't miss; the game ends after the last blow (2026-11-18)
 - **What:**
   - `match/board/hit_fx.gd` (`HitFx`, from SignalBus events): damage puts

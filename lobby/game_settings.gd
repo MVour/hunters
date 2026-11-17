@@ -1,83 +1,83 @@
-class_name GameSettings extends Panel
+class_name GameSettings extends PanelContainer
 ## How many players and which teams. Pure view: shows GameState.game_settings
 ## (the player count is the teams' total); the owner's buttons ask the server
-## through LobbyNet, and everyone's labels update on
+## through LobbyNet, and everyone's values update on
 ## SignalBus.lobby_settings_changed. Lobby shows the buttons to the owner only.
+## A 4-column grid (name | < | value | >), so the columns line up whatever the
+## language.
 
-@onready var vampires_count: Label = $VBoxContainer/HBoxContainer/VampiresCount
-@onready var humans_count: Label = $VBoxContainer/HBoxContainer3/HumansCount
-@onready var werewolves_count: Label = $VBoxContainer/HBoxContainer2/WerewolvesCount
-@onready var players_count: Label = $VBoxContainer/PlayersRow/PlayersCount
-@onready var preset_label: Label = $VBoxContainer/PresetRow/PresetLabel
-
-@onready var vamp_dec: Button = $VBoxContainer/HBoxContainer/VampDec
-@onready var vamp_inc: Button = $VBoxContainer/HBoxContainer/VampInc
-@onready var were_dec: Button = $VBoxContainer/HBoxContainer2/WereDec
-@onready var were_inc: Button = $VBoxContainer/HBoxContainer2/WereInc
-@onready var humans_dec: Button = $VBoxContainer/HBoxContainer3/HumansDec
-@onready var humans_inc: Button = $VBoxContainer/HBoxContainer3/HumansInc
-@onready var players_dec: Button = $VBoxContainer/PlayersRow/PlayersDec
-@onready var players_inc: Button = $VBoxContainer/PlayersRow/PlayersInc
-@onready var preset_dec: Button = $VBoxContainer/PresetRow/PresetDec
-@onready var preset_inc: Button = $VBoxContainer/PresetRow/PresetInc
-
-@onready var labels := {
-	"vampires_count": vampires_count,
-	"werewolves_count": werewolves_count,
-	"humans_count": humans_count,
-}
+var _title: Label
+var _names := {}    # row key -> Label
+var _values := {}   # row key -> Label
+var _buttons := []  # every < and > (owner only)
 
 
-func _ready():
-	SignalBus.lobby_settings_changed.connect(func(_settings): _refresh_labels())
-	Global.language_changed.connect(_refresh_labels)
-	_refresh_labels()
+func _init() -> void:
+	add_theme_stylebox_override("panel", LobbyStyle.panel())
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	add_child(column)
+	_title = LobbyStyle.heading()
+	column.add_child(_title)
+
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	column.add_child(grid)
+	_row(grid, "players", func(d): LobbyNet.change_player_count(d))
+	_row(grid, "preset", func(d): LobbyNet.change_preset(d))
+	for key in ["vampires_count", "werewolves_count", "humans_count"]:
+		_row(grid, key, func(d): LobbyNet.change_setting(key, d))
+
+
+func _ready() -> void:
+	SignalBus.lobby_settings_changed.connect(func(_settings): refresh())
+	Global.language_changed.connect(func(_l = null): refresh())
+	refresh()
+
+
+func _row(grid: GridContainer, key: String, change: Callable) -> void:
+	var name_label := Label.new()
+	name_label.add_theme_font_size_override("font_size", 24)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if key in ["vampires_count", "werewolves_count", "humans_count"]:
+		name_label.add_theme_color_override("font_color", Color(LobbyStyle.SIDE_COLOURS[key]))
+	grid.add_child(name_label)
+	_names[key] = name_label
+	var dec := LobbyStyle.small_button("<")
+	dec.pressed.connect(change.bind(-1))
+	grid.add_child(dec)
+	var value := Label.new()
+	value.custom_minimum_size = Vector2(76, 0)
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	value.add_theme_font_size_override("font_size", 26)
+	grid.add_child(value)
+	_values[key] = value
+	var inc := LobbyStyle.small_button(">")
+	inc.pressed.connect(change.bind(1))
+	grid.add_child(inc)
+	_buttons.append_array([dec, inc])
 
 
 ## The owner's buttons (Lobby shows/hides them).
 func owner_buttons() -> Array:
-	return [vamp_dec, vamp_inc, were_dec, were_inc, humans_dec, humans_inc,
-		players_dec, players_inc, preset_dec, preset_inc]
+	return _buttons
 
 
-func _refresh_labels(_lang = null) -> void:
+func refresh() -> void:
+	_title.text = Global.text("Game Settings")
+	_names.players.text = Global.text("Players:")
+	_names.preset.text = Global.text("Teams:")
+	_names.vampires_count.text = Global.text("Vampires: ").strip_edges()
+	_names.werewolves_count.text = Global.text("Werewolves: ").strip_edges()
+	_names.humans_count.text = Global.text("Humans:")
 	var settings: Dictionary = GameState.game_settings
-	for key in labels:
-		labels[key].text = str(settings.get(key, 0))
+	for key in ["vampires_count", "werewolves_count", "humans_count"]:
+		_values[key].text = str(settings.get(key, 0))
 	var total := LobbyNet.team_total(settings)
-	players_count.text = str(total)
+	_values.players.text = str(total)
 	var presets: Array = Global.game_settings_default.presets.get(total, [])
 	var index := LobbyNet.preset_index(settings)
-	preset_label.text = Global.text("lobby.preset_custom") if index == -1 \
+	_values.preset.text = Global.text("lobby.preset_custom") if index == -1 \
 		else "%d/%d" % [index + 1, presets.size()]
-
-
-func _on_vamp_dec_pressed() -> void:
-	LobbyNet.change_setting("vampires_count", -1)
-
-func _on_vamp_inc_pressed() -> void:
-	LobbyNet.change_setting("vampires_count", 1)
-
-func _on_were_dec_pressed() -> void:
-	LobbyNet.change_setting("werewolves_count", -1)
-
-func _on_were_inc_pressed() -> void:
-	LobbyNet.change_setting("werewolves_count", 1)
-
-func _on_humans_dec_pressed() -> void:
-	LobbyNet.change_setting("humans_count", -1)
-
-func _on_humans_inc_pressed() -> void:
-	LobbyNet.change_setting("humans_count", 1)
-
-func _on_players_dec_pressed() -> void:
-	LobbyNet.change_player_count(-1)
-
-func _on_players_inc_pressed() -> void:
-	LobbyNet.change_player_count(1)
-
-func _on_preset_dec_pressed() -> void:
-	LobbyNet.change_preset(-1)
-
-func _on_preset_inc_pressed() -> void:
-	LobbyNet.change_preset(1)

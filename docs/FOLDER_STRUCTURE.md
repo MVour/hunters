@@ -21,7 +21,7 @@ server/              owns: match rules, server only (match_server, card_flow, co
                      bot_weights = every tuning number)
 data/                card list, character list (EN + EL), shared board rules
 main/                entry scene (main.tscn), main menu, chat box + language button overlay
-lobby/               host/join screen, waiting room, avatar picker, role settings
+lobby/               host/join screen, waiting room (built in code; lobby_style.gd = its look), avatar picker, role settings
 match/               the match screen (play_scene) and its parts:
   board/             forest board, classic board, locations, pawns
   hud/               player HUD, player list (+rows), life track, game log, turn cards

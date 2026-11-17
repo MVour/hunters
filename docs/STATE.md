@@ -17,6 +17,9 @@ _Last updated: 2026-11-18_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
+2026-11-18: hit/heal/steal effects and an ending that lets the last blow play
+out (C025); the lobby laid out again, fits Greek (C026). All playtest
+feedback is done; next is a release and a new playtest.
 2026-11-18: **music and rain** (C024, D010), merged: music per screen with
 crossfades (fixed match-opening and game-over tracks), rain on the board
 that comes and goes with its sound, a Sound button. 17 CC0 tracks from
@@ -56,16 +59,16 @@ Before that: clearer match screen (C005), network/state refactor (C004).
     (C013). Only WSL has the user's GitHub key.
 - **Unreleased:** bots (C019), hits + gentle ending (C025), game log (C020), play again (C021), turn
   cards / narrator / Who's who / drawer (C022), turn steps (C023),
-  music and rain (C024). Release with
+  music and rain (C024), lobby redraw (C026). Release with
   `bash tools/release.sh`; then check Play again online.
 - **Music:** the user listens and adjusts the track lists (`MUSIC` /
   `MATCH_OPENING` in `autoload/audio.gd`). New tracks: re-encode with
   ffmpeg in WSL (`-c:a libvorbis -q:a 1`); licenses in
   assets/audio/CREDITS.md (all CC0 so far).
-- **Playtest feedback, agreed order:** groups 1-3 done (hits: C025), plus a turn-flow
-  clarity pass (C023) and a gentler ending (C025). Next: group 4,
-  lobby redraw (music done: C024; both
-  languages, incl. the hub's Greek tabs). Notes: undecided. All in IDEAS.md.
+- **Playtest feedback (2026-11-17): all done** — groups 1-4 (C021, C022,
+  C025 hits, C026 lobby), plus a turn-flow clarity pass (C023), a gentler
+  ending (C025), music (C024). Only "personal notes" is left, undecided.
+  Next: release, then a new playtest.
 - Another Claude session may be working in this repo at the same time:
   commit only your own files, by path. Run the bot test with
   `AUTOTEST_ARGS="--port=18190"` so two sessions' bots don't join each

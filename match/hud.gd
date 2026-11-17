@@ -28,3 +28,25 @@ func _on_toggle_info_button_pressed() -> void:
 	player_hud.show()
 	player_cards.hide()
 	player_help.hide()
+
+
+# --- Tab buttons: each as wide as its text (Greek ones are longer) ---------------
+
+@onready var _tabs: Array = [$ToggleHudButton, $ToggleInfoButton, $ToggleCardsButton, $ToggleHelpButton]
+
+
+func _ready() -> void:
+	Global.language_changed.connect(func(_l = null): _layout_tabs.call_deferred())
+	animation_player.animation_finished.connect(func(_a): _layout_tabs())
+	$ToggleHudButton.toggled.connect(func(_on): _layout_tabs.call_deferred())
+	_layout_tabs.call_deferred()
+
+
+func _layout_tabs() -> void:
+	var x: float = _tabs[0].position.x
+	for tab: Button in _tabs:
+		var y: float = tab.position.y
+		tab.set_anchors_preset(Control.PRESET_TOP_LEFT, true)
+		tab.size = Vector2(maxf(96.0, tab.get_combined_minimum_size().x + 18.0), tab.size.y)
+		tab.position = Vector2(x, y)
+		x += tab.size.x + 6.0
