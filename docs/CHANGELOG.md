@@ -7,6 +7,17 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C016 — Browser game fixes: clean join screen, current art, no dead page (2026-11-17)
+- **What:** fixes BUG-007:
+  - joining by link hides the Host/Join buttons;
+  - `Global.classic_art` defaults to off (a saved choice still wins);
+  - on the web, Esc and the menu's Exit go back to the lobby page instead
+    of quitting.
+- **Why:** these were the first things the user saw in the browser build
+  (v0.1.0).
+- **Rejected:** hiding the Classic toggle on the web. The user's own art
+  history stays one click away everywhere.
+
 ### C015 — The Windows game can be downloaded from the lobby page (2026-11-17)
 - **What:** the Docker build exports "Windows Desktop": one .exe with the
   game packed inside. It zips it into the web image at

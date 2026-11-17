@@ -47,6 +47,9 @@ func _on_connect_lobby_button_pressed() -> void:
 		push_warning(Network.get_last_error())
 		return
 	GameState.reset_session(multiplayer.get_unique_id())
+	# Also hidden here (not only by "Join"): the browser build arrives with a
+	# room link and comes straight here, past the Host/Join buttons.
+	multiplayer_menu_container.hide()
 	connect_to_lobby.hide()
 	# A room link carries a private ticket: show only the room code.
 	if WsTransport.is_link(code):

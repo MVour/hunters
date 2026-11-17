@@ -7,6 +7,27 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-007 — Browser game: Host/Join buttons over the lobby; Classic art by default
+- **Logged:** 2026-11-17 (first browser session, v0.1.0)
+- **Area:** `lobby/multiplayer_controller.gd`, `autoload/global.gd`, `main/main.gd`
+- **What happens:**
+  1. When the game opens from the lobby page, the Host/Join buttons stay
+     on screen, mixed into the waiting room.
+  2. A new browser shows only the Classic (original) art.
+  3. Esc (or Exit) quits, which leaves a dead page in a browser.
+- **Cause (confirmed by reading):**
+  1. The page goes straight to "connect", but only the Join button hid the
+     Host/Join buttons.
+  2. `classic_art` defaulted to `true`. The user's PC had "off" saved in
+     settings.cfg, so they never saw it; a new browser has no saved setting.
+  3. `get_tree().quit()` on the web.
+- **Fix (C016):**
+  1. Connecting now hides the buttons itself.
+  2. `classic_art` defaults to `false`.
+  3. On the web, Esc and Exit leave the session and go back to the lobby page.
+- **Status:** fix implemented. check_project and a bot match pass. Can only
+  be verified in a real browser, after the next release.
+
 ### BUG-006 — Online rooms never started on the server ("didn't start in time")
 - **Logged:** 2026-11-17 (first deploy)
 - **Area:** exported room server (release build) ↔ `online/lobby-service/src/rooms.js`

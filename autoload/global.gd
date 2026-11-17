@@ -123,7 +123,8 @@ signal art_style_changed(classic: bool)
 
 const SETTINGS_PATH := "user://settings.cfg"
 
-var classic_art := true:
+## Off unless this computer saved "on" (new players, browsers: current art).
+var classic_art := false:
 	set(on):
 		if on == classic_art:
 			return

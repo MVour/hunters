@@ -125,9 +125,18 @@ func _on_host_disconnected():
 
 
 func _on_exit_game():
-	get_tree().quit()
+	_quit()
 
 func _input(event):
 	if event.is_action_pressed("esc"):
+		_quit()
+
+
+## In a browser, quitting would leave a dead page: go back to the lobby page.
+func _quit() -> void:
+	if OS.has_feature("web"):
+		Network.leave()
+		OnlineLaunch.back_to_lobby()
+	else:
 		get_tree().quit()
 
