@@ -270,3 +270,8 @@ func _update_arrow() -> void:
 		collapse_button.text = ">" if open else "<"
 	else:
 		collapse_button.text = "<" if open else ">"
+
+
+## A player's marker on the track (for hit / heal effects), or null.
+func marker_of(player_id: int) -> Control:
+	return _markers.get(player_id)

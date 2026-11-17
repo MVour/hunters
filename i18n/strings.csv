@@ -87,6 +87,7 @@ Use your ability whenever its card says. Reveal your character to make passive a
 "match.end_turn","End Turn","Τέλος γύρου"
 "match.no_equipment_yet","No equipment yet.","Κανένας εξοπλισμός ακόμα."
 "match.leave_table","Leave the table","Φύγε από το τραπέζι"
+"match.miss","miss","αστοχία"
 "match.nobody_in_reach","Nobody is within reach.","Κανείς δεν είναι κοντά."
 "match.nobody_s_side_survived","Nobody's side survived.","Καμία πλευρά δεν επέζησε."
 "match.play_again","Play again","Ξανά παιχνίδι"

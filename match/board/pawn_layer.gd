@@ -311,7 +311,7 @@ func play_attack(attacker: int, target: int, damage: int) -> void:
 		create_tween().tween_property(t, "modulate", Color.WHITE, 0.4)
 
 	var label := Label.new()
-	label.text = "-%d" % damage if damage > 0 else "miss"
+	label.text = "-%d" % damage if damage > 0 else Global.text("match.miss")
 	label.add_theme_font_size_override("font_size", 30)
 	label.add_theme_color_override("font_color", Color("ff5a4a") if damage > 0 else Color(0.85, 0.85, 0.85))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)

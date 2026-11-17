@@ -7,6 +7,27 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C025 — Hits you can't miss; the game ends after the last blow (2026-11-18)
+- **What:**
+  - `match/board/hit_fx.gd` (`HitFx`, from SignalBus events): damage puts
+    a red claw slash over the pawn and over its life-track marker (which
+    flashes); damage to YOU also splatters red drops around your screen's
+    edges, flashing then fading over ~3.5 s (more drops for more damage).
+    Healing: green "+" sparks rise from the pawn, the marker glows green.
+    A steal (`notice.takes_from`): a small card flies from the victim's
+    pawn to the taker's.
+  - **The end isn't sudden:** after the winning blow the board keeps
+    playing for `END_PAUSE` (3.2 s: lunge, damage, dice, death fall, log
+    line) with all buttons gone, then the result fades in (and the
+    game-over music starts).
+  - The "miss" over a pawn is translated (`match.miss`).
+  - Autotest: `--shot-hit=PATH`; it waits for the end screen to appear.
+- **Why:** playtest feedback (item 2) and "let the attacks finish, then end".
+- **Rejected:** full-screen red flash for every hit to anyone (too much
+  with 8 players: the splatter is only for your own damage).
+
+---
+
 ### C024 — Music, the rain that comes and goes, Sound button (2026-11-18)
 From the playtest wish list (group 3, "ambient music with on/off"), with
 tracks the user downloaded.

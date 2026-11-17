@@ -143,6 +143,15 @@ func _shot_once(flag: String, wanted: Callable) -> void:
 
 
 func _on_game_over(faction: String, _winners: Array) -> void:
+	# The result appears after the last blow has played out (END_PAUSE).
+	for i in 120:
+		if get_tree().root.find_child("PlayAgainButton", true, false):
+			break
+		await get_tree().create_timer(0.1).timeout
+	if get_tree().root.find_child("PlayAgainButton", true, false) == null:
+		_finish(false, "the end screen never appeared")
+		return
+	await get_tree().create_timer(1.0).timeout  # it fades in
 	await _shot_once("--shot-end=", func(_scene): return true)
 	_games_played += 1
 	if _games_played >= _arg("--games=", "1").to_int():
@@ -206,6 +215,11 @@ func _connect_signals() -> void:
 	SignalBus.card_drawn_secretly.connect(func(_id, _t): stats.cards += 1)
 	SignalBus.attack_happened.connect(func(_a, _t, _d): stats.attacks += 1)
 	SignalBus.player_died.connect(func(_id, _k): stats.deaths += 1)
+	# --shot-hit=PATH (not headless): a picture just after you take damage.
+	SignalBus.damage_changed.connect(func(id, dmg):
+		if id == GameState.local_id and dmg > 0:
+			await get_tree().create_timer(0.35).timeout
+			await _shot_once("--shot-hit=", func(_scene): return true))
 	SignalBus.game_over.connect(_on_game_over)
 	Network.host_disconnected.connect(func():
 		if role == "client":

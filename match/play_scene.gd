@@ -290,6 +290,11 @@ func _on_set_locations(_locations):
 	pawn_layer.setup(game_map, GameState.players)
 	pawn_layer.player_picked.connect(_on_player_picked)
 	damage_board.show_players(GameState.players)
+	# Slashes, splatter, heal sparks, flying stolen cards.
+	var fx := HitFx.new()
+	fx.name = "HitFx"
+	add_child(fx)
+	fx.setup(pawn_layer, damage_board)
 
 
 func _on_damage_changed(pl_id, dmg):
@@ -987,26 +992,39 @@ func _on_attack_happened(attacker: int, target: int, damage: int) -> void:
 	pawn_layer.play_attack(attacker, target, damage)
 
 
+## Seconds the board keeps playing after the winning blow (the attack's
+## lunge and damage, the dice landing, the death fall, the log line) before
+## the result fades in.
+const END_PAUSE := 3.2
+
 func _on_game_over(faction: String, winners: Array) -> void:
 	game_finished = true
-	Audio.set_screen("game_over")
+	# Nothing more to do: no buttons or questions, but let the last moment
+	# play out on the board before the result covers it.
 	_end_pick()
 	_clear_action_bar()
 	status_label.hide()
-	toast_box.hide()  # no announcement over the result
 	choice_panel.hide()
 	CardView._queue.clear()
+	for node in [roll_button, end_turn_button, attack_button, playing_label]:
+		node.hide()
+	await get_tree().create_timer(END_PAUSE).timeout
+	if not is_inside_tree():
+		return
+
+	Audio.set_screen("game_over")
+	toast_box.hide()  # no announcement over the result
 	for child in get_children():
 		if child is CardView:
 			child.close()
-	for node in [roll_button, end_turn_button, attack_button, playing_label]:
-		node.hide()
 
 	var overlay := ColorRect.new()
 	overlay.color = Color(0, 0, 0, 0.7)
 	overlay.size = Vector2(1920, 1080)
 	overlay.z_index = 30
+	overlay.modulate.a = 0.0
 	add_child(overlay)
+	create_tween().tween_property(overlay, "modulate:a", 1.0, 0.9)
 
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 14)

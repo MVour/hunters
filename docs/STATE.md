@@ -54,7 +54,7 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   - GitHub repo MVour/hunters;
   - deploys only for `v*` tags, made with `bash tools/release.sh` from WSL
     (C013). Only WSL has the user's GitHub key.
-- **Unreleased:** bots (C019), game log (C020), play again (C021), turn
+- **Unreleased:** bots (C019), hits + gentle ending (C025), game log (C020), play again (C021), turn
   cards / narrator / Who's who / drawer (C022), turn steps (C023),
   music and rain (C024). Release with
   `bash tools/release.sh`; then check Play again online.
@@ -62,9 +62,9 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   `MATCH_OPENING` in `autoload/audio.gd`). New tracks: re-encode with
   ffmpeg in WSL (`-c:a libvorbis -q:a 1`); licenses in
   assets/audio/CREDITS.md (all CC0 so far).
-- **Playtest feedback, agreed order:** groups 1-2 done, plus a turn-flow
-  clarity pass (C023). Group 3 next:
-  hit/steal effects on screen (music done: C024). Group 4: lobby redraw (both
+- **Playtest feedback, agreed order:** groups 1-3 done (hits: C025), plus a turn-flow
+  clarity pass (C023) and a gentler ending (C025). Next: group 4,
+  lobby redraw (music done: C024; both
   languages, incl. the hub's Greek tabs). Notes: undecided. All in IDEAS.md.
 - Another Claude session may be working in this repo at the same time:
   commit only your own files, by path. Run the bot test with
