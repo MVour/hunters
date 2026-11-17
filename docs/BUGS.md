@@ -18,7 +18,16 @@ that sit open for more than ~2 weeks.
   (hop/lunge/shake) when clicked, or two pawns' click areas overlap at a
   location. The failure report now prints the owner of the area under the mouse.
 - **Impact:** Low; at worst a player clicks twice.
-- **Status:** open (watching)
+- **2026-11-16 update:** One cause found and fixed: with a Greek client the
+  "pick a player" dialog wraps taller and covered a pawn at the bottom of the
+  board; the dialog is now click-through during picks (only its buttons
+  catch clicks). Still seen once in 9 `--ui` runs afterwards, now with the
+  right pawn's (pickable) area under the mouse when checked a frame later —
+  so something transient was on top at click time. Suspect: the bot clicks
+  one frame after the pick opens, while the attacker's pawn is still in its
+  (now longer, ~3 s) landing animation at the same spot (raised z_index).
+  A person would rarely click that fast.
+- **Status:** open (partly fixed, watching)
 
 ### BUG-004 — Godot crashes on exit after a network session (headless)
 - **Logged:** 2026-11-16

@@ -12,6 +12,25 @@ in MANIFEST.md → Non-negotiable constraints.
 
 ---
 
+### D007 — Online play: dedicated server per room behind a lobby/relay service (2026-11-17)
+- **Status:** active (not built yet)
+- **What:** The user's own server runs everything. A small lobby service
+  (Node.js) keeps the list of rooms: each has an id/code, an owner (the
+  player who created it: settings, start, kick) and is private (join by
+  code/link) or open (listed). For each room it starts one headless Godot
+  process as a dedicated server (`Network.server_is_player = false`; the
+  match code stays one-match-per-process) and forwards players' WebSocket
+  connections to it by room id. Clients use a WebSocket transport (works in
+  the browser and in desktop builds). Domain: an A record at GoDaddy,
+  nginx + Let's Encrypt for wss/https.
+- **Why:** User chose relay over direct P2P; with all traffic through the
+  server anyway, running the match there too means a leaving host doesn't
+  end the game and no player's machine holds the secrets.
+- **Rejected:** Host-authoritative P2P with the server only relaying (host
+  leaving ends the match; host machine holds secrets); direct WebRTC with
+  signaling (needs TURN fallback and a desktop add-on); many rooms in one
+  Godot process (LobbyNet/MatchNet are single-match autoloads, big refactor).
+
 ### D006 — Translations in one strings file; server sends keys (2026-11-16)
 - **Status:** active (supersedes D005; refines MANIFEST constraint 5)
 - **What:** Every UI text lives in `i18n/strings.csv` (`keys,en,el`), imported

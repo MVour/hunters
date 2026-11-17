@@ -16,6 +16,8 @@ signal set_locations
 signal turn_order_set
 ## The dice were thrown: (val6, val4)
 signal dice_rolled
+## The server waits for you to press Roll (attack, Old Map): (prompt Msg)
+signal roll_requested
 ## A player's pawn moved to a location: (player_id, location_id)
 signal pawn_moved
 ## You rolled a 7: pick one of these location ids. (options: Array)

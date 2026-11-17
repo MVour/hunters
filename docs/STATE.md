@@ -17,14 +17,17 @@ _Last updated: 2026-11-16_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
-2026-11-16: all text in `i18n/strings.csv`, server sends message keys — see C009.
+2026-11-16: you press the dice to throw them for attacks; showier pawn moves — see C010.
+Before that: all text in `i18n/strings.csv`, server sends message keys (C009).
 Before that: language switch, chat, card dialogs, tighter packs (C008).
 Before that: player list + click to pick (C006/C007).
 Before that: clearer match screen (C005), network/state refactor (C004).
 
 ## Next
 - **Deployment and a lobby/matchmaking service** (user's stated next goal).
-  The code is ready for it: transport is swappable, server logic has no UI.
+  Shape decided in D007: lobby/relay service + one dedicated headless Godot
+  server per room, WebSocket transport, private/open rooms with an owner.
+  Waiting on server details (OS, access) from the user.
 - BUG-001 (player drops mid-match) matters for online play; fix before or with deployment.
 
 ## Open bugs

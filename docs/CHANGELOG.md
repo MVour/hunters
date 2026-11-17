@@ -7,6 +7,28 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C010 — You throw the dice to attack; showier pawn moves (2026-11-16)
+- **What:** Attacks no longer roll by themselves: after picking a target
+  (and Frederick/Gregor's ability question), the server waits for the
+  attacker to press the dice (`MatchServer.ask_roll()`, `MatchNet.prompt_roll`,
+  `SignalBus.roll_requested`; prompt "Attacking X: roll the dice!"). Same for
+  Mel striking back and Old Map's second roll. Dice bob and glow whenever
+  they're yours to throw, jump and bounce when thrown, and the tumble slows
+  down as they settle (~0.9 s). Pawn moves: crouch, pop up big above
+  everything with the player's name over it, a high arc with a ground
+  shadow and fading afterimages in the pawn's colour, squash + dust ring on
+  landing, the location bounces. Pick-a-player dialog is click-through so it
+  can't hide pawns (BUG-005, part).
+- **Why:** User wants the game interactive (throwing your own attack dice)
+  and moves easier to follow.
+- **Rejected:** A "Roll" button inside the black dialog (the dice by the
+  campfire are the thing to click, same as moving); client-side dice values
+  (the server still decides every throw).
+- **Verified:** check_project 71 files + 163 keys clean; plain bot runs
+  (normal + leave after 6 turns) pass with attacks rolled by the bots;
+  `--ui` runs with a Greek client click the dice: 8 of 9 pass, the 9th is
+  BUG-005 (see there). Not yet looked at by a person in a window.
+
 ### C009 — Strings file for translations; server sends message keys (2026-11-16)
 - **What:** All UI text moved into `i18n/strings.csv` (160 keys, en + el),
   imported as Godot translations; `Global.text(key, {params})` replaces the

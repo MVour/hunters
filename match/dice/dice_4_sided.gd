@@ -31,7 +31,9 @@ func roll_animation():
 			frame_right = randi() % 4 + 1
 		self.animation = str(animated_frame)
 		dice_right.animation = str(frame_right)
-		await get_tree().process_frame
+		# Fast at first, then slowing down as the die settles.
+		var t: float = float(i) / roll_animation_frames
+		await get_tree().create_timer(lerpf(0.03, 0.12, t * t)).timeout
 		#await self.animation_finished
 	
 func set_sides(target):

@@ -99,6 +99,15 @@ func _connect_signals() -> void:
 		await _think()
 		MatchNet.choose_location(options[randi() % options.size()]))
 	SignalBus.location_action_offered.connect(_on_location_action)
+	# Attacks (and Old Map) wait for us to throw the dice. --ui: click the dice.
+	SignalBus.roll_requested.connect(func(_prompt):
+		await _think()
+		var dice := get_tree().root.find_child("DicesContainer", true, false)
+		if _ui_mode() and dice:
+			await get_tree().process_frame  # let the screen show the dice first
+			dice._on_roll_button_pressed()
+		else:
+			MatchNet.roll())
 	SignalBus.choice_requested.connect(func(_prompt, options, _skip):
 		stats.choices += 1
 		await _think()

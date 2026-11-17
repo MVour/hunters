@@ -158,6 +158,10 @@ func can_act(player_id: int) -> bool:
 # --- Rolling & moving -------------------------------------------------------------
 
 func roll(sender: int) -> void:
+	# Someone is waiting on this player's throw (an attack, Old Map's second roll).
+	if _awaiting.get(sender, {}).get("roll", false):
+		choice(sender, "roll")
+		return
 	if not is_current(sender) or turn.phase != TurnPhase.ROLL or busy():
 		return
 	var here: String = state.players[sender].location
@@ -173,7 +177,7 @@ func roll(sender: int) -> void:
 			{"value": "keep", "label": Msg.make("option.go_to", {"location": first})},
 			{"value": "reroll", "label": Msg.make("option.roll_again")}], false)
 		if again == "reroll":
-			await wait(1.0)  # let the first roll land
+			await ask_roll(sender, Msg.make("prompt.roll_move_again"))
 			var second := _roll_move(here)
 			if second.total == Global.ROLL_ANY_LOCATION:
 				total = second.total
@@ -329,10 +333,22 @@ func busy_end() -> void:
 ## prompt and option labels are Msg dicts (or names): each screen shows
 ## them in its own language.
 func ask(player_id: int, prompt: Dictionary, options: Array, allow_skip := true):
+	return await _await_answer(player_id, options.map(func(o): return o.value), allow_skip, false,
+		func(): MatchNet.present_choice.rpc_id(player_id, prompt, options, allow_skip))
+
+
+## Wait until a player presses Roll (the dice by the campfire): dice throws
+## are something players do, not something that happens to them.
+func ask_roll(player_id: int, prompt: Dictionary) -> void:
+	await _await_answer(player_id, ["roll"], false, true,
+		func(): MatchNet.prompt_roll.rpc_id(player_id, prompt))
+
+
+func _await_answer(player_id: int, values: Array, allow_skip: bool, is_roll: bool, send: Callable):
 	var ask_id := _next_ask_id
 	_next_ask_id += 1
-	_awaiting[player_id] = {"id": ask_id, "values": options.map(func(o): return o.value), "skip": allow_skip}
-	MatchNet.present_choice.rpc_id(player_id, prompt, options, allow_skip)
+	_awaiting[player_id] = {"id": ask_id, "values": values, "skip": allow_skip, "roll": is_roll}
+	send.call()
 	_broadcast_waiting()
 	# The answer may already be here (the host answers within the same call).
 	while not _answers.has(ask_id):

@@ -62,7 +62,9 @@ Like a Pinia store (D004):
 - `MatchServer` (`match_server.gd`): lifecycle, turns
   (roll → move → location action → optional attack → end turn), server-side
   dice, the choice system (`ask()` → `present_choice` → `choice()`; an early
-  answer is kept, never lost), `wait()`.
+  answer is kept, never lost), `ask_roll()` (same system: waits for that
+  player to press Roll — `prompt_roll` → their `MatchNet.roll()` — before
+  an attack throw or Old Map's second roll), `wait()`.
 - `CardFlow` (`card_flow.gd`): drawing, green questions, equipment, protection.
 - `Combat` (`combat.gd`): damage/heal/death, attacks, reveal, abilities, winning.
 - `CardEffects` (`card_effects.gd`): runs a card's effect steps (spec in docs/CARDS.md).

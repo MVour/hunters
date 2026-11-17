@@ -113,9 +113,11 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 			_mark_ability_used(attacker)
 			mode = "d" + die
 
+	var t: Dictionary = s.state.players[target]
+	await s.ask_roll(attacker, Msg.make("prompt.roll_attack", {"player": t.name}))
 	var dice := s.throw_dice()
 	MatchNet.dice_rolled.rpc(dice.val6, dice.val4)
-	await s.wait(0.8)
+	await s.wait(1.2)  # let the dice land
 
 	var dmg := absi(dice.val6 - dice.val4)
 	match mode:
@@ -133,7 +135,6 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 		if tm.has("max_attack_damage"):
 			dmg = mini(dmg, tm.max_attack_damage)
 
-	var t: Dictionary = s.state.players[target]
 	s.notice(Msg.make("notice.attack", {"attacker": a.name, "target": t.name, "d6": dice.val6,
 		"d4": dice.val4, "dmg": dmg}))
 	MatchNet.attack_fx.rpc(attacker, target, dmg)

@@ -91,8 +91,9 @@ Data with English + Greek texts: `data/characters.gd`.
 
 1. **Roll** — move to a new location (or choose, on a 7).
 2. **Location action** — draw, Magic Forest, Stone Circle, or skip.
-3. **Attack** (optional, once) — pick a player within reach. Equipment
-   modifies the damage: +damage, d6 only, −1, at most 3, or hitting back.
+3. **Attack** (optional, once) — pick a player within reach, then press
+   the dice to throw them (so does a striking-back Mel, and Old Map's second
+   roll). Equipment modifies the damage: +damage, d6 only, −1, at most 3, or hitting back.
 4. **End turn.**
 
 ## End of the game

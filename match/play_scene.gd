@@ -34,6 +34,8 @@ var moved_this_turn := false
 var question_to_give := false
 ## The server is waiting for you to pick in the choice panel.
 var server_choice_open := false
+## The server is waiting for you to throw the dice (attack, Old Map).
+var roll_pending := false
 ## You gave your green card to this player; they still have to answer (0 = none).
 var question_waiting_on := 0
 ## This player gave you a green card you haven't answered yet (0 = none).
@@ -63,6 +65,8 @@ func _ready():
 	SignalBus.end_turn.connect(_on_end_turn)
 	SignalBus.pawn_moved.connect(_on_pawn_moved)
 	SignalBus.choose_location.connect(_on_choose_location)
+	SignalBus.roll_requested.connect(_on_roll_requested)
+	SignalBus.dice_rolled.connect(_on_dice_rolled)
 	SignalBus.damage_changed.connect(_on_damage_changed)
 	game_map.location_chosen.connect(_on_location_chosen)
 
@@ -288,6 +292,24 @@ func _on_pawn_moved(pl_id, _location_id):
 		moved_this_turn = true
 
 
+## The server wants you to throw the dice (an attack, Old Map's second roll):
+## the dice light up and the Roll button comes back.
+func _on_roll_requested(prompt: Dictionary) -> void:
+	roll_pending = true
+	roll_button.show()
+	prompt_label.text = Global.msg(prompt)
+	prompt_label.show()
+	_queue_refresh()
+
+
+func _on_dice_rolled(_val6: int, _val4: int) -> void:
+	if roll_pending:
+		roll_pending = false
+		roll_button.hide()
+		prompt_label.hide()
+		_queue_refresh()
+
+
 ## Rolled a 7: light up every other location and wait for a click.
 func _on_choose_location(options: Array) -> void:
 	choice_options = options
@@ -324,7 +346,7 @@ func _refresh_buttons() -> void:
 	var me: Dictionary = GameState.local_player
 	var my_turn: bool = me.get("playing", false) and not game_finished and not me.get("dead", false)
 	var others_deciding: Array = GameState.game_info.get("waiting_for", [])
-	var waiting: bool = server_choice_open or question_to_give or question_waiting_on != 0 \
+	var waiting: bool = server_choice_open or roll_pending or question_to_give or question_waiting_on != 0 \
 		or not choice_options.is_empty() or not others_deciding.is_empty()
 	var wait_reason := _status_text(my_turn)
 
@@ -362,6 +384,8 @@ func _status_text(my_turn: bool) -> String:
 	if question_from != 0:
 		return Global.text("status.answer_green_card") \
 			% _player_name(question_from)
+	if roll_pending:
+		return Global.text("status.roll_dice")
 	if not pick_ids.is_empty():
 		return Global.text("status.pick_player")
 	if server_choice_open:
@@ -636,7 +660,19 @@ func _start_pick(prompt: String, ids: Array, allow_skip: bool, on_pick: Callable
 	_open_choice("%s\n%s" % [prompt, hint], [], allow_skip, func(value):
 		_end_pick()
 		on_pick.call(value))
+	# Long (Greek) prompts make it taller: let clicks through to pawns under it (BUG-005).
+	_set_choice_click_through(true)
 	_queue_refresh()
+
+
+## Only the dialog's buttons catch clicks; the rest lets them reach the board.
+func _set_choice_click_through(on: bool) -> void:
+	var nodes: Array = choice_panel.find_children("*", "Container", true, false)
+	nodes.append(choice_panel)
+	for node: Control in nodes:
+		if not node.has_meta("mouse_filter"):
+			node.set_meta("mouse_filter", node.mouse_filter)
+		node.mouse_filter = Control.MOUSE_FILTER_IGNORE if on else node.get_meta("mouse_filter")
 
 
 ## Open card popups move aside so the list and the board can be clicked.
@@ -668,6 +704,7 @@ func _end_pick() -> void:
 ## this is about, shown on the left so you can read it while choosing.
 func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Callable, context := {}) -> void:
 	_offer_open = false
+	_set_choice_click_through(false)
 	for child in choice_buttons.get_children():
 		child.queue_free()
 	for child in choice_card_slot.get_children():

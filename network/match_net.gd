@@ -197,6 +197,11 @@ func offer_location_action(action: String) -> void:
 func present_choice(prompt: Dictionary, options: Array, allow_skip: bool) -> void:
 	SignalBus.choice_requested.emit(prompt, options, allow_skip)
 
+## Only to the player who has to throw the dice (attack, Old Map's second roll).
+@rpc("authority", "call_local", "reliable")
+func prompt_roll(prompt: Dictionary) -> void:
+	SignalBus.roll_requested.emit(prompt)
+
 ## Public: which players the server is waiting on for a choice (not what).
 @rpc("authority", "call_local", "reliable")
 func waiting_for(player_ids: Array) -> void:
