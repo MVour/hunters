@@ -1,12 +1,12 @@
 class_name PlayerList extends PanelContainer
 ## Every player down the right edge, in play order (numbered), the current
-## player highlighted. Each row opens a drawer with what's known about them.
+## player highlighted. A row click shows their character card (card_wanted).
 ## While the server asks you to pick a player (attack, card target…), the
 ## players you can pick light up here and can be clicked (see set_pickable).
 ## Pure view: reads GameState, refreshes on SignalBus events.
 
 signal player_picked(player_id: int)
-## A row's "Character card" button.
+## A row was clicked: show their character card.
 signal card_wanted(player_id: int)
 
 const WIDTH := 290.0
@@ -67,7 +67,6 @@ func build(order: Array) -> void:
 	for i in order.size():
 		var row := PlayerRow.new(order[i], i + 1)
 		row.picked.connect(func(id): player_picked.emit(id))
-		row.drawer_opened.connect(_close_other_drawers)
 		row.card_wanted.connect(func(id): card_wanted.emit(id))
 		_column.add_child(row)
 		_rows[order[i]] = row
@@ -96,9 +95,3 @@ func _fit_height() -> void:
 	_scroll.custom_minimum_size = Vector2(WIDTH - 12, minf(_column.size.y, MAX_HEIGHT))
 	reset_size()
 
-
-## One drawer open at a time: they float side by side and would cover each other.
-func _close_other_drawers(open_id: int) -> void:
-	for id in _rows:
-		if id != open_id:
-			_rows[id].close_drawer()

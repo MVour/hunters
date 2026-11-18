@@ -7,6 +7,90 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C037 — Player list opens character cards (no drawer), equipment as micro cards, dialogs never show the last one's buttons (2026-11-18)
+User's notes after C033.
+- **What:**
+  - Player list rows: the arrow on the left, the play-order number on the
+    right (they were the other way round). The details drawer is gone: a
+    click on a row (or its arrow) opens that player's character card, for
+    anyone: yours, public, shown to you, or unknown (their hooded pawn,
+    "character unknown", the damage they've taken).
+  - Equipment on the character card: under it, their equipment as micro
+    cards (`EquipmentStrip`: click one to see it big) with what each does
+    underneath, one line per card with keywords marked. Peeks and reveals
+    show it too.
+  - The hub's Equipment tab: the same micro cards + effects (were plain
+    text cards), scrolling down when there are many.
+  - `CardView.mini_card()`: the micro card (art + name plate, name at most
+    two lines of whole words), shared with this turn's cards.
+  - Fix BUG-017: a dialog showed the previous dialog's buttons for a frame
+    (e.g. Skip or "Use it" beside the decks) and sized itself with them.
+  - Status line at a location: "draw a card, or pick what to do there"
+    (was "or do nothing").
+  - Autotest: `--shot-row` (was `--shot-drawer`): someone else's card from
+    their row.
+- **Checked:** check_project; normal, --ui and Greek --ui runs; windowed
+  screenshots of an unknown player's card with equipment (Greek). A
+  windowed --ui run stalled once on a click (the real mouse over the
+  window can swallow a pushed click); passed on rerun, headless runs pass.
+- **Rejected:** keeping the drawer beside the card (two places for the same
+  facts); equipment inside the hub's You tab (no room: it keeps its tab).
+
+---
+
+### C036 — Revealed figures and gravestones on the map and life track (2026-11-18)
+- **What:** a player's hooded pawn becomes their species' figure when
+  their character is revealed (flash, swap, pop), and their gravestone
+  after the death fall; the life track's marker and the player list's
+  rows follow (user asked for the list too). From the IDEAS
+  entry "Revealed figures" (now removed).
+  - Figures drawn after the new portraits (C035), 64x64 like the pawns,
+    same base and colour ramp, written by `tools/make_figures.gd` into
+    `assets/pawns/figures/<kind>_<colour>.png`: **vampire** (spiky hair,
+    silver streak, violet suit, spiked-collar cape in the player colour),
+    **werewolf** (grey-violet fur, chest ruff; sash and loincloth in the
+    player colour), **human** (hood pulled down round the neck, cloak in the
+    player colour, lantern), **grave** (gothic stone, the whole cross in the
+    player colour).
+  - `Global.player_sprite(player)` picks pawn / figure / gravestone; the
+    board (`PawnLayer`) and the life track use it. Classic art keeps the old
+    pawns (and the grey fallen pawn).
+- **Why:** the user's idea from the playtest; art made to match the portraits.
+- **Rejected:** a ghost as the dead pawn (user chose the gravestone); the
+  human with the hood up (too close to the hidden pawn) or a hunter's hat
+  (didn't match the portrait); a first, softer set of figures (user wanted
+  them edgier) and an edgier set not based on the portraits.
+
+---
+
+### C035 — New character portraits: 6-frame loops, one detail level (2026-11-18)
+- **What:** all three portraits redone as 6-frame loops (2x3 sheets,
+  5 fps), written by `tools/make_portraits.gd` from the user's own art:
+  - **Vampire** (76 px frames): the classic vampire's pixels (legacy
+    remaster) recoloured toward the modern painting (pale lavender skin,
+    crimson, violet), doubled with scale2x, thin outer outline, moonlight
+    and shadow; a blood-moon night with castle towers, clouds, stars, red
+    mist. Loop: blood gathers at each hand, falls, splashes; a trickle at
+    the mouth; eyes flare; bats; lit windows.
+  - **Human** (76 px): the first human portrait, same pass with lantern
+    light, in a dark forest (twisted trees, clawing branches, eyes in the
+    dark, thorns), standing on ground with a shadow. Loop: the original
+    flame and blink, the lantern glow pulses, fireflies.
+  - **Werewolf** (57x65): the modern painting as it was, plus clouds over
+    the moon, an eye pulse and rain.
+  - The card plays every portrait as a sheet (`PORTRAIT_FRAME`), and pixel
+    art up to 80 px wide keeps whole-number scaling (76 px shows at 2x).
+  - Old portraits archived in `assets/legacy/portraits/` (`vampire_modern`,
+    `werewolf_modern`, `human_v1`); the tool reads them from there.
+- **Why:** the user didn't like the modern vampire, preferred the classic
+  look, and wanted the three at one level of detail, animated.
+- **Rejected:** a low-detail set (all at 38 px, with the painted werewolf
+  shrunk or redrawn as a chibi; shrunk it was unreadable, the chibi too
+  goofy); a howl effect on the werewolf (user: hated it, rain instead); a
+  head turn and a moving lantern light on the human (user didn't like them).
+
+---
+
 ### C034 — Next track button (2026-11-18)
 - **What:** the Sound popup has **Next track** beside the music volume
   (greyed while music is off): `Audio.skip_track()` crossfades into the

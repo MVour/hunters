@@ -142,10 +142,13 @@ frees the play scene and returns to the menu.
 
 Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
 (`ForestBoard` or, with Classic art, `ClassicBoard`), `Locations` (`GameMap`),
-`PawnLayer` (+ `FocusMarks`, `AttackFx`, `HitFx`, `DeathFx`), `PlayerList` (right edge,
-play order, drawers; a drawer's "Character card" button), `PlayerHub` (bottom: You /
-Equipment / This turn, built in code; You is a `CharacterCard`), `CharacterCard.popup`
-(someone's character: peeks with OK, public reveals click-through and fading),
+`PawnLayer` (+ `FocusMarks`, `AttackFx`, `HitFx`, `DeathFx`; a pawn's image, like the life
+track marker's and the player list row's, is `Global.player_sprite`: hooded pawn, revealed figure, gravestone), `PlayerList` (right edge,
+play order; a row click opens that player's `CharacterCard.popup`), `PlayerHub` (bottom: You /
+Equipment / This turn, built in code; You is a `CharacterCard`, Equipment an
+`EquipmentStrip`), `CharacterCard.popup` (anyone's card: known, or their pawn
+and damage if not; their equipment as an `EquipmentStrip` of micro cards +
+effects; peeks with OK, public reveals click-through and fading),
 `DamageBoard` (life track, left edge; its "Who's who" key floats beside it),
 `DecksContainer`, `DicesContainer`,
 `CardView` popups. The play scene keeps its children in `z_index` order

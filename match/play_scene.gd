@@ -104,11 +104,16 @@ func _ready():
 	player_list.z_index = 4
 	add_child(player_list)
 	player_list.player_picked.connect(_on_player_picked)
+	# A row: their card, whatever you know (yours, public, shown to you, or
+	# nothing: then their pawn and damage); always their equipment.
 	player_list.card_wanted.connect(func(id):
 		var p: Dictionary = GameState.players.get(id, {})
-		var character: Dictionary = p.get("character", {}) if not p.get("hidden", true) else p.get("seen", {})
-		if not character.is_empty():
-			show_character_card(id, _player_name(id), character))
+		var known: bool = id == GameState.local_id or not p.get("hidden", true)
+		var character: Dictionary = p.get("character", {}) if known else p.get("seen", {})
+		var heading := _player_name(id)
+		if p.get("dead", false):
+			heading += "  ·  " + Global.text("players.out")
+		show_character_card(id, heading, character))
 	damage_board.position = Vector2(8, 120)
 	# The decks: a small row of packs on the left, under the life track.
 	decks_container.position = Vector2(8, 560)
@@ -1014,7 +1019,11 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 	# One line when compact (a wrapping label with no width would be one letter wide).
 	choice_title.autowrap_mode = TextServer.AUTOWRAP_OFF if compact else TextServer.AUTOWRAP_WORD_SMART
 	choice_buttons.custom_minimum_size = Vector2(0 if compact else 420, 0)
+	# Out of the dialog now, not at the end of the frame: until then they'd
+	# still show and count in the dialog's size (the last dialog's Skip or
+	# "Use it" seen beside the decks).
 	for child in choice_buttons.get_children():
+		choice_buttons.remove_child(child)
 		child.queue_free()
 	_release_held_card()
 	choice_title.text = prompt
@@ -1130,8 +1139,9 @@ func _on_character_revealed(pl_id: int, character: Dictionary) -> void:
 func show_character_card(pl_id: int, heading: String, character: Dictionary, auto_close := 0.0) -> void:
 	if is_instance_valid(_character_popup):
 		_character_popup.queue_free()
-	var dmg := int(GameState.players.get(pl_id, {}).get("dmg", 0))
-	_character_popup = CharacterCard.popup(self, heading, character, dmg, auto_close)
+	var p: Dictionary = GameState.players.get(pl_id, {})
+	_character_popup = CharacterCard.popup(self, heading, character, int(p.get("dmg", 0)), auto_close,
+		p.get("equipment", []), p)
 
 
 func _on_equipment_changed(pl_id: int) -> void:

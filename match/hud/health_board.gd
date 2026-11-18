@@ -29,6 +29,7 @@ func _ready() -> void:
 	SignalBus.player_died.connect(_on_player_died)
 	SignalBus.player_died.connect(_refresh_key.unbind(2))
 	SignalBus.character_revealed.connect(_refresh_key.unbind(2))
+	SignalBus.character_revealed.connect(func(id: int, _c): _refresh_marker(id))
 	Global.language_changed.connect(func(_l = null):
 		_build()
 		show_players(GameState.players)
@@ -209,8 +210,7 @@ func _marker_for(player_id: int) -> TextureRect:
 	marker.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	marker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	marker.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	if Global.pawns.has(player.get("pawn", "")):
-		marker.texture = Global.pawns[player.pawn].sprite
+	marker.texture = Global.player_sprite(player)
 	marker.tooltip_text = player.get("name", "?")
 	_markers[player_id] = marker
 	return marker
@@ -239,8 +239,15 @@ func _on_damage_changed(player_id: int, damage: int) -> void:
 
 
 func _on_player_died(player_id: int, _killer_id: int) -> void:
+	_refresh_marker(player_id)
+	if _markers.has(player_id) and Global.classic_art:
+		_markers[player_id].modulate = Color(0.45, 0.45, 0.45, 0.8)  # no gravestone: grey it
+
+
+## The marker follows the board: pawn, revealed figure, gravestone.
+func _refresh_marker(player_id: int) -> void:
 	if _markers.has(player_id):
-		_markers[player_id].modulate = Color(0.45, 0.45, 0.45, 0.8)
+		_markers[player_id].texture = Global.player_sprite(GameState.players.get(player_id, {}))
 
 
 func _on_button_pressed() -> void:

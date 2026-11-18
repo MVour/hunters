@@ -76,48 +76,7 @@ func _rebuild() -> void:
 ## dark strip at the bottom. Click: see it big.
 func _mini(entry: Dictionary) -> Button:
 	var card: Dictionary = entry.card
-	var accent := Color(Global.CARD_COLORS.get(card.get("deck", ""), {}).get("color", "c8a85a"))
-	var button := Button.new()
-	button.custom_minimum_size = CARD_SIZE
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.tooltip_text = Global.field(card, "name")
-	for state in ["normal", "hover", "pressed"]:
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.05, 0.05, 0.08, 0.95).lightened(0.1 if state == "hover" else 0.0)
-		style.border_color = accent.lightened(0.3) if state == "hover" else accent
-		style.set_border_width_all(2)
-		style.set_corner_radius_all(6)
-		button.add_theme_stylebox_override(state, style)
-
-	var art := TextureRect.new()
-	art.texture = Global.card_back(card.get("deck", "red_cards"))
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # before the size: else it can't shrink
-	art.position = Vector2(2, 2)
-	art.size = CARD_SIZE - Vector2(4, 4)
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(art)
-	var plate := PanelContainer.new()
-	var plate_style := StyleBoxFlat.new()
-	plate_style.bg_color = Color(0.03, 0.03, 0.05, 0.85)
-	plate_style.set_content_margin_all(3)
-	plate.add_theme_stylebox_override("panel", plate_style)
-	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	plate.position = Vector2(2, 0)
-	plate.custom_minimum_size = Vector2(CARD_SIZE.x - 4, 0)
-	button.add_child(plate)
-	# Keep it at the bottom whatever height its name needs.
-	plate.resized.connect(func(): plate.position.y = CARD_SIZE.y - 2 - plate.size.y)
-	var title := Label.new()
-	title.text = Global.field(card, "name")
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.custom_minimum_size = Vector2(CARD_SIZE.x - 10, 0)
-	title.add_theme_font_size_override("font_size", 12)
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	plate.add_child(title)
-
+	var button := CardView.mini_card(card, CARD_SIZE)
 	button.pressed.connect(func():
 		var heading := Global.text(entry.key)
 		if "%s" in heading:

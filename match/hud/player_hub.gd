@@ -29,9 +29,8 @@ var _body: PanelContainer
 var _card: CharacterCard
 
 # Equipment
-var _equipment_row: HBoxContainer
-var _equipment_empty: Label
-var _equipment_count := 0
+var _equipment: EquipmentStrip
+var _equipment_cards := []
 
 # This turn
 var _turn_title: Label
@@ -200,29 +199,20 @@ func set_damage(dmg: int) -> void:
 
 # --- Equipment ---------------------------------------------------------------------
 
+## Micro cards (click: see one big), what each does underneath; scrolls
+## down when there's more than fits.
 func _build_equipment() -> Control:
 	var scroll := ScrollContainer.new()
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var column := VBoxContainer.new()
-	scroll.add_child(column)
-	_equipment_empty = _text(17)
-	# One line: in a sideways-scrolling box a wrapping label gets no width
-	# and puts one letter per line.
-	_equipment_empty.autowrap_mode = TextServer.AUTOWRAP_OFF
-	column.add_child(_equipment_empty)
-	_equipment_row = HBoxContainer.new()
-	_equipment_row.add_theme_constant_override("separation", 12)
-	column.add_child(_equipment_row)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_equipment = EquipmentStrip.new(Vector2(70, 108), 14)
+	_equipment.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_equipment)
 	return scroll
 
 
 func set_equipment(cards: Array) -> void:
-	for child in _equipment_row.get_children():
-		child.queue_free()
-	_equipment_count = cards.size()
-	_equipment_empty.visible = cards.is_empty()
-	for card in cards:
-		_equipment_row.add_child(CardView.card_face(card, 200.0, false))
+	_equipment_cards = cards.duplicate()
+	_equipment.set_cards(cards)
 	_tabs.equipment.text = Global.text("hub.tab_equipment") + ("  %d" % cards.size() if not cards.is_empty() else "")
 
 
@@ -306,9 +296,8 @@ func update_turn(step_names: Array, at: Array, turn_name: String, reach, ability
 func apply_language() -> void:
 	_tabs.you.text = Global.text("hub.tab_you")
 	_tabs.turn.text = Global.text("hub.tab_turn")
-	_tabs.equipment.text = Global.text("hub.tab_equipment") + ("  %d" % _equipment_count if _equipment_count > 0 else "")
+	set_equipment(_equipment_cards)  # the tab's title, and the cards' texts
 	_hide_button.text = "▴" if _hidden else "▾"
-	_equipment_empty.text = Global.text("match.no_equipment_yet")
 	_anytime_heading.text = Global.text("hub.anytime").to_upper()
 	ability_button.text = Global.text("match.use_ability")
 	reveal_button.text = Global.text("match.reveal")

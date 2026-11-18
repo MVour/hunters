@@ -292,16 +292,19 @@ func _on_begin_turn(player_id: int) -> void:
 	MatchNet.roll()
 
 
-## A little into turn 8 (its cards are out). --shot-drawer: one player's
-## drawer open; --shot-key: the life track's "Who's who" open;
+## A little into turn 8 (its cards are out). --shot-row: one player's
+## character card from their row; --shot-key: the life track's "Who's who" open;
 ## --shot-hub=TAB: that tab of the player hub open.
 func _match_shot(path: String) -> void:
 	await get_tree().create_timer(2.5).timeout
 	var scene := get_tree().root.find_child("PlayScene", true, false)
 	if scene == null:
 		return
-	if "--shot-drawer" in OS.get_cmdline_user_args():
-		scene.player_list._rows.values()[2].toggle_drawer()
+	if "--shot-row" in OS.get_cmdline_user_args():
+		for id in scene.player_list._rows:
+			if id != GameState.local_id:  # someone else: likely still hidden
+				scene.player_list._rows[id].card_wanted.emit(id)
+				break
 	if "--shot-key" in OS.get_cmdline_user_args():
 		scene.damage_board._key_button.pressed.emit()
 	var hub_tab := _arg("--shot-hub=", "")  # you / equipment / turn

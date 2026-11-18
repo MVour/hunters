@@ -201,6 +201,32 @@ func _apply_pawn_art() -> void:
 		colors_sprites[color] = sprite
 
 
+## Map figures (tools/make_figures.gd): <kind>_<colour>.png, kind = a species
+## or "grave".
+const FIGURES := "res://assets/pawns/figures/%s_%s.png"
+
+
+## What stands for a player on the board and the life track: their pawn
+## while their character is hidden, their species' figure once revealed, a
+## gravestone once dead. Classic art keeps the old pawns throughout.
+func player_sprite(player: Dictionary) -> Texture2D:
+	var color: String = player.get("pawn", "")
+	if not pawns.has(color):
+		return null
+	var pawn: Texture2D = pawns[color].sprite
+	if classic_art:
+		return pawn
+	var kind := ""
+	if player.get("dead", false):
+		kind = "grave"
+	elif not player.get("hidden", true):
+		kind = player.get("character", {}).get("species", "")
+	var path := FIGURES % [kind, color]
+	if kind == "" or not ResourceLoader.exists(path):
+		return pawn
+	return load(path)
+
+
 ## Tests switch this off so they never change the player's saved settings.
 var persist_settings := true
 

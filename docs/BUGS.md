@@ -7,6 +7,21 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-017 — A dialog briefly shows the previous dialog's buttons
+- **Logged:** 2026-11-18 (seen in screenshots: Skip and "Use it" beside
+  a location's decks)
+- **Area:** `match/play_scene.gd` `_open_choice`
+- **What happens:** when a dialog replaces another, the old buttons stay
+  for a frame or two next to the new ones, and the dialog sizes itself
+  with them (too wide).
+- **Root cause:** the old buttons were only `queue_free`d: they stay in the
+  container (shown, laid out) until the end of the frame.
+- **Fix (C037):** take them out of the container first, then free them.
+- **Status:** fixed (checked with a log of each dialog's buttons a frame
+  after it opens).
+
+---
+
 ### BUG-016 — Music crackles a bit on a phone
 - **Logged:** 2026-11-18 (user; "not serious now, just feedback")
 - **Area:** `project.godot` (audio), web build, `autoload/audio.gd`

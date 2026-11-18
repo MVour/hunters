@@ -26,7 +26,12 @@ cards for peeks / reveals / the player list, the bot level explained, and
 BUG-015 (dialogs over the hub weren't clickable) fixed. Then C032 (not
 released): keyword icons and colours in card / ability text. Then C033
 (not released): drawing is a must (D011), and drawn cards fly out of the
-deck and flip.
+deck and flip. Then C035 (not released): new animated portraits for all
+three species (classic vampire + modern colours, human in a dark forest,
+painted werewolf with rain), from `tools/make_portraits.gd`. Then C036
+(not released): revealed players' pawns become species figures, dead ones
+gravestones (board + life track), from `tools/make_figures.gd`. Not yet
+seen by the user in a running game.
 2026-11-18: released **v0.1.4** (everything below). The user's feedback on
 it, fixed in C027, not released and not yet seen in a browser: no web
 music (BUG-011: web playback set to Stream), a card you decide on stays
@@ -79,7 +84,8 @@ Before that: clearer match screen (C005), network/state refactor (C004).
 - **Unreleased:** C030 (focus, death scene, hub + cheat sheet, bot
   difficulty, small-card art fix), C031 (character cards, bot level line,
   BUG-015), C032 (keyword icons in card text), C033 (must draw, draw
-  animation), C034 (Next track button). Release with `bash tools/release.sh`; then check in a
+  animation), C034 (Next track button), C037 (player list → character
+  cards with equipment, micro-card equipment, BUG-017). Release with `bash tools/release.sh`; then check in a
   browser: cards look whole,
   "Install app" works on a phone; and Play again online (BUG-009).
 - **Music:** the user listens and adjusts the track lists (`MUSIC` /

@@ -251,6 +251,57 @@ func _place() -> void:
 	_layout.pivot_offset = s / 2.0
 
 
+## A micro card: the whole art in a deck-coloured frame, its name on a dark
+## strip at the bottom; a button (the caller decides what a click does,
+## usually showing it big). Used by this turn's cards and equipment strips.
+static func mini_card(card: Dictionary, card_size: Vector2) -> Button:
+	var accent := Color(Global.CARD_COLORS.get(card.get("deck", ""), {}).get("color", "c8a85a"))
+	var button := Button.new()
+	button.custom_minimum_size = card_size
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.tooltip_text = Global.field(card, "name")
+	for state in ["normal", "hover", "pressed"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.05, 0.05, 0.08, 0.95).lightened(0.1 if state == "hover" else 0.0)
+		style.border_color = accent.lightened(0.3) if state == "hover" else accent
+		style.set_border_width_all(2)
+		style.set_corner_radius_all(6)
+		button.add_theme_stylebox_override(state, style)
+
+	var art := TextureRect.new()
+	art.texture = Global.card_back(card.get("deck", "red_cards"))
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # before the size: else it can't shrink
+	art.position = Vector2(2, 2)
+	art.size = card_size - Vector2(4, 4)
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(art)
+	var plate := PanelContainer.new()
+	var plate_style := StyleBoxFlat.new()
+	plate_style.bg_color = Color(0.03, 0.03, 0.05, 0.85)
+	plate_style.set_content_margin_all(3)
+	plate.add_theme_stylebox_override("panel", plate_style)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.position = Vector2(2, 0)
+	plate.custom_minimum_size = Vector2(card_size.x - 4, 0)
+	button.add_child(plate)
+	# Keep it at the bottom whatever height its name needs.
+	plate.resized.connect(func(): plate.position.y = card_size.y - 2 - plate.size.y)
+	var title := Label.new()
+	title.text = Global.field(card, "name")
+	# Two lines at most, whole words (a long Greek name would otherwise break
+	# into letters and its plate grow over the art).
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD
+	title.max_lines_visible = 2  # (not clip_text: a wrapping label then measures 0 high)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.custom_minimum_size = Vector2(card_size.x - 10, 0)
+	title.add_theme_font_size_override("font_size", 12 if card_size.x >= 80 else 10)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(title)
+	return button
+
+
 ## A card face in the current language. With art: card-shaped (the whole
 ## deck art, uncropped), with the name, type and text on a dark plate over
 ## its lower part. Without: a plain frame in the deck colour with the text

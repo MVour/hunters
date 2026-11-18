@@ -45,9 +45,7 @@ func setup(map: GameMap, players: Dictionary) -> void:
 	ids.sort()
 	for id in ids:
 		var pawn := Sprite2D.new()
-		var color: String = players[id].pawn
-		if Global.pawns.has(color):
-			pawn.texture = Global.pawns[color].sprite
+		pawn.texture = Global.player_sprite(players[id])
 		pawn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		pawn.scale = Vector2.ONE * PAWN_SCALE
 		pawn.offset = FEET_OFFSET
@@ -62,6 +60,7 @@ func setup(map: GameMap, players: Dictionary) -> void:
 		_reflow(loc, false)
 	SignalBus.pawn_moved.connect(_on_pawn_moved)
 	SignalBus.player_died.connect(_on_player_died)
+	SignalBus.character_revealed.connect(_on_character_revealed)
 	SignalBus.begin_turn.connect(set_turn_player)
 	SignalBus.game_over.connect(func(_f, _w):
 		set_turn_player(0)
@@ -165,8 +164,26 @@ func _set_ring_alpha(alpha: float) -> void:
 		ring.modulate.a = alpha
 
 
-## A dead player's pawn flashes white, falls over and fades to grey (the
-## ghost and the announcement: DeathFx).
+## A revealed player's hooded pawn becomes their species' figure: a flash,
+## the swap at its brightest, a little pop.
+func _on_character_revealed(player_id: int, _character: Dictionary) -> void:
+	if not pawns.has(player_id) or _is_dead(player_id):
+		return
+	var pawn: Sprite2D = pawns[player_id]
+	var figure := Global.player_sprite(GameState.players[player_id])
+	if figure == null or figure == pawn.texture:
+		return
+	var base := Vector2.ONE * PAWN_SCALE
+	var tween := create_tween()
+	tween.tween_property(pawn, "modulate", Color(2.5, 2.5, 2.5), 0.15)
+	tween.tween_callback(func(): pawn.texture = figure)
+	tween.tween_property(pawn, "scale", base * 1.25, 0.12)
+	tween.tween_property(pawn, "modulate", Color.WHITE, 0.35)
+	tween.parallel().tween_property(pawn, "scale", base, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## A dead player's figure flashes white and falls over (the ghost and the
+## announcement: DeathFx), then fades into their gravestone.
 func _on_player_died(player_id: int, _killer_id: int) -> void:
 	if not pawns.has(player_id):
 		return
@@ -179,6 +196,16 @@ func _on_player_died(player_id: int, _killer_id: int) -> void:
 	tween.tween_property(pawn, "modulate", Color(3, 3, 3), 0.08)
 	tween.tween_property(pawn, "rotation_degrees", 90.0, 0.5).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(pawn, "modulate", Color(0.45, 0.45, 0.5, 0.85), 0.6)
+	var grave := Global.player_sprite(GameState.players.get(player_id, {}))
+	if grave == null or grave == pawn.texture:
+		return  # classic art: the fallen pawn stays
+	tween.tween_interval(1.2)
+	tween.tween_property(pawn, "modulate:a", 0.0, 0.4)
+	tween.tween_callback(func():
+		pawn.texture = grave
+		pawn.rotation_degrees = 0.0
+		pawn.modulate = Color(1, 1, 1, 0))
+	tween.tween_property(pawn, "modulate:a", 1.0, 0.6)
 
 
 ## Where the n-th pawn at a location stands.

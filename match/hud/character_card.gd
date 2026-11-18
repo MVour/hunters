@@ -120,6 +120,7 @@ func _heading() -> Label:
 
 
 func set_character(character: Dictionary, dmg: int) -> void:
+	_show_known(true)
 	var species: String = character.get("species", "")
 	var colour := Color(SPECIES_COLOURS.get(species, "c8a85a"))
 	_name_label.text = Global.field(character, "name")
@@ -143,6 +144,41 @@ func set_damage(dmg: int) -> void:
 		Color("ff7a6a") if _health > 0 and _health - dmg <= 3 else Color(0.9, 0.88, 0.84))
 
 
+## A player whose character you don't know: their hooded pawn, their name,
+## "unknown character", and only the damage they've taken (all public).
+func set_unknown(player: Dictionary) -> void:
+	_show_known(false)
+	_name_label.text = player.get("name", "?")
+	_species_label.text = Global.text("card.unknown")
+	_species_label.add_theme_color_override("font_color", Color(0.62, 0.62, 0.66))
+	var pawn_info: Dictionary = Global.pawns.get(player.get("pawn", ""), {})
+	_portrait_style.border_color = Color(pawn_info.get("hex", "c8a85a"))
+	_life_text.text = Global.text("card.damage_taken") % int(player.get("dmg", 0))
+	_life_text.add_theme_color_override("font_color", Color(0.9, 0.88, 0.84))
+	var sprite: Texture2D = pawn_info.get("sprite")
+	if sprite == null:
+		return
+	if _breath:
+		_breath.kill()
+	var frames := SpriteFrames.new()
+	frames.add_frame("default", sprite)
+	_portrait.sprite_frames = frames
+	_portrait.play("default")
+	var fit := minf(PORTRAIT_BOX.x / sprite.get_width(), PORTRAIT_BOX.y / sprite.get_height())
+	fit = maxf(1.0, floorf(fit * 0.8))  # whole pixels, a little room around it
+	_portrait.scale = Vector2(fit, fit)
+	_portrait.texture_filter = TEXTURE_FILTER_NEAREST
+	_portrait.position = PORTRAIT_BOX / 2.0
+
+
+## Goal, ability and the life bar only make sense for a known character.
+func _show_known(on: bool) -> void:
+	for node in [_goal_heading, _goal, _ability_heading, _ability, _life_bar]:
+		node.visible = on
+	_life_heading.text = Global.text("hub.life_heading").to_upper() if on \
+		else Global.text("card.damage_heading").to_upper()
+
+
 func apply_language() -> void:
 	_goal_heading.text = Global.text("hub.goal").to_upper()
 	_ability_heading.text = Global.text("hub.ability").to_upper()
@@ -164,9 +200,10 @@ func _show_portrait(species: String) -> void:
 	_portrait.play(species)
 	var frame_size := frames.get_frame_texture(species, 0).get_size()
 	var fit := minf(PORTRAIT_BOX.x / frame_size.x, PORTRAIT_BOX.y / frame_size.y)
-	var pixel_art := frame_size.x <= 64
+	var pixel_art := frame_size.x <= 80
 	if pixel_art:
-		fit = maxf(1.0, floorf(fit))  # whole-number scale keeps pixels square
+		# whole-number scale keeps pixels square (a pixel or two over the box is fine)
+		fit = maxf(1.0, floorf(fit + 0.05))
 	_portrait.scale = Vector2(fit, fit)
 	_portrait.texture_filter = TEXTURE_FILTER_NEAREST if pixel_art else TEXTURE_FILTER_LINEAR
 	# A slow breath: whole pixels up and down.
@@ -178,21 +215,25 @@ func _show_portrait(species: String) -> void:
 	_breath.tween_property(_portrait, "position:y", base_y, 1.6)
 
 
-## The current portraits: human (6 frames, 38 px), vampire, werewolf.
+## The current portraits: 6-frame loops in a 2x3 sheet (tools/make_portraits.gd).
+const PORTRAIT_FRAME := {
+	"human": Vector2(76, 76), "vampire": Vector2(76, 76), "werewolf": Vector2(57, 65),
+}
+
+
 static func _portrait_frames() -> SpriteFrames:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
-	var human: Texture2D = load("res://assets/portraits/human.png")
-	frames.add_animation("human")
-	frames.set_animation_speed("human", 5.0)
-	for i in 6:
-		var atlas := AtlasTexture.new()
-		atlas.atlas = human
-		atlas.region = Rect2((i % 2) * 38, (i / 2) * 38, 38, 38)
-		frames.add_frame("human", atlas)
-	for species in ["vampire", "werewolf"]:
+	for species in PORTRAIT_FRAME:
+		var sheet: Texture2D = load("res://assets/portraits/%s.png" % species)
+		var size: Vector2 = PORTRAIT_FRAME[species]
 		frames.add_animation(species)
-		frames.add_frame(species, load("res://assets/portraits/%s.png" % species))
+		frames.set_animation_speed(species, 5.0)
+		for i in 6:
+			var atlas := AtlasTexture.new()
+			atlas.atlas = sheet
+			atlas.region = Rect2(Vector2(i % 2, i / 2) * size, size)
+			frames.add_frame(species, atlas)
 	return frames
 
 
@@ -200,9 +241,12 @@ static func _portrait_frames() -> SpriteFrames:
 ## character"), closed by OK or a click on it. `auto_close` > 0 (public
 ## reveals): no OK, clicks go through it to the board, and it fades by
 ## itself after that many seconds. Nobody has to wait or dismiss it.
+## `character` empty: you don't know it; `player` is shown instead (pawn,
+## name, damage). `equipment`: shown under the card as micro cards with
+## what each does (equipment is public).
 ## Returns the popup (a PanelContainer added to `parent`).
 static func popup(parent: Node, heading: String, character: Dictionary, dmg: int,
-		auto_close := 0.0) -> PanelContainer:
+		auto_close := 0.0, equipment = null, player := {}) -> PanelContainer:
 	var panel := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = BG
@@ -228,7 +272,17 @@ static func popup(parent: Node, heading: String, character: Dictionary, dmg: int
 	column.add_child(title)
 	var card := CharacterCard.new()
 	column.add_child(card)
-	card.set_character(character, dmg)
+	if character.is_empty():
+		card.set_unknown(player)
+	else:
+		card.set_character(character, dmg)
+	if equipment is Array:
+		var heading_label := card._heading()
+		heading_label.text = "%s (%d)" % [Global.text("hub.tab_equipment").to_upper(), equipment.size()]
+		column.add_child(heading_label)
+		var strip := EquipmentStrip.new(Vector2(64, 98), 14)
+		column.add_child(strip)
+		strip.set_cards(equipment)
 	var ok := Button.new()
 	ok.text = Global.text("option.ok")
 	ok.custom_minimum_size = Vector2(140, 42)
