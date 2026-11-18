@@ -52,7 +52,7 @@ func _init(server_state: ServerState) -> void:
 	combat = Combat.new(self)
 	for id in state.players:
 		if LobbyNet.is_bot(state.players[id]):
-			bots[id] = BotSeat.new(self, id)
+			bots[id] = BotSeat.new(self, id, int(state.settings.get("bot_level", BotWeights.DEFAULT_LEVEL)))
 			_loaded[id] = true  # no screen to wait for
 
 
@@ -144,7 +144,7 @@ func end_turn(sender: int) -> void:
 	# You have to move first, and an asked question has to be answered.
 	if not is_current(sender) or turn.phase != TurnPhase.ACTION:
 		return
-	if not turn.pending_question.is_empty() or busy():
+	if not turn.pending_question.is_empty() or busy() or must_draw():
 		return
 	_finish_turn(sender)
 	_start_turn()
@@ -316,9 +316,17 @@ func _location_action_of(player_id: int) -> String:
 	return state.locations[index].action if index != -1 else ""
 
 
+## Skipping the location: only where it isn't a draw (a draw is a must,
+## C033; Magic Forest and Stone Circle stay optional).
 func skip_action(sender: int) -> void:
-	if is_current(sender) and turn.phase == TurnPhase.ACTION:
+	if is_current(sender) and turn.phase == TurnPhase.ACTION and not must_draw():
 		_location_done()
+
+
+## The turn player still has to draw here before anything else.
+func must_draw() -> bool:
+	return turn.step == "location" and not turn.action_used \
+		and not Global.DRAW_ACTIONS.get(_location_action_of(turn.player), []).is_empty()
 
 
 ## The location step is over (used or skipped): next, attack or end the turn.

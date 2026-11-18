@@ -3,7 +3,10 @@ class_name PawnLayer extends Node2D
 ## fly (a showy arc, see _travel) to the standing spots in front of their location.
 ## Pure visuals: where everyone is lives in GameState (set by the server).
 ## While you pick a player (attack, card target…), pickable pawns get a
-## pulsing ring and can be clicked (set_pickable).
+## pulsing ring and an orange arrow and can be clicked (set_pickable).
+## Focus (FocusMarks): the turn player stands in a golden spotlight under a
+## gold arrow (set_turn_player); on your attack step, whoever you can hit
+## has a red ring (set_in_reach), which flares while you hover Attack.
 
 signal player_picked(player_id: int)
 
@@ -24,6 +27,11 @@ var occupants := {}   # location id -> [player ids], in standing order
 var _pick_areas := {}  # player id -> Control over the pawn (clickable while picking)
 var _rings := {}       # player id -> PickRing
 var _ring_pulse: Tween
+var _spots := {}       # player id -> FocusMarks.Spotlight
+var _chevrons := {}    # player id -> FocusMarks.Chevron
+var _reach := {}       # player id -> FocusMarks.ReachMark
+var _turn_player := 0
+var _pick_ids := []
 
 
 func _ready() -> void:
@@ -54,6 +62,10 @@ func setup(map: GameMap, players: Dictionary) -> void:
 		_reflow(loc, false)
 	SignalBus.pawn_moved.connect(_on_pawn_moved)
 	SignalBus.player_died.connect(_on_player_died)
+	SignalBus.begin_turn.connect(set_turn_player)
+	SignalBus.game_over.connect(func(_f, _w):
+		set_turn_player(0)
+		set_in_reach([]))
 
 
 func _add_pick_parts(id: int, pawn: Sprite2D, player_name: String) -> void:
@@ -75,6 +87,57 @@ func _add_pick_parts(id: int, pawn: Sprite2D, player_name: String) -> void:
 	pawn.add_child(area)
 	_pick_areas[id] = area
 
+	var spot := FocusMarks.Spotlight.new()
+	spot.show_behind_parent = true
+	spot.visible = false
+	pawn.add_child(spot)
+	_spots[id] = spot
+	var reach := FocusMarks.ReachMark.new()
+	reach.show_behind_parent = true
+	reach.visible = false
+	pawn.add_child(reach)
+	_reach[id] = reach
+	var chevron := FocusMarks.Chevron.new()
+	chevron.visible = false
+	pawn.add_child(chevron)
+	_chevrons[id] = chevron
+
+
+## Whose turn it is: spotlight + gold arrow (0 = nobody).
+func set_turn_player(id: int) -> void:
+	_turn_player = id
+	for pid in pawns:
+		_spots[pid].visible = pid == id and not _is_dead(pid)
+	_update_chevrons()
+
+
+## The players you could attack right now ([] = none / not your attack step).
+func set_in_reach(ids: Array) -> void:
+	for pid in pawns:
+		_reach[pid].visible = pid in ids and not _is_dead(pid)
+
+
+## While the Attack button is hovered, the reach rings flare.
+func set_reach_hot(on: bool) -> void:
+	for mark in _reach.values():
+		mark.hot = on
+
+
+## Orange arrows over pickable players; otherwise gold over the turn player.
+func _update_chevrons() -> void:
+	for pid in pawns:
+		var chevron: FocusMarks.Chevron = _chevrons[pid]
+		if pid in _pick_ids:
+			chevron.color = FocusMarks.PICK
+			chevron.visible = true
+		else:
+			chevron.color = FocusMarks.GOLD
+			chevron.visible = pid == _turn_player and not _is_dead(pid)
+
+
+func _is_dead(id: int) -> bool:
+	return GameState.players.get(id, {}).get("dead", false)
+
 
 ## Light up these players' pawns and let them be clicked; [] ends picking.
 ## Pawns that can't be picked fade a little meanwhile.
@@ -86,6 +149,8 @@ func set_pickable(ids: Array) -> void:
 		_pick_areas[id].mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
 		_pick_areas[id].mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if on else Control.CURSOR_ARROW
 		pawns[id].self_modulate = Color(1, 1, 1, 0.45) if picking and not on else Color.WHITE
+	_pick_ids = ids.duplicate()
+	_update_chevrons()
 	if _ring_pulse:
 		_ring_pulse.kill()
 		_ring_pulse = null
@@ -100,15 +165,20 @@ func _set_ring_alpha(alpha: float) -> void:
 		ring.modulate.a = alpha
 
 
-## A dead player's pawn falls over and fades to grey.
+## A dead player's pawn flashes white, falls over and fades to grey (the
+## ghost and the announcement: DeathFx).
 func _on_player_died(player_id: int, _killer_id: int) -> void:
 	if not pawns.has(player_id):
 		return
 	var pawn: Sprite2D = pawns[player_id]
+	_spots[player_id].visible = false
+	_reach[player_id].visible = false
+	_chevrons[player_id].visible = false
 	await get_tree().create_timer(0.6).timeout  # let a hit flash finish first
-	var tween := create_tween().set_parallel(true)
-	tween.tween_property(pawn, "rotation_degrees", 90.0, 0.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(pawn, "modulate", Color(0.45, 0.45, 0.5, 0.85), 0.4)
+	var tween := create_tween()
+	tween.tween_property(pawn, "modulate", Color(3, 3, 3), 0.08)
+	tween.tween_property(pawn, "rotation_degrees", 90.0, 0.5).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(pawn, "modulate", Color(0.45, 0.45, 0.5, 0.85), 0.6)
 
 
 ## Where the n-th pawn at a location stands.
@@ -288,9 +358,9 @@ class DustRing extends Node2D:
 
 
 ## An attack in three beats (wind-up, blow, settle): see AttackFx.
-func play_attack(attacker: int, target: int, damage: int) -> void:
+func play_attack(attacker: int, target: int, damage: int, lethal := false) -> void:
 	if not pawns.has(attacker) or not pawns.has(target):
 		return
 	var fx := AttackFx.new()
 	add_child(fx)
-	fx.play(pawns[attacker], pawns[target], damage)
+	fx.play(pawns[attacker], pawns[target], damage, lethal)

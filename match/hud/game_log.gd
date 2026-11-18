@@ -79,7 +79,7 @@ func _ready() -> void:
 	SignalBus.notice.connect(func(message):
 		var key: String = message.get("k", "") if message is Dictionary else ""
 		_add(message, "", NOTICE_TONES.get(key, "")))
-	SignalBus.attack_happened.connect(func(_a, _t, _d): _roll_total = 0)  # not a movement throw
+	SignalBus.attack_happened.connect(func(_a, _t, _d, _l): _roll_total = 0)  # not a movement throw
 	SignalBus.damage_changed.connect(_on_damage_changed)
 	SignalBus.ability_used.connect(func(id):
 		_add(Msg.make("log.ability", {"player": _name(id)})))

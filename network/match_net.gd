@@ -228,6 +228,8 @@ func private_info(title: Dictionary, text: Dictionary) -> void:
 ## Only to one player: a look at someone's character card.
 @rpc("authority", "call_local", "reliable")
 func private_character(player_id: int, character: Dictionary) -> void:
+	if GameState.players.has(player_id):
+		GameState.players[player_id].seen = character  # only in this player's store
 	SignalBus.private_character.emit(player_id, character)
 
 ## Cards -----------------------------------------------------------------------
@@ -279,8 +281,8 @@ func set_damage(player_id: int, damage: int) -> void:
 	SignalBus.damage_changed.emit(player_id, damage)
 
 @rpc("authority", "call_local", "reliable")
-func attack_fx(attacker: int, target: int, damage: int) -> void:
-	SignalBus.attack_happened.emit(attacker, target, damage)
+func attack_fx(attacker: int, target: int, damage: int, lethal: bool) -> void:
+	SignalBus.attack_happened.emit(attacker, target, damage, lethal)
 
 ## A character becomes public (revealed, or on death).
 @rpc("authority", "call_local", "reliable")

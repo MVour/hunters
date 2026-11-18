@@ -92,9 +92,9 @@ func _mini(entry: Dictionary) -> Button:
 
 	var art := TextureRect.new()
 	art.texture = Global.card_back(card.get("deck", "red_cards"))
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # before the size: else it can't shrink
 	art.position = Vector2(2, 2)
 	art.size = CARD_SIZE - Vector2(4, 4)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(art)

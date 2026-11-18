@@ -5,18 +5,22 @@ class_name BotBrain extends RefCounted
 ## the BotMind; everything else it reads is public (locations, damage,
 ## equipment, who's dead or protected).
 
-## Tiny random tie-breaker added to every score.
-const NOISE := 0.05
-
 var s: MatchServer
 var me: int
 var mind: BotMind
+## Random amount added to every score: a tie-breaker, or (easy bots) real
+## mistakes. From the difficulty level (BotWeights.LEVELS).
+var noise := 0.05
+## Added to every attack score (difficulty).
+var aggression := 0.0
 
 
-func _init(server: MatchServer, my_id: int, bot_mind: BotMind) -> void:
+func _init(server: MatchServer, my_id: int, bot_mind: BotMind, skill: Dictionary) -> void:
 	s = server
 	me = my_id
 	mind = bot_mind
+	noise = skill.noise
+	aggression = skill.aggression
 
 
 # --- Helpers ----------------------------------------------------------------------
@@ -42,7 +46,7 @@ func _enmity(id: int) -> float:
 
 
 func _noise() -> float:
-	return randf() * NOISE
+	return randf() * noise
 
 
 ## The option whose value scores highest. `score` takes an option's value.
@@ -78,7 +82,7 @@ func attack_score(target: int) -> float:
 	if relation > BotWeights.NEVER_ATTACK_ABOVE:
 		return -1.0
 	var score := -relation
-	score += BotWeights.AGGRESSION.get(_goal(), 0.0) + BotWeights.AGGRESSION_PER_ROUND * s.state.round
+	score += BotWeights.AGGRESSION.get(_goal(), 0.0) + BotWeights.AGGRESSION_PER_ROUND * s.state.round + aggression
 	var enmity := maxf(0.0, -relation)
 	if mind.health_left(target) <= _attack_damage(target) + 1.0:
 		score += BotWeights.KILL_BONUS * enmity

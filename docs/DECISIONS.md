@@ -12,6 +12,22 @@ in MANIFEST.md → Non-negotiable constraints.
 
 ---
 
+### D011 — Drawing at a location is a must; you still click the deck (2026-11-18)
+- **Status:** active
+- **What:** At a drawing location the player has to draw: the dialog has no
+  Skip, and the server refuses skipping or ending the turn before the draw
+  (`MatchServer.must_draw()`). The player still clicks a deck, and the
+  card flies out of it and turns over. Magic Forest and Stone Circle stay
+  optional.
+- **Why:** The user wanted more cards in play (more questions, damage and
+  reads on who's who) and no careful player hiding by never drawing; but no
+  automatic draws: the click (and seeing the card come out) is part of the
+  fun.
+- **Rejected:** Keeping draws optional (games got quiet); drawing
+  automatically on arrival (the user: "I want the player to click");
+  forcing Magic Forest / Stone Circle too (could make you hurt or rob an
+  ally).
+
 ### D010 — Music and weather are local to each computer (2026-11-18)
 - **Status:** active (C024)
 - **What:** The `Audio` autoload decides the music and the rain on each

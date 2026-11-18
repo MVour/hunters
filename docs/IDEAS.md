@@ -11,14 +11,9 @@ Format: `- **Name** — what and why. (added YYYY-MM-DD)`
   User's sketch (2026-11-17): keep a short record per player (seat, name,
   colour, character, their match), and show a Rejoin button if that table
   still exists. Wanted, but deferred: not ready to go this deep yet. (added 2026-11-16)
-- **Bot difficulty** — easy / normal bots: more noise and less memory for
-  easy (`BotBrain.NOISE`, ignore soft evidence). (added 2026-11-17)
 - **Bots read public card results** — e.g. Wolf's Bite doing 3 instead of 2
   shows a vampire to everyone; bots only learn from their own questions
   today. (added 2026-11-17)
-- **In-game rules guide** — user's take (2026-11-17): not a full rules
-  screen but a per-turn cheat card ("what you can do this turn", a bit more
-  detailed) inside the player hub. EN/EL. Fixes BUG-002. (added 2026-11-16)
 - **Phones: proportions and zoom** — the game works on a phone, but you
   can't zoom, and the layout (made for a 1920×1080 PC screen) isn't
   comfortable there. Revisit the proportions in general. (added 2026-11-17)
@@ -30,9 +25,6 @@ Format: `- **Name** — what and why. (added YYYY-MM-DD)`
   species replaces the hooded figure on the map, with a scarf or clothes in
   the player's colour; the same for the life track's figures. Needs the
   user's art (one figure per species, colour-able parts). (added 2026-11-18)
-- **Emphasise who's involved** — make the turn player stand out more, and
-  mark who can be attacked / damaged / stolen from / affected right now.
-  (added 2026-11-18)
 - **User-drawn forest board** — replace the code-drawn ForestBoard placeholder
   with the user's own art, keeping its layout constants. (added 2026-11-16)
 - **Sound effects** — dice, card draw, hits, death. (Music, rain and the

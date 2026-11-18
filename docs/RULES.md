@@ -9,8 +9,9 @@ Greek notes; where something isn't decided yet it says so.
    location whose numbers match the total (see the table below).
    - **On a 7** you may move to **any** location, but you must leave the one
      you're on.
-2. **Location action.** Do what your new location offers (optional unless
-   it says otherwise).
+2. **Location action.** Do what your new location offers. Drawing is a
+   must: at a drawing location you click a deck (no skipping, and no ending
+   the turn first). Magic Forest and Stone Circle are optional (D011).
 3. **Attack (optional).** Decide whether to attack someone.
 
 > Confirmed: steps 1–2 are the original steps α and β. If the dice point at
@@ -93,7 +94,7 @@ Data with English + Greek texts: `data/characters.gd`.
 ## Taking your turn (as built)
 
 1. **Roll** — move to a new location (or choose, on a 7).
-2. **Location action** — draw, Magic Forest, Stone Circle, or skip.
+2. **Location action** — draw (a must), or Magic Forest / Stone Circle (or skip those).
 3. **Attack** (optional, once) — pick a player within reach, then press
    the dice to throw them (so does a striking-back Mel, and Old Map's second
    roll). Equipment modifies the damage: +damage, d6 only, −1, at most 3, or hitting back.

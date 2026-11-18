@@ -73,6 +73,8 @@ func change_player_count(delta: int) -> void: request_player_count.rpc_id(1, del
 func change_preset(delta: int) -> void: request_preset.rpc_id(1, delta)
 ## Owner: add bots until there are as many players as the teams need.
 func fill_with_bots() -> void: request_fill_bots.rpc_id(1)
+## Owner: bots easier / harder (settings.bot_level, BotWeights.EASY..HARD).
+func change_bot_level(delta: int) -> void: request_bot_level.rpc_id(1, delta)
 ## After a match: back to this table's lobby ("Play again").
 func back_to_lobby() -> void: request_lobby.rpc_id(1)
 
@@ -207,6 +209,15 @@ func request_preset(delta: int) -> void:
 	_apply_preset(count, posmod(index + signi(delta), presets.size()) if index != -1 else 0)
 
 
+@rpc("any_peer", "call_local", "reliable")
+func request_bot_level(delta: int) -> void:
+	if not multiplayer.is_server() or Network.sender_id() != _owner_id or _in_match:
+		return
+	var level := int(_settings.get("bot_level", BotWeights.DEFAULT_LEVEL))
+	_settings["bot_level"] = clampi(level + signi(delta), BotWeights.EASY, BotWeights.HARD)
+	settings_changed.rpc(_settings)
+
+
 ## Bots fill the seats the teams still need (people first: bots that are
 ## too many for the teams leave).
 @rpc("any_peer", "call_local", "reliable")
@@ -310,7 +321,8 @@ func _fit_settings() -> void:
 func _apply_preset(count: int, index: int) -> void:
 	var presets: Array = Global.game_settings_default.presets.get(count, [[0, 0, 0]])
 	var counts: Array = presets[clampi(index, 0, presets.size() - 1)]
-	_settings = {}
+	var bot_level = _settings.get("bot_level", BotWeights.DEFAULT_LEVEL)
+	_settings = {"bot_level": bot_level}
 	var i := 0
 	for key in Global.SPECIES:
 		_settings[key] = counts[i]

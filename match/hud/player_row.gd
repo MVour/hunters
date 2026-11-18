@@ -6,10 +6,13 @@ class_name PlayerRow extends VBoxContainer
 
 signal picked(player_id: int)
 signal drawer_opened(player_id: int)
+## The drawer's "Character card" button.
+signal card_wanted(player_id: int)
 
 const C_BG := Color(0.05, 0.06, 0.09, 0.86)
 const C_CURRENT := Color("e8c060")
 const C_PICK := Color("ff7a5a")
+const C_REACH := Color("e8402e")
 const DRAWER_WIDTH := 330.0
 
 var player_id := 0
@@ -24,8 +27,10 @@ var _info: Label
 var _arrow: Button
 var _drawer: PanelContainer
 var _drawer_text: RichTextLabel
+var _card_button: Button
 var _pickable := false
 var _picking := false   # some pick is going on (others dim)
+var _in_reach := false  # you could attack them now (your attack step)
 var _pulse: Tween
 
 
@@ -118,7 +123,18 @@ func _init(id: int, number: int) -> void:
 	_drawer_text.add_theme_font_size_override("normal_font_size", 15)
 	_drawer_text.add_theme_constant_override("line_separation", 2)
 	_drawer_text.add_theme_font_size_override("bold_font_size", 15)
-	_drawer.add_child(_drawer_text)
+	var drawer_column := VBoxContainer.new()
+	drawer_column.add_theme_constant_override("separation", 6)
+	_drawer.add_child(drawer_column)
+	drawer_column.add_child(_drawer_text)
+	# Their character card, big, when you know it (public, or shown to you).
+	_card_button = Button.new()
+	_card_button.focus_mode = Control.FOCUS_NONE
+	_card_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_card_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_card_button.add_theme_font_size_override("font_size", 15)
+	_card_button.pressed.connect(func(): card_wanted.emit(player_id))
+	drawer_column.add_child(_card_button)
 
 
 func toggle_drawer() -> void:
@@ -182,12 +198,17 @@ func refresh() -> void:
 	_style.border_color = C_CURRENT if current else Color(1, 1, 1, 0.08)
 	_style.bg_color = C_BG.lightened(0.12) if current else C_BG
 	_number.add_theme_color_override("font_color", C_CURRENT if current else Color(0.7, 0.7, 0.75))
+	if _in_reach:
+		_style.border_color = C_REACH
+		_style.bg_color = C_BG.lerp(Color(0.35, 0.03, 0.03, 0.9), 0.45)
 	if _pickable:
 		_style.border_color = C_PICK
 	modulate = Color(0.55, 0.55, 0.6) if p.dead or (_picking and not _pickable) else Color.WHITE
 
 	if _drawer.visible:
 		_drawer_text.text = _details(p, known, character)
+		_card_button.text = Global.text("players.card")
+		_card_button.visible = known or p.has("seen")
 
 
 ## The drawer: name, character, a damage bar, goal / ability, where they
@@ -243,6 +264,13 @@ func _heading(text: String) -> String:
 
 static func _safe(text: String) -> String:
 	return text.replace("[", "[lb]")
+
+
+## You could attack this player now: a red edge.
+func set_in_reach(on: bool) -> void:
+	if on != _in_reach:
+		_in_reach = on
+		refresh()
 
 
 ## Picking mode: `on` = this row can be clicked; `picking` = a pick is

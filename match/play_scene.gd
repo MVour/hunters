@@ -1,7 +1,6 @@
 class_name PlayScene extends Node2D
 
 @onready var damage_board: DamageBoard = $DamageBoard
-@onready var player_hud: PlayerHud = $Hud/PlayerHud
 @onready var decks_container: HBoxContainer = $DecksContainer
 @onready var deck_scn : PackedScene = preload("res://match/cards/card_deck.tscn")
 @onready var game_map: GameMap = $Locations
@@ -33,6 +32,11 @@ var _offer_open := false
 var asked_options := []
 var attack_button: Button
 var reveal_button: Button
+## The player hub at the bottom: you / equipment / this turn (cheat sheet).
+var hub: PlayerHub
+## The character card shown over the board (a peek, a reveal, a row's "Card").
+var _character_popup: Control
+var _restack_queued := false
 var attack_used_this_turn := false
 ## This turn: you've moved (so attack / end turn make sense).
 var moved_this_turn := false
@@ -100,6 +104,11 @@ func _ready():
 	player_list.z_index = 4
 	add_child(player_list)
 	player_list.player_picked.connect(_on_player_picked)
+	player_list.card_wanted.connect(func(id):
+		var p: Dictionary = GameState.players.get(id, {})
+		var character: Dictionary = p.get("character", {}) if not p.get("hidden", true) else p.get("seen", {})
+		if not character.is_empty():
+			show_character_card(id, _player_name(id), character))
 	damage_board.position = Vector2(8, 120)
 	# The decks: a small row of packs on the left, under the life track.
 	decks_container.position = Vector2(8, 560)
@@ -129,6 +138,7 @@ func _ready():
 	SignalBus.notice.connect(toast)
 	SignalBus.private_info.connect(_show_info)
 	SignalBus.private_character.connect(_on_private_character)
+	SignalBus.character_revealed.connect(_on_character_revealed)
 	SignalBus.equipment_changed.connect(_on_equipment_changed)
 
 	# Announcements: small black boxes stacked near the top, fading out.
@@ -200,6 +210,8 @@ func _ready():
 	_style_turn_button(end_turn_button, Color(0.1, 0.11, 0.24), Color("7d8fd8"), Color("dfe5ff"))
 	end_turn_button.position = Vector2(863, 700)
 	attack_button.hide()
+	attack_button.mouse_entered.connect(func(): pawn_layer.set_reach_hot(true))
+	attack_button.mouse_exited.connect(func(): pawn_layer.set_reach_hot(false))
 	attack_button.pressed.connect(func():
 		attack_used_this_turn = true
 		_queue_refresh()
@@ -207,13 +219,13 @@ func _ready():
 	add_child(attack_button)
 
 	# HUD: Use Ability + Reveal.
-	var ability_button: Button = $Hud/PlayerHud/AbilityButton
-	ability_button.pressed.connect(MatchNet.use_ability)
-	reveal_button = Button.new()
-	reveal_button.position = ability_button.position + Vector2(0, -44)
-	reveal_button.custom_minimum_size = Vector2(ability_button.size.x, 36)
+	hub = PlayerHub.new()
+	hub.name = "PlayerHub"
+	hub.z_index = 4
+	add_child(hub)
+	hub.ability_button.pressed.connect(MatchNet.use_ability)
+	reveal_button = hub.reveal_button
 	reveal_button.pressed.connect(MatchNet.reveal)
-	ability_button.get_parent().add_child(reveal_button)
 
 	# The narrator: what's happening / what you can do, in a fixed bar at the
 	# top centre of the board (kept centred as its text changes).
@@ -275,7 +287,31 @@ func _ready():
 	SignalBus.attack_happened.connect(_on_attack_happened)
 	SignalBus.game_over.connect(_on_game_over)
 
+	_stack_by_layer()
+	# Popups added later (cards, the character card, effects) too.
+	child_entered_tree.connect(func(_node):
+		if not _restack_queued:
+			_restack_queued = true
+			_stack_by_layer.call_deferred())
 	MatchNet.loaded()
+
+
+## Clicks go to the control that is later in the tree, whatever its
+## z_index (which only orders the drawing). So keep the children in the
+## order they're drawn: a dialog drawn over the hub must also get the click.
+func _stack_by_layer() -> void:
+	_restack_queued = false
+	var items := []
+	for child in get_children():
+		if child is CanvasItem:
+			items.append(child)
+	var order := {}
+	for i in items.size():
+		order[items[i]] = i
+	items.sort_custom(func(a, b):
+		return a.z_index < b.z_index or (a.z_index == b.z_index and order[a] < order[b]))
+	for item in items:
+		move_child(item, -1)
 
 
 func _on_set_locations(_locations):
@@ -288,11 +324,17 @@ func _on_set_locations(_locations):
 	fx.name = "HitFx"
 	add_child(fx)
 	fx.setup(pawn_layer, damage_board)
+	# Deaths: the ghost and the announcement.
+	var death := DeathFx.new()
+	death.name = "DeathFx"
+	add_child(death)
+	death.setup(pawn_layer)
+	_stack_by_layer()
 
 
 func _on_damage_changed(pl_id, dmg):
 	if pl_id == GameState.local_id:
-		player_hud.player_damage.text = str(dmg)
+		hub.set_damage(dmg)
 
 
 func _on_attach_deck(card_type: String, count: int):
@@ -304,9 +346,7 @@ func _on_attach_deck(card_type: String, count: int):
 
 
 func _on_set_character(_pl_id, character):
-	player_hud.init(Global.field(character, "name"), character.species,
-		Global.field(character, "goal"), Global.field(character, "ability"),
-		character.health, GameState.local_player.dmg)
+	hub.set_character(character, GameState.local_player.dmg)
 
 
 ## Texts that are set once; re-run when the player switches language.
@@ -314,10 +354,7 @@ func _apply_language() -> void:
 	roll_button.text = Global.text("dice.roll")
 	end_turn_button.text = Global.text("match.end_turn")
 	attack_button.text = Global.text("match.attack")
-	$Hud/PlayerHud/AbilityButton.text = Global.text("match.use_ability")
-	reveal_button.text = Global.text("match.reveal")
-	reveal_button.tooltip_text = Global.text("match.reveal_tooltip")
-	$Hud/PlayerHelp/Label.text = Global.text("hud.help")
+	hub.apply_language()
 	if not GameState.local_player.character.is_empty():
 		_on_set_character(GameState.local_id, GameState.local_player.character)
 	_refresh_my_cards()
@@ -425,6 +462,7 @@ func _refresh_buttons() -> void:
 	# ending the turn early would quietly throw the location action away.
 	var step: String = GameState.game_info.get("step", "")
 	attack_button.visible = my_turn and step == "attack_or_end" and not attack_used_this_turn and not picking
+	var in_reach := []
 	if attack_button.visible:
 		var targets := Rules.attack_targets(GameState.players, GameState.locations,
 			GameState.game_info.players_turn, GameState.local_id)
@@ -433,13 +471,18 @@ func _refresh_buttons() -> void:
 		else:
 			_set_enabled(attack_button, not targets.is_empty(),
 				Global.text("match.nobody_in_reach"))
+			in_reach = targets
+	# Who you could hit right now: red rings on the board, red rows in the list.
+	if pawn_layer.game_map:
+		pawn_layer.set_in_reach(in_reach)
+	player_list.set_in_reach(in_reach)
 
 	end_turn_button.visible = my_turn and step in ["attack_or_end", "end"] and not picking
 	_set_enabled(end_turn_button, not waiting, wait_reason)
 
-	var ability_button: Button = $Hud/PlayerHud/AbilityButton
 	var reason := _ability_blocked_reason(me, my_turn, waiting)
-	_set_enabled(ability_button, reason == "", reason)
+	_set_enabled(hub.ability_button, reason == "", reason)
+	_refresh_cheat_sheet(my_turn, step, reason)
 
 	if status_label.text != _status_text(my_turn):
 		status_label.text = _status_text(my_turn)
@@ -449,6 +492,30 @@ func _refresh_buttons() -> void:
 
 	reveal_button.visible = me.get("hidden", true) and not me.get("character", {}).is_empty()
 	_set_enabled(reveal_button, not me.get("dead", false), Global.text("match.you_are_out"))
+
+
+## The hub's "This turn" tab: the turn's steps, who you could attack, what
+## you can do any time.
+func _refresh_cheat_sheet(my_turn: bool, step: String, ability_reason: String) -> void:
+	var at: Array = {"roll": [0], "choose_location": [0], "location": [1],
+		"attack_or_end": [2, 3], "end": [3]}.get(step, [])
+	var turn_name := ""
+	if not my_turn:
+		var turn_id := _turn_player_id()
+		turn_name = _player_name(turn_id) if turn_id != 0 else "…"
+	var reach = null
+	if my_turn and step == "attack_or_end" and not attack_used_this_turn:
+		reach = Rules.attack_targets(GameState.players, GameState.locations,
+			GameState.game_info.players_turn, GameState.local_id).map(_player_name)
+	var me: Dictionary = GameState.local_player
+	hub.update_turn(_step_names(), at, turn_name, reach, ability_reason, not me.get("hidden", true))
+
+
+func _turn_player_id() -> int:
+	for id in GameState.players:
+		if GameState.players[id].get("playing", false):
+			return id
+	return 0
 
 
 ## The status line: what you should do, or who everyone is waiting on.
@@ -691,7 +758,8 @@ func _on_location_action_offered(action: String) -> void:
 		decks[card_type].set_highlight(true)
 	if draws.is_empty():
 		options.append({"value": "use", "label": Global.text("match.use"), "color": info.color})
-	options.append({"value": "skip", "label": Global.text("match.skip_location"), "color": "b0b0b0"})
+	if draws.is_empty():  # drawing is a must (C033): click a deck
+		options.append({"value": "skip", "label": Global.text("match.skip"), "color": "b0b0b0", "small": true})
 	_open_choice("%s: %s" % [loc_name, Global.field(info, "text")], options, false, func(value):
 		_clear_action_bar()
 		if value == "skip":
@@ -719,7 +787,7 @@ func _on_question_drawn(card: Dictionary) -> void:
 			_start_pick(Global.text("match.who_do_you_ask"), others, false, func(id):
 				question_to_give = false
 				_queue_refresh()
-				MatchNet.give_question(id))]])
+				MatchNet.give_question(id))]], _deck_point(card.get("deck", "green_cards")))
 
 
 ## Someone asked you a question.
@@ -757,6 +825,7 @@ func _on_question_answered(from_id: int, to_id: int) -> void:
 
 func _on_card_drawn_secretly(pl_id: int, card_type: String) -> void:
 	if pl_id != GameState.local_id:
+		_fly_secret_card(pl_id, card_type)
 		toast(Global.text("match.toast_drew_secret")
 			% [_player_name(pl_id), Global.field(Global.CARD_COLORS[card_type], "label").to_lower()])
 
@@ -769,9 +838,43 @@ func _on_card_revealed(pl_id: int, card: Dictionary) -> void:
 	if mine:
 		_context_card = card
 	var who := Global.text("match.you_drew") if mine else Global.text("match.someone_drew") % _player_name(pl_id)
-	var view := CardView.open(self, card, who, [["OK", func(): pass]])
+	var view := CardView.open(self, card, who, [["OK", func(): pass]], _deck_point(card.get("deck", "")))
 	if view and not pick_ids.is_empty():
 		view.make_passive()  # don't block the player who's picking someone
+
+
+## The middle of a deck on screen (where a drawn card comes from).
+func _deck_point(card_type: String) -> Vector2:
+	var deck = decks.get(card_type)
+	if deck is Control:
+		return (deck as Control).get_global_rect().get_center()
+	return Vector2(960, 1150)  # from below the screen
+
+
+## Someone else drew a green card: only they see it, so a face-down card
+## flies from the deck to their pawn and fades.
+func _fly_secret_card(pl_id: int, card_type: String) -> void:
+	var pawn: Node2D = pawn_layer.pawns.get(pl_id) if pawn_layer else null
+	if pawn == null:
+		return
+	var back := TextureRect.new()
+	back.texture = Global.card_back(card_type)
+	back.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	back.stretch_mode = TextureRect.STRETCH_SCALE
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	back.size = Vector2(60, 60 * CardView.CARD_RATIO)
+	back.pivot_offset = back.size / 2.0
+	back.position = _deck_point(card_type) - back.size / 2.0
+	back.z_index = 14
+	add_child(back)
+	var to: Vector2 = pawn.global_position + Vector2(0, -60) - back.size / 2.0
+	var t := create_tween()
+	t.tween_property(back, "position:y", back.position.y - 50, 0.25).set_ease(Tween.EASE_OUT)
+	t.tween_property(back, "position", to, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.parallel().tween_property(back, "scale", Vector2(0.45, 0.45), 0.6)
+	t.parallel().tween_property(back, "rotation", 0.6, 0.6)
+	t.tween_property(back, "modulate:a", 0.0, 0.25)
+	t.tween_callback(back.queue_free)
 
 
 # --- Choices & private info --------------------------------------------------
@@ -922,7 +1025,7 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 
 	var entries := options.duplicate()
 	if allow_skip:
-		entries.append({"value": null, "label": Global.text("match.skip"), "color": "b0b0b0"})
+		entries.append({"value": null, "label": Global.text("match.skip"), "color": "b0b0b0", "small": true})
 	for option in entries:
 		var value = option.value
 		var pick := func():
@@ -941,8 +1044,15 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 		else:
 			var button := Button.new()
 			button.text = Global.msg(option.get("label", str(value)))
-			button.custom_minimum_size = Vector2(110, 36) if compact else Vector2(140, 44)
-			button.add_theme_font_size_override("font_size", 17 if compact else 19)
+			if option.get("small", false):
+				# Skip: a small quiet button, centred beside the real choices
+				# (not stretched to a deck pack's height).
+				button.custom_minimum_size = Vector2(84, 32)
+				button.add_theme_font_size_override("font_size", 15)
+				button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			else:
+				button.custom_minimum_size = Vector2(110, 36) if compact else Vector2(140, 44)
+				button.add_theme_font_size_override("font_size", 17 if compact else 19)
 			if option.has("color"):
 				button.add_theme_color_override("font_color", Color(option.color).lightened(0.25))
 			button.pressed.connect(pick)
@@ -999,10 +1109,29 @@ func _show_info(title, text) -> void:
 		func(_v): pass)
 
 
+## Someone's character shown only to you: their card, until you press OK.
 func _on_private_character(pl_id: int, character: Dictionary) -> void:
-	_show_info(Global.text("match.peek_title") % _player_name(pl_id),
-		Global.text("match.peek_text") % [Global.field(character, "name"),
-			Global.species_name(character.get("species", "")), character.get("health", 0), Global.field(character, "goal")])
+	show_character_card(pl_id, Global.text("match.peek_title") % _player_name(pl_id), character)
+
+
+## A character made public: everyone sees the card for a few seconds (no
+## need to press anything). Not your own, and not on a death: the death
+## banner says it (the server reveals just before the death, so wait a bit).
+func _on_character_revealed(pl_id: int, character: Dictionary) -> void:
+	if pl_id == GameState.local_id:
+		return
+	await get_tree().create_timer(0.4).timeout
+	if GameState.players.get(pl_id, {}).get("dead", false) or not is_inside_tree():
+		return
+	show_character_card(pl_id, Global.text("match.reveals_title") % _player_name(pl_id), character, 6.0)
+
+
+## One character card at a time over the board.
+func show_character_card(pl_id: int, heading: String, character: Dictionary, auto_close := 0.0) -> void:
+	if is_instance_valid(_character_popup):
+		_character_popup.queue_free()
+	var dmg := int(GameState.players.get(pl_id, {}).get("dmg", 0))
+	_character_popup = CharacterCard.popup(self, heading, character, dmg, auto_close)
 
 
 func _on_equipment_changed(pl_id: int) -> void:
@@ -1010,40 +1139,21 @@ func _on_equipment_changed(pl_id: int) -> void:
 		_refresh_my_cards()
 
 
-## The HUD "CARDS" tab lists your equipment.
+## The hub's Equipment tab.
 func _refresh_my_cards() -> void:
-	var panel: Control = $Hud/PlayerCards
-	for child in panel.get_children():
-		child.queue_free()
-	var list := VBoxContainer.new()
-	list.position = Vector2(24, 16)
-	list.size = Vector2(panel.size.x - 48, 0)
-	list.add_theme_constant_override("separation", 6)
-	panel.add_child(list)
-	var equipment: Array = GameState.local_player.equipment
-	if equipment.is_empty():
-		var none := Label.new()
-		none.text = Global.text("match.no_equipment_yet")
-		list.add_child(none)
-	for card in equipment:
-		var line := Label.new()
-		line.text = "%s — %s" % [Global.field(card, "name"), Global.field(card, "text")]
-		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		line.custom_minimum_size = Vector2(panel.size.x - 48, 0)
-		line.add_theme_color_override("font_color", Color(Global.CARD_COLORS[card.deck].color).lightened(0.35))
-		list.add_child(line)
+	hub.set_equipment(GameState.local_player.equipment)
 
 
 # --- Attacks & the end -------------------------------------------------------
 
-func _on_attack_happened(attacker: int, target: int, damage: int) -> void:
-	pawn_layer.play_attack(attacker, target, damage)
+func _on_attack_happened(attacker: int, target: int, damage: int, lethal: bool) -> void:
+	pawn_layer.play_attack(attacker, target, damage, lethal)
 
 
 ## Seconds the board keeps playing after the winning blow (the attack's
 ## lunge and damage, the dice landing, the death fall, the log line) before
 ## the result fades in.
-const END_PAUSE := 3.2
+const END_PAUSE := 4.6  # long enough for the death banner (DeathFx)
 
 func _on_game_over(faction: String, winners: Array) -> void:
 	game_finished = true

@@ -6,7 +6,8 @@ class_name AttackFx extends Node2D
 ##    on the target;
 ## 2. the blow: a fast lunge; a flash and a shockwave on the target, blood
 ##    splashing out, a hard shake and the damage popping up (a miss: a grey
-##    whiff and the target sidesteps);
+##    whiff and the target sidesteps). A killing blow (`lethal`): a darker
+##    wind-up, a huge crescent sweep, a red flash over the whole screen;
 ## 3. settle: the attacker steps back home, the glow and marks fade.
 ## Pure visuals. Frees itself when done.
 
@@ -144,7 +145,25 @@ class Splash extends Node2D:
 			draw_circle(d[0], d[2], Color(0.75, 0.06, 0.05, fade))
 
 
-func play(attacker: Sprite2D, target: Sprite2D, damage: int) -> void:
+## A huge crescent cut across the target (killing blows).
+class Sweep extends Node2D:
+	var progress := 0.0:
+		set(v):
+			progress = v
+			queue_redraw()
+
+	func _draw() -> void:
+		var head := lerpf(-2.4, 0.9, minf(progress * 1.6, 1.0))
+		var tail := lerpf(-2.4, 0.9, maxf(0.0, progress * 1.6 - 0.6))
+		var fade := 1.0 - maxf(0.0, progress - 0.6) / 0.4
+		if head - tail < 0.02:
+			return
+		draw_arc(Vector2.ZERO, 120.0, tail, head, 40, Color(0, 0, 0, 0.5 * fade), 26.0, true)
+		draw_arc(Vector2.ZERO, 120.0, tail, head, 40, Color(0.9, 0.1, 0.08, fade), 16.0, true)
+		draw_arc(Vector2.ZERO, 120.0, tail, head, 40, Color(1, 0.85, 0.75, fade), 5.0, true)
+
+
+func play(attacker: Sprite2D, target: Sprite2D, damage: int, lethal := false) -> void:
 	z_index = 19
 	var a := attacker
 	var t := target
@@ -163,7 +182,7 @@ func play(attacker: Sprite2D, target: Sprite2D, damage: int) -> void:
 	var charge := create_tween().set_parallel(true)
 	charge.tween_property(a, "position", home - dir * 26.0, windup * 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	charge.tween_property(a, "scale", base_scale * 1.12, windup * 0.7).set_trans(Tween.TRANS_SINE)
-	charge.tween_property(a, "modulate", Color(1.6, 0.8, 0.7), windup * 0.7)
+	charge.tween_property(a, "modulate", Color(1.9, 0.5, 0.45) if lethal else Color(1.6, 0.8, 0.7), windup * 0.7)
 	charge.tween_property(aura, "strength", 1.0, windup * 0.5)
 
 	var aim := AimLine.new()
@@ -203,10 +222,12 @@ func play(attacker: Sprite2D, target: Sprite2D, damage: int) -> void:
 	add_child(burst)
 	create_tween().tween_property(burst, "progress", 1.0, 0.5).set_ease(Tween.EASE_OUT)
 
+	if lethal:
+		_killing_blow(impact)
 	var base := t.position
 	var shake := create_tween()
 	if hit:
-		var splash := Splash.new(8 + damage * 4, dir)
+		var splash := Splash.new(8 + damage * 4 + (14 if lethal else 0), dir)
 		splash.position = impact
 		add_child(splash)
 		var strength := 6.0 + mini(damage, 6) * 2.0
@@ -238,6 +259,28 @@ func play(attacker: Sprite2D, target: Sprite2D, damage: int) -> void:
 	if is_instance_valid(aura):
 		aura.queue_free()
 	queue_free()
+
+
+## A crescent sweep across the target and a red flash over the screen.
+func _killing_blow(at: Vector2) -> void:
+	var sweep := Sweep.new()
+	sweep.position = at
+	sweep.rotation = randf_range(-0.4, 0.4)
+	add_child(sweep)
+	var s := create_tween()
+	s.tween_property(sweep, "progress", 1.0, 0.55).set_ease(Tween.EASE_OUT)
+	s.tween_callback(sweep.queue_free)
+	var flash := ColorRect.new()
+	flash.color = Color(0.7, 0.0, 0.0, 0.0)
+	flash.size = Vector2(1920, 1080)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.z_index = 40
+	add_child(flash)
+	flash.global_position = Vector2.ZERO
+	var f := create_tween()
+	f.tween_property(flash, "color:a", 0.38, 0.06)
+	f.tween_property(flash, "color:a", 0.0, 0.7)
+	f.tween_callback(flash.queue_free)
 
 
 ## "-3" (or "Miss") pops up big over the target, then floats away.

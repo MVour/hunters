@@ -24,17 +24,18 @@ main/                entry scene (main.tscn), main menu, chat box + language but
 lobby/               host/join screen, waiting room (built in code; lobby_style.gd = its look), avatar picker, role settings
 match/               the match screen (play_scene) and its parts:
   board/             forest board, classic board, locations, pawns
-  hud/               player HUD, player list (+rows), life track, game log, turn cards
-  cards/             card, deck, deck pack, CardView popup (+ card_face), card shaders
+  hud/               player hub (you / equipment / this turn), character card, player list (+rows), life track, game log, turn cards
+  cards/             card, deck, deck pack, CardView popup (+ card_face), Keywords (icons + colours in card text), card shaders
   dice/              d6, d4, dice panel
   legacy/            old damage-board HUD and old seats, kept for possible reuse (in no scene)
 assets/              the user's art: pawns/ portraits/ cards/ locations/ icons/ dices/ ui/
+                     (icons/kw_*.png: keyword icons, drawn by tools/make_keyword_icons.gd)
   audio/             music/ and ambience/ (rain, forest); sources + licenses in CREDITS.md
   legacy/            original art kept usable (Classic art): board/ portraits/ pawns/ cards/
   _source/           full source sheets + drafts; .gdignore'd (not imported, not exported)
 i18n/                owns: every UI text, strings.csv (keys,en,el); .translation files are generated
 tools/               dev tools: check_project (loads every file + checks i18n), autotest (bots play a match),
-                     release.sh (tag + push = deploy)
+                     release.sh (tag + push = deploy), make_keyword_icons (writes assets/icons/kw_*.png)
 docs/                project docs (see MANIFEST.md)
 online/              owns: everything for online rooms on the server (D007/D008); .gdignore'd
   lobby-service/     Node service: logins, rooms, tickets, starts room servers, forwards WebSockets

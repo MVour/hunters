@@ -12,6 +12,28 @@ const THINK_MAX := 1.4
 ## Longer pause before a bot's turn starts.
 const TURN_START := 1.0
 
+# --- Difficulty (the lobby's "Bots" setting: settings.bot_level) ---------------
+const EASY := 0
+const NORMAL := 1
+const HARD := 2
+const DEFAULT_LEVEL := NORMAL
+## Per level:
+##   noise: random amount added to every score (easy bots often pick a
+##          worse option; NORMAL's 0.05 only breaks ties);
+##   hints: learn from how others behave (who hits / helps whom), not only
+##          from green cards and reveals;
+##   aggression: added to every attack score.
+const LEVELS := {
+	EASY: {"noise": 0.6, "hints": false, "aggression": -0.1},
+	NORMAL: {"noise": 0.05, "hints": true, "aggression": 0.0},
+	HARD: {"noise": 0.0, "hints": true, "aggression": 0.1},
+}
+
+
+static func level(n: int) -> Dictionary:
+	return LEVELS.get(clampi(n, EASY, HARD), LEVELS[NORMAL])
+
+
 # --- Attacking ------------------------------------------------------------------
 ## Attack when the best target scores above this.
 const ATTACK_THRESHOLD := 0.15

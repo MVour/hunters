@@ -149,7 +149,9 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 
 	# Everyone sees the wind-up first; the blow (damage, log line, death)
 	# lands after it.
-	MatchNet.attack_fx.rpc(attacker, target, dmg)
+	# A killing blow looks heavier on every screen.
+	var lethal: bool = dmg > 0 and t.dmg + dmg >= int(t.character.get("health", 99))
+	MatchNet.attack_fx.rpc(attacker, target, dmg, lethal)
 	await s.wait(Rules.ATTACK_WINDUP)
 	if s.finished or t.dead:
 		return  # the target left during the wind-up (out like a death)

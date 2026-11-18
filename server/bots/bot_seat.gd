@@ -18,11 +18,14 @@ var brain: BotBrain
 var _question := {}
 
 
-func _init(server: MatchServer, player_id: int) -> void:
+## `level`: BotWeights.EASY / NORMAL / HARD (the lobby's "Bots" setting).
+func _init(server: MatchServer, player_id: int, level := BotWeights.DEFAULT_LEVEL) -> void:
 	s = server
 	id = player_id
+	var skill := BotWeights.level(level)
 	mind = BotMind.new(s, id)
-	brain = BotBrain.new(s, id, mind)
+	mind.reads_hints = skill.hints
+	brain = BotBrain.new(s, id, mind, skill)
 
 
 ## `-- --bot-log` on the server's command line prints what bots decide.

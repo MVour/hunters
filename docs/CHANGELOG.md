@@ -7,6 +7,138 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C033 — Drawing is a must, and a drawn card flies out of its deck and turns over (2026-11-18)
+User's call after C032 (D011): drawing at a location can't be skipped,
+but the player still clicks the deck ("even a drawing animation / card
+flip").
+- **What:**
+  - Rule: at a drawing location the dialog has no Skip; the server
+    refuses skip and End Turn until the draw (`must_draw()`). Magic Forest
+    and Stone Circle keep their Skip. RULES.md and the "This turn" tip say
+    so. Bots already always drew.
+  - Draw animation (`CardView.play_draw`, `open(..., drawn_from)`): the
+    card's back lifts off its deck, flies to the middle growing and
+    straightening, narrows to an edge, and opens out as the face; heading
+    and buttons fade in. For every red/blue draw (everyone sees it) and
+    your green card. A card waiting behind another one plays it when its
+    turn comes. Someone else's green card: a face-down card flies from the
+    deck to their pawn and fades (only they see it).
+  - Autotest: `--shot-draw=` / `--shot-flip=` (waits for a real flight).
+- **Checked:** check_project; a normal run, --ui runs (English; Greek with
+  easy bots); npm test; online e2e; screenshots of a card in flight and
+  mid-flip at real speed.
+- **Rejected:** drawing automatically on arrival (user); animating the
+  card inside the popup's layout (the container resets positions: a
+  separate back flies, then the real card flips open in place).
+
+---
+
+### C032 — Keywords in card text: small icons and colours (2026-11-18)
+User's idea: highlight "+2 damage", "heal 1" etc. like keywords, with small
+icons "like fast codes to read a card".
+- **What:**
+  - `match/cards/keywords.gd`: card text, goals and abilities show an
+    icon before each keyword and the keyword in its colour: damage (blood
+    drop, red, with its number: "+2 damage"), heal (green heart, "heal 1
+    damage"), attack (sword), vampire / werewolf / human (bat, paw, head in
+    the species colours), equipment (gold card), steal (the board's steal
+    icon), reach / any location (blue target), dice (die), character card
+    (purple eye). English and Greek patterns, nothing changed in the card
+    data. On the big card, the hub's equipment cards, dialog cards and the
+    character card.
+  - Icons: `assets/icons/kw_*.png`, 12x12 pixel drawings at 2x in the style
+    of the board's other icons, written by `tools/make_keyword_icons.gd`
+    (edit a drawing there and rerun, or replace a PNG).
+  - Fix: the hub's Equipment tab showed "No equipment yet" one letter per
+    line (C030).
+  - Skip buttons in dialogs: just "Skip" / "Παράλειψη" (the location's
+    "Do nothing here" key removed), small (84 x 32, 15 px), grey, centred
+    beside the real choices instead of stretched to a deck pack's height.
+    (Then C033 made drawing a must.)
+- **Checked:** every English and Greek card phrase form (a scratch script
+  printed what each text marks); screenshots in English and Greek;
+  check_project, a normal run, --ui runs in English and Greek, npm test,
+  online e2e.
+- **Rejected:** marking keywords by hand in the card data (twice the work
+  per card, two languages); whole-pixel icon sizes (the screen is scaled
+  to the window anyway, and 12 px was too small next to 15 px text).
+
+---
+
+### C031 — Character cards for peeks and reveals, bot level explained, dialogs clickable over the hub (2026-11-18)
+User's follow-up to C030 (not released yet either).
+- **What:**
+  - **Character card** (`match/hud/character_card.gd`): the hub's You
+    tab made into a card of its own (portrait in the species colour,
+    name, species, goal, ability, life bar). Shown big over the board:
+    - someone's character shown only to you (a peek, a green card): the
+      card with "Only you see Fern's character" and OK (was a text
+      dialog);
+    - a character made public (not yours, not on a death: the banner says
+      it): "Fern reveals their character" for 6 s, no OK, clicks go
+      through it;
+    - a player row's drawer has "Character card" when you know it (public,
+      or shown to you: kept as `seen` in your own GameState only).
+    It sits just under the dialogs (z 24 vs 25): a dialog is what you must
+    answer.
+  - **Lobby**: a line under "Bots:" says what the level means (EN/EL).
+  - **Fix BUG-015**: dialogs over the hub took no clicks (the hub under
+    them did). The play scene keeps its children in drawing order.
+  - **Autotest**: `--ui` clicks dialog buttons with the mouse and fails if
+    something covers them; presses OK on a character card first, like a
+    person; `--shot-card` takes a picture of the popup.
+- **Checked:** check_project; --ui runs in English, Greek and with hard
+  bots; a normal run; npm test; online e2e; with the fix switched off, the
+  --ui run fails on the hub (so the test catches it); pictures of the
+  popup and the lobby (Greek).
+- **Rejected:** public reveals as a popup you must close (it would stop
+  everyone, and covered pawns someone was about to click).
+
+---
+
+### C030 — Focus marks, a death scene, the player hub redrawn with a cheat sheet, bot difficulty (2026-11-18)
+User's list while v0.1.5 was released.
+- **What:**
+  - **Focus** (`match/board/focus_marks.gd`, `PawnLayer`): the turn
+    player stands in a golden spotlight under a bobbing gold arrow; on
+    your attack step, everyone you can hit has a turning red dashed ring
+    (flaring while you hover Attack) and a red row in the player list;
+    players you can pick get an orange arrow over the existing ring.
+  - **Death** (`match/board/death_fx.gd`, any cause): the pawn flashes
+    white, falls and greys; a glowing ghost of the pawn rises, swaying,
+    with wisps, and fades; a dark band across the screen: "{name} has
+    fallen", who they were (species colour), who struck them down. A
+    killing blow (server sends `lethal` with `attack_fx`) has a darker
+    wind-up, a big crescent sweep, more blood and a red screen flash.
+    The end screen waits 4.6 s (was 3.2) so the banner plays out.
+  - **Player hub** (`match/hud/player_hub.gd`, replaces the scene's
+    `Hud` subtree and `hud.gd` / `player_hud.gd`): tabs You /
+    Equipment / This turn and a hide arrow, dark panel with a gold edge.
+    You: portrait framed in the species colour, character, goal, ability,
+    a life bar (one segment per life point) + "n of m left", Reveal and
+    Use Ability. Equipment: small cards. This turn (the cheat sheet the
+    user asked for): the 4 steps with the current one lit and how to do
+    each, who's within reach now (your attack step), and "any time":
+    ability ready or why not, reveal, green cards, what "within reach"
+    means.
+  - **Bot difficulty**: the lobby's "Bots: Easy / Normal / Hard" (owner's
+    < >, `settings.bot_level`, kept when the teams change). Easy: lots of
+    noise in every choice, learns only from cards and reveals, a bit less
+    aggressive; Normal: as before; Hard: no noise, a bit more aggressive
+    (`BotWeights.LEVELS`). Autotest: `--bot-level=0|1|2`.
+  - Fix: this turn's small cards drew their art at full size (C027 set
+    the size before the "ignore size" mode).
+  - Autotest pictures: `--shot-hub=TAB`, `--shot-windup=`, `--shot-death=`.
+- **Checked:** headless runs with easy (6 attacks in 27 turns) and hard
+  bots (23 in 28), the UI-clicking run, online e2e, windowed screenshots
+  of the hub, a wind-up and a death.
+- **Rejected:** a slow-motion killing blow (`Engine.time_scale` is
+  global: it would also slow tests and other animations); hard bots that
+  peek at hidden info (they must know only what a person would); keeping
+  the old Hud nodes and restyling them (half scene, half code).
+
+---
+
 ### C029 — Tests skip the game's pauses; one real-speed match per release (2026-11-18)
 - **What:** `-- --fast` (`Global.fast_mode`) makes every server pause
   (`MatchServer.wait()`: dice landing, attack wind-up, bots thinking) one

@@ -17,6 +17,16 @@ _Last updated: 2026-11-18_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
+2026-11-18: released **v0.1.5** (C027–C029). Then C030 (not released):
+focus marks (turn player spotlight, who's in reach), a death scene (ghost
++ banner, heavier killing blow), the player hub redrawn with a "This turn"
+cheat sheet, bot difficulty in the lobby. The user is looking for
+sprites and sound effects meanwhile. Then C031 (not released): character
+cards for peeks / reveals / the player list, the bot level explained, and
+BUG-015 (dialogs over the hub weren't clickable) fixed. Then C032 (not
+released): keyword icons and colours in card / ability text. Then C033
+(not released): drawing is a must (D011), and drawn cards fly out of the
+deck and flip.
 2026-11-18: released **v0.1.4** (everything below). The user's feedback on
 it, fixed in C027, not released and not yet seen in a browser: no web
 music (BUG-011: web playback set to Stream), a card you decide on stays
@@ -60,16 +70,15 @@ Before that: player list + click to pick (C006/C007).
 Before that: clearer match screen (C005), network/state refactor (C004).
 
 ## Next
-- **Live at https://play.mvrtz.com**, release v0.1.4 (2026-11-18; v0.1.3
-  was confirmed in a real game).
+- **Live at https://play.mvrtz.com**, release v0.1.5 (2026-11-18; v0.1.3
+  was confirmed in a real game; v0.1.5 being checked by the user).
   - Ubuntu server 46.225.188.241, behind its existing Caddy (C012);
   - GitHub repo MVour/hunters;
   - deploys only for `v*` tags, made with `bash tools/release.sh` from WSL
     (C013). Only WSL has the user's GitHub key.
-- **Unreleased:** C027 (web music, whole cards, card over the dialog,
-  installable site), C028 (three-beat attacks, new turn buttons), C029
-  (tests skip pauses with --fast; REAL=1 for real speed, CI does one real
-  match per release). Release with `bash tools/release.sh`; then check in a
+- **Unreleased:** C030 (focus, death scene, hub + cheat sheet, bot
+  difficulty, small-card art fix), C031 (character cards, bot level line,
+  BUG-015), C032 (keyword icons in card text), C033 (must draw, draw animation). Release with `bash tools/release.sh`; then check in a
   browser: music plays (and doesn't crackle on a phone), cards look whole,
   "Install app" works on a phone; and Play again online (BUG-009).
 - **Music:** the user listens and adjusts the track lists (`MUSIC` /

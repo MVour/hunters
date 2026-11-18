@@ -7,6 +7,24 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-015 — Dialog buttons over the player hub can't be clicked
+- **Logged:** 2026-11-18 (user, testing C030 locally)
+- **Area:** `match/play_scene.gd` (the order of its children)
+- **What happens:** a dialog (e.g. a location's "Draw a card / Do nothing")
+  is drawn over the player hub, but clicking its buttons does nothing; the
+  hub's buttons underneath react instead.
+- **Root cause:** Godot gives a click to the control that comes later in
+  the scene tree; `z_index` only orders the drawing. The dialog was made
+  before the hub (and big card popups, made later, did the same to the
+  dialog). The UI bot pressed dialog buttons by code, not by a click, so
+  the tests never noticed.
+- **Fix (C031):** the play scene keeps its children in drawing order
+  (`_stack_by_layer`, again whenever something is added), so what's drawn
+  on top also gets the click. The UI bot now clicks dialog buttons with the
+  mouse and fails if anything else is under it (checked: with the fix off,
+  the test fails on exactly this).
+- **Status:** fixed, verified by the UI-clicking test runs.
+
 ### BUG-014 — Phones: the browser bar takes room; the game can't be installed
 - **Logged:** 2026-11-18 (user, after the v0.1.4 release)
 - **Area:** `online/lobby-ui` (index.html, public/), web export preset
@@ -211,6 +229,9 @@ that sit open for more than ~2 weeks.
 - **What happens:** Clicking GUIDE has no effect.
 - **Hypothesis:** The button has no `pressed` connection and there's no guide screen yet.
 - **Impact:** Low. Looks broken to new players; no way to read the rules in-game.
+- **Note (2026-11-18, C030):** in a match, the player hub's "This turn" tab
+  is now the cheat sheet (the user's idea for the guide). The main menu's
+  GUIDE button itself still does nothing: remove it, or open a short guide.
 - **Status:** open
 
 ### BUG-001 — A player leaving mid-match isn't handled

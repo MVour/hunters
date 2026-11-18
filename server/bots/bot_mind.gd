@@ -23,6 +23,8 @@ var _health := {}     # id -> starting health they told me
 var _lean := {}       # id -> {species: multiplier}
 var _grudge := {}     # id -> damage they did to me
 var _thanks := {}     # id -> healing they gave me
+## Learn from how others behave (who hits / helps whom)? Off for easy bots.
+var reads_hints := true
 
 
 func _init(server: MatchServer, my_id: int) -> void:
@@ -87,6 +89,8 @@ func _expected_question_result(card: Dictionary, sp: String, before: Dictionary)
 ## Public event: `by` hurt (attack, card) or helped (heal) `to`.
 func observe(event: String, by: int, to: int, amount: int) -> void:
 	if by == me or by == 0 or by == to:
+		return
+	if not reads_hints:  # easy bots: only cards and reveals teach them
 		return
 	if to == me:
 		var mine: String = own.get("species", "")

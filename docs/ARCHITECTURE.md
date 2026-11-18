@@ -142,10 +142,15 @@ frees the play scene and returns to the menu.
 
 Match screen (`match/play_scene.tscn` + `play_scene.gd`): board
 (`ForestBoard` or, with Classic art, `ClassicBoard`), `Locations` (`GameMap`),
-`PawnLayer`, `PlayerList` (right edge, play order, drawers), `Hud/PlayerHud`,
+`PawnLayer` (+ `FocusMarks`, `AttackFx`, `HitFx`, `DeathFx`), `PlayerList` (right edge,
+play order, drawers; a drawer's "Character card" button), `PlayerHub` (bottom: You /
+Equipment / This turn, built in code; You is a `CharacterCard`), `CharacterCard.popup`
+(someone's character: peeks with OK, public reveals click-through and fading),
 `DamageBoard` (life track, left edge; its "Who's who" key floats beside it),
 `DecksContainer`, `DicesContainer`,
-`CardView` popups (a player row's details drawer floats to the row's left,
+`CardView` popups. The play scene keeps its children in `z_index` order
+(`_stack_by_layer`) because clicks go to the later child, not the higher
+z (BUG-015). (A player row's details drawer floats to the row's left,
 `top_level`, one open at a time), the narrator bar (top centre: holds
 `status_label`), `TurnCards` (this turn's cards, small, between the hub
 and the right column; the passive popup sits just above them), `GameLog`
@@ -215,6 +220,17 @@ Like a front-end i18n file (D006):
 location offer. Options render as `DeckPack`s (value = a deck), whole cards
 (value = an equipment uid, via `CardView.card_face()`), or buttons. The card
 a server question is about (`_context_card`) shows on the left.
+
+## Keywords in card text
+`Keywords` (`match/cards/keywords.gd`) turns card / goal / ability text
+into BBCode: before each keyword a small icon (`assets/icons/kw_*.png`),
+the keyword in its colour (damage red, heal green, species in their
+colours, equipment gold, steal and secrets purple, reach light blue, dice,
+attack). Found by one regex of English and Greek patterns, so card data
+stays plain text (Godot's regex ignores case for Latin letters only, so
+Greek capitals are spelled out). Used by `CardView.card_face` and
+`CharacterCard`; `Keywords.label()` makes the RichTextLabel (clicks pass
+through: it sits inside clickable cards).
 
 ## Art switch
 `Global.classic_art` picks the current art or the original Feb 2025 art (for

@@ -10,6 +10,7 @@ var _title: Label
 var _names := {}    # row key -> Label
 var _values := {}   # row key -> Label
 var _buttons := []  # every < and > (owner only)
+var _bot_hint: Label  # what the chosen bot level means
 
 
 func _init() -> void:
@@ -29,6 +30,13 @@ func _init() -> void:
 	_row(grid, "preset", func(d): LobbyNet.change_preset(d))
 	for key in ["vampires_count", "werewolves_count", "humans_count"]:
 		_row(grid, key, func(d): LobbyNet.change_setting(key, d))
+	_row(grid, "bot_level", func(d): LobbyNet.change_bot_level(d))
+	_bot_hint = Label.new()
+	_bot_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_bot_hint.custom_minimum_size = Vector2(300, 0)
+	_bot_hint.add_theme_font_size_override("font_size", 17)
+	_bot_hint.add_theme_color_override("font_color", Color(0.72, 0.7, 0.62))
+	column.add_child(_bot_hint)
 
 
 func _ready() -> void:
@@ -72,6 +80,13 @@ func refresh() -> void:
 	_names.vampires_count.text = Global.text("Vampires: ").strip_edges()
 	_names.werewolves_count.text = Global.text("Werewolves: ").strip_edges()
 	_names.humans_count.text = Global.text("Humans:")
+	_names.bot_level.text = Global.text("lobby.bots_level")
+	var level := clampi(int(GameState.game_settings.get("bot_level", BotWeights.DEFAULT_LEVEL)), 0, 2)
+	var level_names := [Global.text("lobby.bots_easy"), Global.text("lobby.bots_normal"), Global.text("lobby.bots_hard")]
+	_values.bot_level.text = level_names[level]
+	_values.bot_level.add_theme_color_override("font_color", Color(["8fd08f", "e8e0c8", "e87a6a"][level]))
+	_bot_hint.text = [Global.text("lobby.bots_easy_hint"), Global.text("lobby.bots_normal_hint"),
+		Global.text("lobby.bots_hard_hint")][level]
 	var settings: Dictionary = GameState.game_settings
 	for key in ["vampires_count", "werewolves_count", "humans_count"]:
 		_values[key].text = str(settings.get(key, 0))

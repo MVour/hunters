@@ -97,6 +97,13 @@ func _ready() -> void:
 			await get_tree().create_timer(0.1).timeout
 			LobbyNet.fill_with_bots()
 			await _until(func(): return GameState.players.size() >= total)
+			# --bot-level=0|1|2 (easy / normal / hard): the lobby's Bots < > buttons.
+			var level := _arg("--bot-level=", str(BotWeights.DEFAULT_LEVEL)).to_int()
+			for step in absi(level - BotWeights.DEFAULT_LEVEL):
+				LobbyNet.change_bot_level(signi(level - BotWeights.DEFAULT_LEVEL))
+				await get_tree().create_timer(0.1).timeout
+			if int(GameState.game_settings.get("bot_level", BotWeights.DEFAULT_LEVEL)) != level:
+				print("AUTOTEST FAIL bot level %d not set (settings: %s)" % [level, GameState.game_settings])
 		await get_tree().create_timer(0.5).timeout
 		# --shot-lobby=PATH (not headless): save a picture of the lobby.
 		var shot := _arg("--shot-lobby=", "")
@@ -215,8 +222,40 @@ func _connect_signals() -> void:
 			stats.chat_heard += 1)
 	SignalBus.card_revealed.connect(func(_id, _card): stats.cards += 1)
 	SignalBus.card_drawn_secretly.connect(func(_id, _t): stats.cards += 1)
-	SignalBus.attack_happened.connect(func(_a, _t, _d): stats.attacks += 1)
+	SignalBus.attack_happened.connect(func(_a, _t, _d, _l): stats.attacks += 1)
+	# --shot-windup=PATH / --shot-death=PATH (not headless): an attack mid
+	# wind-up; a death once the ghost is out and the banner is up.
+	SignalBus.attack_happened.connect(func(_a, _t, _d, _l):
+		await get_tree().create_timer(Rules.ATTACK_WINDUP * 0.8).timeout
+		await _shot_once("--shot-windup=", func(_scene): return true))
+	SignalBus.player_died.connect(func(_id, _k):
+		await get_tree().create_timer(1.8).timeout
+		await _shot_once("--shot-death=", func(_scene): return true))
 	SignalBus.player_died.connect(func(_id, _k): stats.deaths += 1)
+	# --shot-draw=PATH / --shot-flip=PATH (not headless): a card you drew in
+	# flight from its deck; and turning over.
+	SignalBus.card_revealed.connect(func(id, _card):
+		if id != GameState.local_id or "--shot-draw=" in _shots_taken:
+			return
+		# It may wait behind another card: catch the flight when it starts.
+		var view: CardView = null
+		for i in 300:
+			await get_tree().process_frame
+			var scene := get_tree().root.find_child("PlayScene", true, false)
+			if scene == null:
+				return
+			for child in scene.get_children():
+				if child is CardView and is_instance_valid(child._flying_back):
+					view = child
+			if view:
+				break
+		if view == null:
+			return
+		await get_tree().create_timer(CardView.DRAW_FLY * 0.5).timeout
+		await _shot_once("--shot-draw=", func(_scene): return true)
+		await get_tree().create_timer(CardView.DRAW_FLY * 0.5 + CardView.DRAW_FLIP * 0.6
+			- 0.05).timeout
+		await _shot_once("--shot-flip=", func(_scene): return true))
 	# --shot-hit=PATH (not headless): a picture just after you take damage.
 	SignalBus.damage_changed.connect(func(id, dmg):
 		if id == GameState.local_id and dmg > 0:
@@ -254,7 +293,8 @@ func _on_begin_turn(player_id: int) -> void:
 
 
 ## A little into turn 8 (its cards are out). --shot-drawer: one player's
-## drawer open; --shot-key: the life track's "Who's who" open.
+## drawer open; --shot-key: the life track's "Who's who" open;
+## --shot-hub=TAB: that tab of the player hub open.
 func _match_shot(path: String) -> void:
 	await get_tree().create_timer(2.5).timeout
 	var scene := get_tree().root.find_child("PlayScene", true, false)
@@ -264,6 +304,15 @@ func _match_shot(path: String) -> void:
 		scene.player_list._rows.values()[2].toggle_drawer()
 	if "--shot-key" in OS.get_cmdline_user_args():
 		scene.damage_board._key_button.pressed.emit()
+	var hub_tab := _arg("--shot-hub=", "")  # you / equipment / turn
+	if hub_tab != "":
+		scene.hub.show_tab(hub_tab)
+	# --shot-card: the character card popup (with this bot's own character).
+	if "--shot-card" in OS.get_cmdline_user_args():
+		var other: int = scene.player_list._rows.keys()[1]
+		scene.show_character_card(other, Global.text("match.reveals_title") % "Fern",
+			GameState.local_player.character)
+		await get_tree().create_timer(0.5).timeout
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(path)
@@ -352,6 +401,7 @@ func _click_pick() -> bool:
 	var scene := get_tree().root.find_child("PlayScene", true, false)
 	if scene == null or scene.pick_ids.is_empty():
 		return false
+	await _dismiss_character_card(scene)
 	var serial: int = scene.pick_serial
 	var id: int = scene.pick_ids[randi() % scene.pick_ids.size()]
 	var target: Control
@@ -399,6 +449,18 @@ func _click_pick() -> bool:
 
 ## --ui: press an option in the black dialog (a deck pack, a whole card or
 ## a button). prefer_pack: pick a deck pack when there is one.
+## A character card someone showed you (OK to close) may lie over what you
+## want to click: press its OK first, as a person would.
+func _dismiss_character_card(scene: Node) -> void:
+	var popup = scene._character_popup
+	if not is_instance_valid(popup) or popup.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		return
+	var ok := _find_button(popup, Global.text("option.ok"))
+	if ok:
+		ok.pressed.emit()
+		await get_tree().create_timer(0.3).timeout  # its fade
+
+
 func _press_dialog_option(prefer_pack: bool) -> bool:
 	await get_tree().process_frame
 	var scene := get_tree().root.find_child("PlayScene", true, false)
@@ -409,8 +471,32 @@ func _press_dialog_option(prefer_pack: bool) -> bool:
 		return false
 	var packs := options.filter(func(c): return c is DeckPack)
 	var button: BaseButton = (packs if prefer_pack and not packs.is_empty() else options).pick_random()
+	# A real click on its centre (what's on top there gets it), and first
+	# make sure the mouse there is over the button: anything else would
+	# take the click (C031: the player hub under the dialog took it).
+	var at: Vector2 = get_viewport().get_final_transform() \
+		* (button.get_global_transform_with_canvas() * (button.size / 2.0))
+	var motion := InputEventMouseMotion.new()
+	motion.position = at
+	motion.global_position = at
+	get_viewport().push_input(motion)
+	await get_tree().process_frame
+	if not is_instance_valid(button) or not is_instance_valid(scene) or not scene.choice_panel.visible:
+		return true  # the dialog closed by itself meanwhile
+	var under: Control = get_viewport().gui_get_hovered_control()
+	if under == null or not (under == button or button.is_ancestor_of(under)):
+		_finish(false, "dialog option %s is covered: under the mouse is %s" % [button.get_path(),
+			under.get_path() if under else "nothing"])
+		return true
 	stats.dialog_clicks += 1
-	button.pressed.emit()
+	for pressed in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.position = at
+		e.global_position = at
+		get_viewport().push_input(e)
+		await get_tree().process_frame
 	return true
 
 

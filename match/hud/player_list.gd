@@ -6,6 +6,8 @@ class_name PlayerList extends PanelContainer
 ## Pure view: reads GameState, refreshes on SignalBus events.
 
 signal player_picked(player_id: int)
+## A row's "Character card" button.
+signal card_wanted(player_id: int)
 
 const WIDTH := 290.0
 ## Tall enough for 8 players without scrolling (a hidden row is easy to miss).
@@ -66,6 +68,7 @@ func build(order: Array) -> void:
 		var row := PlayerRow.new(order[i], i + 1)
 		row.picked.connect(func(id): player_picked.emit(id))
 		row.drawer_opened.connect(_close_other_drawers)
+		row.card_wanted.connect(func(id): card_wanted.emit(id))
 		_column.add_child(row)
 		_rows[order[i]] = row
 	refresh()
@@ -77,6 +80,12 @@ func refresh() -> void:
 
 
 ## Light up these players and let them be clicked; [] ends picking.
+## Rows of the players you could attack now get a red edge.
+func set_in_reach(ids: Array) -> void:
+	for id in _rows:
+		_rows[id].set_in_reach(id in ids)
+
+
 func set_pickable(ids: Array) -> void:
 	for id in _rows:
 		_rows[id].set_pick_state(id in ids, not ids.is_empty())

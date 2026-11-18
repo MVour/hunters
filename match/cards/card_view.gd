@@ -41,19 +41,24 @@ static var _queue := []
 
 
 ## buttons: Array of [label, Callable, optional Color]. Every button also
-## closes the card.
-static func open(parent: Node, card: Dictionary, heading: String, buttons: Array) -> CardView:
+## closes the card. `drawn_from`: a card just drawn, from the deck at that
+## screen point: it flies out and turns over (play_draw), also when it has
+## to wait for the card on screen first.
+static func open(parent: Node, card: Dictionary, heading: String, buttons: Array,
+		drawn_from := Vector2.INF) -> CardView:
 	for child in parent.get_children():
 		if child is CardView and not child._closing:
 			if child.dismissable:
 				child.close()
 			else:
-				_queue.append([parent, card, heading, buttons])  # show after it
+				_queue.append([parent, card, heading, buttons, drawn_from])  # show after it
 				return null
 	var view := CardView.new()
 	view.dismissable = buttons.size() == 1 and buttons[0][0] == "OK"
 	parent.add_child(view)
 	view._build(card, heading, buttons)
+	if drawn_from != Vector2.INF:
+		view.play_draw(drawn_from)
 	return view
 
 
@@ -120,11 +125,85 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	_pop.tween_property(self, "modulate:a", 1.0, 0.2)
 
 
+## A freshly drawn card: instead of popping in, its back lifts off the deck
+## at `from` (screen point), flies to where the card goes, and flips over to
+## its face; then the heading and buttons fade in.
+const DRAW_FLY := 0.45
+const DRAW_FLIP := 0.14
+var _draw: Tween
+var _flying_back: TextureRect
+
+
+func play_draw(from: Vector2) -> void:
+	if _closing or passive:
+		return
+	if _pop:
+		_pop.kill()
+	modulate.a = 1.0
+	_layout.scale = Vector2.ONE
+	_layout.modulate.a = 0.0
+	_dim.modulate.a = 0.0
+	await get_tree().process_frame  # the column is laid out: the card's place is known
+	if _closing or passive or not is_inside_tree():
+		_finish_draw()
+		return
+	var target := Rect2(_card_panel.global_position - global_position, _card_panel.size)
+	var back := TextureRect.new()
+	_flying_back = back
+	back.texture = Global.card_back(shown_card.get("deck", "red_cards"))
+	back.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # before the size
+	back.stretch_mode = TextureRect.STRETCH_SCALE
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var start_size := Vector2(90, 90 * CARD_RATIO)
+	back.size = start_size
+	back.position = from - start_size / 2.0
+	back.pivot_offset = start_size / 2.0
+	add_child(back)
+	_draw = create_tween()
+	# 1. Lifts off the deck and flies over, growing, with a little spin.
+	_draw.tween_property(_dim, "modulate:a", 1.0, DRAW_FLY)
+	_draw.parallel().tween_property(back, "position", target.position, DRAW_FLY) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_draw.parallel().tween_property(back, "size", target.size, DRAW_FLY) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_draw.parallel().tween_property(back, "pivot_offset", target.size / 2.0, DRAW_FLY)
+	_draw.parallel().tween_property(back, "rotation", 0.0, DRAW_FLY).from(-0.35)
+	# 2. Turns over: the back narrows to an edge...
+	_draw.tween_property(back, "scale:x", 0.0, DRAW_FLIP).set_ease(Tween.EASE_IN)
+	# 3. ...and the face opens out from it.
+	_draw.tween_callback(func():
+		back.queue_free()
+		_card_panel.pivot_offset = _card_panel.size / 2.0
+		_card_panel.scale.x = 0.0
+		_layout.modulate.a = 1.0
+		for child in _layout.get_children():
+			if child != _card_panel:
+				child.modulate.a = 0.0)
+	_draw.tween_property(_card_panel, "scale:x", 1.0, DRAW_FLIP).set_ease(Tween.EASE_OUT)
+	for child in _layout.get_children():
+		if child != _card_panel:
+			_draw.parallel().tween_property(child, "modulate:a", 1.0, 0.25)
+
+
+## Skip to the end of the draw (the card is about to move or close).
+func _finish_draw() -> void:
+	if _draw:
+		_draw.kill()
+	if is_instance_valid(_flying_back):
+		_flying_back.queue_free()
+	_dim.modulate.a = 1.0
+	_layout.modulate.a = 1.0
+	_card_panel.scale = Vector2.ONE
+	for child in _layout.get_children():
+		child.modulate.a = 1.0
+
+
 ## Shrink into the bottom-right corner and stop blocking the screen, e.g.
 ## while the player has to click someone on the board. Buttons still work.
 func make_passive() -> void:
 	if passive or _closing:
 		return
+	_finish_draw()
 	passive = true
 	if _pop:
 		_pop.kill()
@@ -248,12 +327,10 @@ static func card_face(card: Dictionary, width: float, with_art := true) -> Panel
 		kind.add_theme_color_override("font_color", accent.lightened(0.3))
 		column.add_child(kind)
 
-	var text := Label.new()
-	text.text = Global.field(card, "text")
-	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Keywords marked with an icon and a colour (Keywords).
+	var text := Keywords.label(Global.field(card, "text"), maxi(12, roundi(18 * s)), true,
+		Color(0.94, 0.92, 0.88))
 	text.custom_minimum_size = Vector2(text_width - 2 * text_margin, 0)
-	text.add_theme_font_size_override("font_size", maxi(12, roundi(18 * s)))
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, text_margin)
@@ -282,4 +359,4 @@ func close() -> void:
 	if not _queue.is_empty():
 		var next: Array = _queue.pop_front()
 		if is_instance_valid(next[0]):
-			CardView.open(next[0], next[1], next[2], next[3])
+			CardView.open(next[0], next[1], next[2], next[3], next[4])
