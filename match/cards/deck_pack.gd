@@ -3,7 +3,7 @@ class_name DeckPack extends Button
 ## you may draw: a tight pile of card backs, "Draw" and how many are left.
 ## Click it to draw from that deck.
 
-const CARD := Vector2(96, 136)
+const CARD := Vector2(90, 138)  # the card art's shape (420 x 646)
 const LAYERS := 4
 
 

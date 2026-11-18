@@ -39,6 +39,8 @@ const DEFAULTS = {
     // The exported server binary, run as: command ...args -- --server ...
     command: '/app/game-server/board2D.x86_64',
     args: ['--headless'],
+    // Extra game options after "--" (tests: ['--fast']). Empty in production.
+    gameArgs: [],
   },
   limits: {
     loginAttemptsPerIp: 10,        // per 15 minutes
@@ -114,6 +116,10 @@ export function validateConfig(config) {
   if (!(r.maxPlayers >= 2 && r.maxPlayers <= 8)) problems.push('rooms.maxPlayers must be 2..8.');
   if (!(r.maxRooms >= 1)) problems.push('rooms.maxRooms must be at least 1.');
   if (typeof config.godot.command !== 'string' || !config.godot.command) problems.push('godot.command is required.');
+  const gameArgs = config.godot.gameArgs ?? [];
+  if (!Array.isArray(gameArgs) || !gameArgs.every((a) => typeof a === 'string' && /^--[a-z-]+$/.test(a))) {
+    problems.push('godot.gameArgs must be a list of plain --flags.');
+  }
   if (problems.length) throw new Error('Unsafe or incomplete config:\n - ' + problems.join('\n - '));
   config.publicOrigin = origin.origin;
   config.secureCookies = origin.protocol === 'https:';

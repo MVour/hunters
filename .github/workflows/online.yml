@@ -82,6 +82,11 @@ jobs:
           grep -q "translation keys, 0 problems" check.log
       - name: Two bots play a match
         run: bash tools/run_autotest.sh godot
+      # Tests skip every pause (--fast); before a deploy, one match plays at
+      # the speed players see, so timing problems show up too.
+      - name: Two bots play a match at real speed (releases)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: REAL=1 bash tools/run_autotest.sh godot
 
   images:
     name: Build & push images

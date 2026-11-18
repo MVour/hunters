@@ -4,6 +4,8 @@
 //
 //   node scripts/e2e.mjs "<godot console binary>" [extra bot args...]
 //
+// Fast by default (room server and bots with --fast: no pauses); REAL=1
+// plays at real speed.
 // Exit 0 only if both bots report AUTOTEST PASS.
 
 import { spawn } from 'node:child_process';
@@ -15,7 +17,9 @@ import { fileURLToPath } from 'node:url';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const project = resolve(here, '../../..');
 const godot = process.argv[2];
-const botArgs = process.argv.slice(3);
+const real = process.env.REAL === '1';
+const speed = real ? [] : ['--fast'];
+const botArgs = [...speed, ...process.argv.slice(3)];
 if (!godot) {
   console.error('usage: node scripts/e2e.mjs <godot binary> [bot args]');
   process.exit(2);
@@ -32,7 +36,7 @@ writeFileSync(configPath, JSON.stringify({
   sessionSecret: 'e2e-'.repeat(10),
   access: { users: [{ name: 'Owner', code: 'owner-code' }], sharedCodes: ['guests-code'], admins: [] },
   rooms: { maxRooms: 2, maxRoomsPerUser: 1, maxPlayers: 4, maxHours: 1, portFrom: 21000, portTo: 21005, startTimeoutSeconds: 60 },
-  godot: { command: godot, args: ['--headless', '--path', project] },
+  godot: { command: godot, args: ['--headless', '--path', project], gameArgs: speed },
 }));
 
 const service = spawn(process.execPath, [resolve(here, '../src/server.js')], {
@@ -60,7 +64,7 @@ function bot(role, link, extra) {
     let text = '';
     p.stdout.on('data', (d) => { text += d; });
     p.stderr.on('data', (d) => { text += d; });
-    const timer = setTimeout(() => p.kill(), 300_000);
+    const timer = setTimeout(() => p.kill(), real ? 900_000 : 300_000);
     p.on('exit', () => {
       clearTimeout(timer);
       writeFileSync(join(out, `${role}.log`), text);

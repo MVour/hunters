@@ -2,8 +2,11 @@ class_name HitFx extends Node2D
 ## Makes damage, healing and steals impossible to miss:
 ## - damage: a red claw slash over the pawn and over their life-track marker;
 ##   when it's YOU, red splatter on your screen that flashes and fades;
-## - healing: green sparks rising from the pawn, the marker glows green;
-## - a steal: a small card flies from the victim's pawn to the taker's.
+## - healing, in three beats: green motes gather on the pawn, a green burst,
+##   then sparks rise; the marker glows green;
+## - a steal, in three beats: the card pops out of the victim's pawn, flies
+##   to the taker's, lands with an amber burst.
+## (Attacks have their own three beats: AttackFx.)
 ## Pure visuals, from SignalBus events this screen already gets.
 
 const HARM := Color("e0302a")
@@ -116,7 +119,7 @@ func _slash_pawn(id: int, amount: int) -> void:
 	var at := _pawn_at(id)
 	if at.x < 0:
 		return
-	await get_tree().create_timer(0.15).timeout  # with the attack's lunge
+	await get_tree().create_timer(0.15).timeout  # with the attack's lunge (AttackFx)
 	var slash := Slash.new()
 	slash.size = 40.0 + amount * 6.0
 	slash.global_position = at
@@ -170,6 +173,21 @@ func _heal_sparks(id: int) -> void:
 	var at := _pawn_at(id)
 	if at.x < 0:
 		return
+	# 1. Motes gather on the pawn.
+	for i in 10:
+		var mote := _dot(HEAL.lightened(0.4), randf_range(3, 5))
+		mote.position = at + Vector2.from_angle(randf() * TAU) * randf_range(60, 95)
+		mote.modulate.a = 0.0
+		add_child(mote)
+		var m := create_tween()
+		m.tween_property(mote, "modulate:a", 1.0, 0.1).set_delay(i * 0.03)
+		m.tween_property(mote, "position", at, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		m.tween_callback(mote.queue_free)
+	await get_tree().create_timer(0.7).timeout
+	# 2. A green burst; the pawn shines.
+	_burst(at, HEAL, 0.8)
+	_flash_pawn(id, Color(0.7, 1.8, 0.9))
+	# 3. Sparks rise.
 	for i in 6:
 		var spark := Label.new()
 		spark.text = "+"
@@ -188,7 +206,44 @@ func _heal_sparks(id: int) -> void:
 		t.chain().tween_callback(spark.queue_free)
 
 
-## A small card-shaped glint flies from one pawn to another.
+## A small glowing dot (heal motes).
+func _dot(color: Color, radius: float) -> Node2D:
+	var dot := Dot.new()
+	dot.color = color
+	dot.radius = radius
+	return dot
+
+
+class Dot extends Node2D:
+	var color := Color.WHITE
+	var radius := 4.0
+	func _draw() -> void:
+		draw_circle(Vector2.ZERO, radius * 2.0, Color(color, 0.25))
+		draw_circle(Vector2.ZERO, radius, color)
+
+
+## A flash and a shockwave ring (the same as an attack's impact).
+func _burst(at: Vector2, color: Color, big: float) -> void:
+	var burst := AttackFx.Burst.new()
+	burst.color = color
+	burst.big = big
+	burst.position = at
+	add_child(burst)
+	var t := create_tween()
+	t.tween_property(burst, "progress", 1.0, 0.5).set_ease(Tween.EASE_OUT)
+	t.tween_callback(burst.queue_free)
+
+
+## A pawn lights up in a colour, then fades back.
+func _flash_pawn(id: int, tint: Color) -> void:
+	var pawn: Sprite2D = pawn_layer.pawns.get(id)
+	if pawn == null or GameState.players.get(id, {}).get("dead", false):
+		return
+	pawn.modulate = tint
+	create_tween().tween_property(pawn, "modulate", Color.WHITE, 0.6)
+
+
+## A small card pops out of one pawn, flies to another and lands there.
 func _fly_card(from_id: int, to_id: int) -> void:
 	var from := _pawn_at(from_id)
 	var to := _pawn_at(to_id)
@@ -200,17 +255,31 @@ func _fly_card(from_id: int, to_id: int) -> void:
 	style.border_color = STEAL
 	style.set_border_width_all(3)
 	style.set_corner_radius_all(4)
+	style.shadow_color = Color(STEAL, 0.6)
+	style.shadow_size = 8
 	card.add_theme_stylebox_override("panel", style)
 	card.size = Vector2(26, 36)
 	card.pivot_offset = card.size / 2.0
 	card.position = from - card.size / 2.0
+	card.scale = Vector2.ZERO
 	add_child(card)
-	var lift := Vector2(0, -90)
+	# 1. It pops out of the victim, who flickers.
+	_flash_pawn(from_id, Color(1.7, 1.3, 0.6))
+	var lift := Vector2(0, -40)
 	var t := create_tween()
+	t.tween_property(card, "scale", Vector2.ONE * 1.3, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(card, "position", card.position + lift, 0.3).set_ease(Tween.EASE_OUT)
+	t.tween_interval(0.25)
+	# 2. It flies over to the taker.
+	var start := from + lift
 	t.tween_method(func(k: float):
-		var p := from.lerp(to, k) + lift * sin(k * PI)
+		var p := start.lerp(to, k) + Vector2(0, -90) * sin(k * PI)
 		card.position = p - card.size / 2.0
 		card.rotation = k * TAU, 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t.tween_property(card, "scale", Vector2(1.6, 1.6), 0.12)
-	t.parallel().tween_property(card, "modulate:a", 0.0, 0.35)
+	# 3. It lands: an amber burst, the taker shines.
+	t.tween_callback(func():
+		_burst(to, STEAL, 0.7)
+		_flash_pawn(to_id, Color(1.7, 1.4, 0.7)))
+	t.tween_property(card, "scale", Vector2(0.2, 0.2), 0.2)
+	t.parallel().tween_property(card, "modulate:a", 0.0, 0.2)
 	t.tween_callback(card.queue_free)

@@ -26,6 +26,13 @@ Format: `- **Name** — what and why. (added YYYY-MM-DD)`
   undecided ("don't love it, don't hate it"). (added 2026-11-17)
 
 ## Art & feel
+- **Revealed figures** — when a player reveals, a small figure of their
+  species replaces the hooded figure on the map, with a scarf or clothes in
+  the player's colour; the same for the life track's figures. Needs the
+  user's art (one figure per species, colour-able parts). (added 2026-11-18)
+- **Emphasise who's involved** — make the turn player stand out more, and
+  mark who can be attacked / damaged / stolen from / affected right now.
+  (added 2026-11-18)
 - **User-drawn forest board** — replace the code-drawn ForestBoard placeholder
   with the user's own art, keeping its layout constants. (added 2026-11-16)
 - **Sound effects** — dice, card draw, hits, death. (Music, rain and the

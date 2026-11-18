@@ -1,6 +1,7 @@
 class_name CardView extends Control
-## A card shown big in the middle of the screen: deck art on top, English +
-## Greek name, type, text, and a row of buttons (e.g. OK, or "give to").
+## A card shown big in the middle of the screen: the whole deck art as the
+## card, its name, type and text on a plate over the lower half, and a row
+## of buttons (e.g. OK, or "give to").
 ## Usage: CardView.open(parent, card, "Hosty drew:", [["OK", callable], ...])
 
 const BACKS := {
@@ -8,7 +9,9 @@ const BACKS := {
 	"red_cards": preload("res://assets/cards/red_card.png"),
 	"blue_cards": preload("res://assets/cards/blue_card.png"),
 }
-const CARD_WIDTH := 380.0
+const CARD_WIDTH := 360.0
+## Height / width of the card art (420 x 646): cards keep this shape.
+const CARD_RATIO := 646.0 / 420.0
 ## Keep the card above this line: the choice panel ("use it now?") sits below.
 const BOTTOM_LIMIT := 800.0
 ## And below the narrator bar at the top.
@@ -25,6 +28,7 @@ var passive := false
 var shown_card := {}
 const PASSIVE_SCALE := 0.5
 var _card_panel: PanelContainer
+var _buttons: HBoxContainer
 
 
 ## True when the card is only shown for information (a single "OK"), so a
@@ -77,15 +81,18 @@ func _build(card: Dictionary, heading: String, buttons: Array) -> void:
 	title.add_theme_constant_override("outline_size", 8)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.custom_minimum_size = Vector2(800, 0)
+	title.visible = heading != ""
 	_layout.add_child(title)
 
 	# The card
-	_card_panel = card_face(card, CARD_WIDTH, 180.0)
+	_card_panel = card_face(card, CARD_WIDTH)
 	_card_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_layout.add_child(_card_panel)
 
 	# Buttons under the card
 	var row := HBoxContainer.new()
+	_buttons = row
+	row.visible = not buttons.is_empty()
 	row.add_theme_constant_override("separation", 12)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_layout.add_child(row)
@@ -128,6 +135,19 @@ func make_passive() -> void:
 	_place()
 
 
+## Keep the card big while the choice dialog under it asks about it ("use
+## it now?"): its own buttons go, clicks pass through to the dialog. The
+## dialog closes it when answered.
+func hold() -> void:
+	if _closing:
+		return
+	dismissable = false
+	_buttons.hide()
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ignore_mouse(_layout)
+
+
 func _ignore_mouse(node: Node) -> void:
 	if node is Control and not node is BaseButton:
 		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -152,10 +172,12 @@ func _place() -> void:
 	_layout.pivot_offset = s / 2.0
 
 
-## A card face (frame in the deck colour, art, name, type, text) in the
-## current language. Used by this popup and inside the choice dialog.
-## `width` / `art_height` set its size; text scales with the width.
-static func card_face(card: Dictionary, width: float, art_height: float) -> PanelContainer:
+## A card face in the current language. With art: card-shaped (the whole
+## deck art, uncropped), with the name, type and text on a dark plate over
+## its lower part. Without: a plain frame in the deck colour with the text
+## (small clickable cards, e.g. equipment to steal).
+## Text scales with `width`.
+static func card_face(card: Dictionary, width: float, with_art := true) -> PanelContainer:
 	var s := width / CARD_WIDTH
 	var accent := Color(Global.CARD_COLORS.get(card.get("deck", ""), {}).get("color", "c8a85a"))
 	var panel := PanelContainer.new()
@@ -164,23 +186,52 @@ static func card_face(card: Dictionary, width: float, art_height: float) -> Pane
 	frame.border_color = accent
 	frame.set_border_width_all(maxi(2, roundi(4 * s)))
 	frame.set_corner_radius_all(roundi(14 * s))
-	panel.add_theme_stylebox_override("panel", frame)
 	panel.custom_minimum_size = Vector2(width, 0)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", roundi(6 * s))
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(column)
+	# The column's width: the card's minus the frames around it.
+	var text_width := width - 2 * maxi(2, roundi(4 * s))
+	var text_margin := roundi(16 * s)
 
-	if art_height > 0 and card.has("deck"):
+	if with_art and card.has("deck"):
+		# The art draws its own border: no frame, just its shape.
+		frame.set_border_width_all(0)
+		frame.set_corner_radius_all(roundi(10 * s))
+		frame.set_content_margin_all(0)
+		panel.custom_minimum_size = Vector2(width, roundf(width * CARD_RATIO))
 		var art := TextureRect.new()
 		art.texture = Global.card_back(card.deck)
-		art.custom_minimum_size = Vector2(0, art_height)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		column.add_child(art)
+		panel.add_child(art)
+		# Inside the art's border, at the bottom: a dark plate for the text.
+		var inside := MarginContainer.new()
+		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var border := roundi(width * 0.085)
+		for side in ["left", "right", "top", "bottom"]:
+			inside.add_theme_constant_override("margin_" + side, border)
+		panel.add_child(inside)
+		var plate := PanelContainer.new()
+		plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		plate.size_flags_vertical = Control.SIZE_SHRINK_END
+		var plate_style := StyleBoxFlat.new()
+		plate_style.bg_color = Color(0.03, 0.03, 0.05, 0.86)
+		plate_style.border_color = accent.darkened(0.2)
+		plate_style.set_border_width_all(maxi(1, roundi(2 * s)))
+		plate_style.set_corner_radius_all(roundi(8 * s))
+		plate_style.set_content_margin_all(roundi(10 * s))
+		plate.add_theme_stylebox_override("panel", plate_style)
+		inside.add_child(plate)
+		plate.add_child(column)
+		text_width = width - 2 * border - 2 * roundi(10 * s) - 2 * maxi(1, roundi(2 * s))
+		text_margin = roundi(6 * s)
+	else:
+		panel.add_child(column)
+	panel.add_theme_stylebox_override("panel", frame)
 
 	var title := Label.new()
 	title.text = Global.field(card, "name")
@@ -201,11 +252,11 @@ static func card_face(card: Dictionary, width: float, art_height: float) -> Pane
 	text.text = Global.field(card, "text")
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	text.custom_minimum_size = Vector2(width - 40 * s, 0)
+	text.custom_minimum_size = Vector2(text_width - 2 * text_margin, 0)
 	text.add_theme_font_size_override("font_size", maxi(12, roundi(18 * s)))
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, roundi(16 * s))
+		margin.add_theme_constant_override("margin_" + side, text_margin)
 	margin.add_child(text)
 	column.add_child(margin)
 	return panel

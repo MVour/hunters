@@ -478,11 +478,12 @@ func _broadcast_waiting() -> void:
 
 
 ## Pause for a moment (e.g. let dice land). Stops forever if the match is freed.
+## In tests (Global.fast_mode) every pause is one frame.
 func wait(seconds: float) -> void:
 	var timer := Timer.new()
 	timer.one_shot = true
 	add_child(timer)
-	timer.start(seconds)
+	timer.start(0.001 if Global.fast_mode else seconds)
 	await timer.timeout
 	timer.queue_free()
 

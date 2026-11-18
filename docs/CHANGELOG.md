@@ -7,6 +7,88 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C029 — Tests skip the game's pauses; one real-speed match per release (2026-11-18)
+- **What:** `-- --fast` (`Global.fast_mode`) makes every server pause
+  (`MatchServer.wait()`: dice landing, attack wind-up, bots thinking) one
+  frame, and the test bots stop "thinking". `run_autotest.sh` and the
+  online e2e use it by default; `REAL=1` runs either at real speed (no
+  4x clock, every pause). The lobby service passes extra game flags from
+  `godot.gameArgs` (plain `--flags` only, checked; empty in production),
+  which the e2e uses to make its room fast. CI runs one 2-player match at
+  real speed on release tags, before the deploy.
+- **Why:** the user asked; pauses keep growing (C025 ending, C028
+  wind-up), and bot stress runs pay for every one of them.
+- **Numbers (this PC):** 2-bot match 22 s → 19 s (the rest is start-up
+  and the test bots' own fixed waits); online e2e 15 s.
+- **Rejected:** only raising the 4x clock (doesn't reach the e2e room
+  server); a real-speed run in `release.sh` (WSL has no Godot; CI gates
+  the deploy anyway); an 8-player real-speed run (user: not needed).
+
+---
+
+### C028 — Attacks, heals and steals in three beats; Attack / End Turn redrawn (2026-11-18)
+User's idea (IDEAS: three-phase attacks) + a button redraw.
+- **What:**
+  - Attacks (`match/board/attack_fx.gd`, new): 1. wind-up, 1.1 s
+    (`Rules.ATTACK_WINDUP`): the attacker draws back, grows and glows red,
+    rings of power close in at their feet with rising embers, a dashed aim
+    line reaches for the target and a reticle closes on them; 2. the blow:
+    a fast lunge, a flash + shockwave on the target (bigger for more
+    damage), blood drops splash out, a hard shake, the number pops up big
+    (a miss: a grey whiff, the target sidesteps); 3. settle: the attacker
+    steps back home, glow and marks fade. `PawnLayer.play_attack` just
+    starts it.
+  - The server paces it: `combat.gd` sends `attack_fx`, waits
+    `ATTACK_WINDUP`, then sends the log line, the damage and any death,
+    so they land with the blow on every screen. A target who leaves
+    during the wind-up isn't hit.
+  - Heals (`hit_fx.gd`): green motes gather on the pawn, a green burst and
+    the pawn shines, then the rising "+" sparks. Steals: the card pops out
+    of the victim (who flickers amber), flies over, lands with an amber
+    burst on the taker.
+  - Attack and End Turn buttons (`play_scene.gd` `_style_turn_button`):
+    Attack blood red, End Turn night blue; dark fill, bright edge, a soft
+    glow that breathes while pressable, brighter on hover, grey and flat
+    when disabled; 205 × 50, larger text.
+- **Why:** attacks were a 0.4 s lunge that was easy to miss; the user
+  wanted them to last a few seconds and read clearly.
+- **Rejected:** delaying the damage on each client (the life track, log
+  and death would still arrive early and out of step: the server already
+  paces dice the same way); a wind-up for card damage (cards already
+  have their popup moment).
+- **Not yet seen by the user** in a real match (checked headless: bots,
+  online e2e).
+
+---
+
+### C027 — Web music, whole cards, card held over the dialog, installable site (2026-11-18)
+Feedback after the v0.1.4 release.
+- **What:**
+  - Web music (BUG-011): `project.godot` sets the web build's default
+    playback type to Stream, so audio goes through Godot's mixer as on the
+    desktop (the 4.3 web default, Sample, ignores our fades / seeking).
+  - Whole cards (BUG-013): `CardView.card_face(card, width, with_art)` is
+    card-shaped (420:646) with the whole art and the text on a dark plate
+    at the bottom; the popup card is 360 wide. This turn's small cards and
+    the draw packs keep the same shape.
+  - Card held over the dialog (BUG-012): a choice about a card keeps the
+    card big above the dialog (`CardView.hold`) instead of a small copy
+    inside it; it closes when answered, when the offer closes, or at game
+    over.
+  - Installable site (BUG-014): `online/lobby-ui/public/manifest.webmanifest`
+    (scope `/`, fullscreen) + icons made from the red card art, linked
+    from the lobby page and the game page (Web preset `html/head_include`).
+- **Why:** user feedback after the release.
+- **Rejected:** Godot's own PWA export option (its manifest would only
+  cover `/game/`, not the lobby the app starts in, and it adds a
+  caching service worker); upgrading Godot for newer sample playback (a
+  bigger change for one setting); a service worker (current phones
+  install without one; it would cache the game between releases).
+- **Not verified in a browser or in a real match:** the local editor can't
+  export to Web; check after the next release.
+
+---
+
 ### C026 — Lobby laid out again; hub tabs fit in Greek (2026-11-18)
 Playtest feedback group 4.
 - **What:**

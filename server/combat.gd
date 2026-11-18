@@ -147,9 +147,14 @@ func _attack(attacker: int, target: int, allow_counter: bool) -> void:
 		if tm.has("max_attack_damage"):
 			dmg = mini(dmg, tm.max_attack_damage)
 
+	# Everyone sees the wind-up first; the blow (damage, log line, death)
+	# lands after it.
+	MatchNet.attack_fx.rpc(attacker, target, dmg)
+	await s.wait(Rules.ATTACK_WINDUP)
+	if s.finished or t.dead:
+		return  # the target left during the wind-up (out like a death)
 	s.notice(Msg.make("notice.attack", {"attacker": a.name, "target": t.name, "d6": dice.val6,
 		"d4": dice.val4, "dmg": dmg}))
-	MatchNet.attack_fx.rpc(attacker, target, dmg)
 	s.observe("harm", attacker, target, dmg)
 	apply_damage(target, dmg, attacker)
 

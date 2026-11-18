@@ -126,6 +126,10 @@ signal art_style_changed(classic: bool)
 
 const SETTINGS_PATH := "user://settings.cfg"
 
+## Tests only (`-- --fast`): the server's pauses (dice landing, the attack
+## wind-up, bots thinking) take one frame. Players never pass it.
+var fast_mode := "--fast" in OS.get_cmdline_user_args()
+
 ## Off unless this computer saved "on" (new players, browsers: current art).
 var classic_art := false:
 	set(on):

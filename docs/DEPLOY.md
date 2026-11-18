@@ -159,9 +159,19 @@ bash tools/release.sh -n         # dry run: show the version and the changes
 - A room closes by itself 2 minutes after its last player leaves, or after
   `maxHours`. Owners/admins can close it from the lobby page.
 
+## Phones: install as an app
+The site has a web app manifest (`online/lobby-ui/public/manifest.webmanifest`,
+icons next to it), linked from the lobby page and from the game page (the
+Web export preset's `html/head_include`). On a phone: browser menu → "Install
+app" / "Add to Home screen" (iPhone: Share → Add to Home Screen). It then
+opens full screen, lobby and game, without the browser's bars. To change
+the icon, replace `icon-192.png`, `icon-512.png` and `apple-touch-icon.png`.
+
 ## Testing locally
 - `node online/lobby-service/scripts/e2e.mjs <godot console binary>`: the
   real service starts a real room; two bots log in and play through it.
+  Fast by default (the room gets `--fast` through the config's
+  `godot.gameArgs`, empty in production); `REAL=1` for real speed.
 - `cd online/lobby-service && npm test`: service unit + API tests.
 - In WSL (Docker): `bash online/deploy/local-test.sh` builds both images and
   checks the stack at `https://localhost:8443` (HTTPS, headers, login, a room

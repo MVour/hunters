@@ -7,6 +7,63 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-014 — Phones: the browser bar takes room; the game can't be installed
+- **Logged:** 2026-11-18 (user, after the v0.1.4 release)
+- **Area:** `online/lobby-ui` (index.html, public/), web export preset
+- **What happens:** on a phone in portrait, the browser's address bar takes
+  a big slice of the screen, so the game can't use the full screen; and the
+  site can't be installed as an app (PWA).
+- **Root cause:** the site had no web app manifest or icons, so phones
+  offer no install and a normal tab always keeps the browser's bars.
+- **Fix (C027):** a site-wide manifest (`/manifest.webmanifest`, scope `/`,
+  display fullscreen, the user's red card art as the icon) linked from the
+  lobby page and from the game page (`html/head_include`), plus the iOS
+  "home screen app" tags. Installed, the lobby and the game open full
+  screen with no browser bars.
+- **Status:** fix implemented, not verified (needs a release and a phone).
+
+### BUG-013 — Cards look short and cut through the middle
+- **Logged:** 2026-11-18 (user)
+- **Area:** `match/cards/card_view.gd` (`card_face`), `match/hud/turn_cards.gd`
+- **What happens:** card popups and this turn's small cards show a thin
+  strip from the middle of the card art, so cards look squashed and cut.
+- **Root cause:** the art (420 × 646) was drawn in a 380 × 180 box (62 px
+  in the small cards) with "keep aspect, covered": only the middle strip shows.
+- **Fix (C027):** cards keep the art's shape: the whole art is the card,
+  with the name, type and text on a dark plate over its lower part. The
+  small cards show the whole art with the name at the bottom; the draw
+  packs use the same shape.
+- **Status:** fix implemented, not verified in a real match.
+
+### BUG-012 — A card you must decide on opens squeezed inside the dialog
+- **Logged:** 2026-11-18 (user)
+- **Area:** `match/play_scene.gd` (`_open_choice`, the old `choice_card_slot`)
+- **What happens:** drawing a card at a location and then being asked
+  about it ("use it now?", "choose…"): the card's popup closed and a small
+  copy (230 px) appeared inside the black dialog, hard to read.
+- **Fix (C027):** the card stays big above the dialog (`CardView.hold`:
+  no buttons, clicks pass through) and closes when the dialog is answered.
+- **Status:** fix implemented, not verified in a real match.
+
+### BUG-011 — No music in the browser game
+- **Logged:** 2026-11-18 (user, after the v0.1.4 release)
+- **Area:** `autoload/audio.gd`, `project.godot` (audio)
+- **What happens:** music and rain play on the desktop, but not in the
+  browser build at play.mvrtz.com.
+- **Root cause (likely; can't be reproduced locally: the local editor is
+  the .NET build, which can't export to Web):** Godot 4.3's single-threaded
+  web export plays sounds as browser "samples" by default. That mode
+  doesn't handle what `audio.gd` does: tracks start at -80 dB and fade in,
+  start mid-file, crossfade by playback position, on buses added at
+  runtime. The tracks are in the build.
+- **Fix (C027):** `audio/general/default_playback_type.web=0` (Stream): the
+  web build mixes through Godot's own mixer, like the desktop.
+- **Watch for:** crackles on slow phones (the known cost of Stream mode
+  without threads). If so: bigger output latency, or rework the fades.
+- **Status:** fix implemented, not verified (needs a release).
+
+---
+
 ### BUG-010 — The host's match data leaked into the lobby's player list
 - **Logged:** 2026-11-18 (found by a 2-game autotest with a Greek client)
 - **Area:** `network/lobby_net.gd` (`sync_player`, `start_game`, `_players`)

@@ -5,7 +5,7 @@ class_name TurnCards extends VBoxContainer
 ## Pure view, from SignalBus events this screen already gets.
 
 const MAX_CARDS := 3
-const CARD_SIZE := Vector2(88, 128)
+const CARD_SIZE := Vector2(84, 129)  # the card art's shape (420 x 646)
 ## Sits between the player hub and the right column, bottom of the screen.
 const AREA := Rect2(1320, 860, 292, 210)
 
@@ -72,7 +72,8 @@ func _rebuild() -> void:
 		_row.add_child(_mini(entry))
 
 
-## A small card: deck-coloured frame, art, name. Click: see it big.
+## A small card: the whole art in a deck-coloured frame, its name on a
+## dark strip at the bottom. Click: see it big.
 func _mini(entry: Dictionary) -> Button:
 	var card: Dictionary = entry.card
 	var accent := Color(Global.CARD_COLORS.get(card.get("deck", ""), {}).get("color", "c8a85a"))
@@ -89,27 +90,33 @@ func _mini(entry: Dictionary) -> Button:
 		style.set_corner_radius_all(6)
 		button.add_theme_stylebox_override(state, style)
 
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 2)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.position = Vector2(4, 4)
-	column.size = CARD_SIZE - Vector2(8, 8)
-	button.add_child(column)
 	var art := TextureRect.new()
 	art.texture = Global.card_back(card.get("deck", "red_cards"))
-	art.custom_minimum_size = Vector2(0, 62)
+	art.position = Vector2(2, 2)
+	art.size = CARD_SIZE - Vector2(4, 4)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(art)
+	button.add_child(art)
+	var plate := PanelContainer.new()
+	var plate_style := StyleBoxFlat.new()
+	plate_style.bg_color = Color(0.03, 0.03, 0.05, 0.85)
+	plate_style.set_content_margin_all(3)
+	plate.add_theme_stylebox_override("panel", plate_style)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.position = Vector2(2, 0)
+	plate.custom_minimum_size = Vector2(CARD_SIZE.x - 4, 0)
+	button.add_child(plate)
+	# Keep it at the bottom whatever height its name needs.
+	plate.resized.connect(func(): plate.position.y = CARD_SIZE.y - 2 - plate.size.y)
 	var title := Label.new()
 	title.text = Global.field(card, "name")
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.custom_minimum_size = Vector2(CARD_SIZE.x - 8, 0)
+	title.custom_minimum_size = Vector2(CARD_SIZE.x - 10, 0)
 	title.add_theme_font_size_override("font_size", 12)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(title)
+	plate.add_child(title)
 
 	button.pressed.connect(func():
 		var heading := Global.text(entry.key)

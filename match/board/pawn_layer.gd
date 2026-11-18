@@ -287,39 +287,10 @@ class DustRing extends Node2D:
 		draw_arc(Vector2.ZERO, 50.0, 0.0, TAU, 40, color, 8.0, true)
 
 
-## Attacker lunges at the target; the target shakes, flashes red and a
-## damage number floats up.
+## An attack in three beats (wind-up, blow, settle): see AttackFx.
 func play_attack(attacker: int, target: int, damage: int) -> void:
 	if not pawns.has(attacker) or not pawns.has(target):
 		return
-	var a: Sprite2D = pawns[attacker]
-	var t: Sprite2D = pawns[target]
-	var home := a.position
-	var toward := home + (t.position - home).limit_length(60.0)
-	var lunge := create_tween()
-	lunge.tween_property(a, "position", toward, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	lunge.tween_property(a, "position", home, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-
-	await get_tree().create_timer(0.15).timeout
-	var base := t.position
-	var shake := create_tween()
-	for i in 4:
-		shake.tween_property(t, "position", base + Vector2(6 if i % 2 == 0 else -6, 0), 0.04)
-	shake.tween_property(t, "position", base, 0.04)
-	if damage > 0:
-		t.modulate = Color(2.0, 0.5, 0.5)
-		create_tween().tween_property(t, "modulate", Color.WHITE, 0.4)
-
-	var label := Label.new()
-	label.text = "-%d" % damage if damage > 0 else Global.text("match.miss")
-	label.add_theme_font_size_override("font_size", 30)
-	label.add_theme_color_override("font_color", Color("ff5a4a") if damage > 0 else Color(0.85, 0.85, 0.85))
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 8)
-	label.position = base + Vector2(-20, -90)
-	label.z_index = 20
-	add_child(label)
-	var rise := create_tween().set_parallel(true)
-	rise.tween_property(label, "position:y", label.position.y - 50, 0.9)
-	rise.tween_property(label, "modulate:a", 0.0, 0.9).set_delay(0.4)
-	rise.chain().tween_callback(label.queue_free)
+	var fx := AttackFx.new()
+	add_child(fx)
+	fx.play(pawns[attacker], pawns[target], damage)

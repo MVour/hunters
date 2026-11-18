@@ -105,6 +105,9 @@ Two setups, chosen per game by what's typed in the Join box (D007):
   an attack throw or Old Map's second roll), `wait()`.
 - `CardFlow` (`card_flow.gd`): drawing, green questions, equipment, protection.
 - `Combat` (`combat.gd`): damage/heal/death, attacks, reveal, abilities, winning.
+  An attack is paced for the screens: dice → `attack_fx` (clients start
+  the wind-up, `AttackFx`) → `wait(Rules.ATTACK_WINDUP)` → log line,
+  damage, death (they land with the blow).
 - `CardEffects` (`card_effects.gd`): runs a card's effect steps (spec in docs/CARDS.md).
 - Everything that waits does so on signals/timers owned by `MatchServer`, so
   `MatchNet.stop()` (on leave, host disconnect, new session) frees it and
@@ -171,7 +174,11 @@ buttons hide until the pick ends.
 - `tools/check_project.tscn`: loads and compiles every script/scene/resource.
 - `tools/run_autotest.sh`: a host bot and a client bot play a match over
   localhost (port 18080) through the same actions as the UI; fails on any
-  script error. `MAX_TURNS=N` makes the host leave mid-match;
+  script error. Fast by default (`--fast` = `Global.fast_mode`: every
+  `MatchServer.wait()` is one frame, so no dice / wind-up / bot thinking
+  pauses; the test bots don't think either; 4x clock). `REAL=1` plays at
+  real speed with every pause; CI does that once on each release tag.
+  `MAX_TURNS=N` makes the host leave mid-match;
   `AUTOTEST_ARGS="--show-status --slow"` prints every status line the bots saw;
   `AUTOTEST_ARGS=--ui` makes the bots pick players by clicking rows/pawns;
   `AUTOTEST_ARGS="--bots=N --bot-log"` adds N real bots (through the lobby

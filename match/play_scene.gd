@@ -22,11 +22,11 @@ var toast_box: VBoxContainer
 var choice_panel: PanelContainer
 var choice_title: Label
 var choice_buttons: HFlowContainer
-## Left of the choices: the card the choice is about (if any).
-var choice_card_slot: CenterContainer
-## The card you're acting on right now (drawn / being asked), shown in the
-## dialog so you can read what it does while choosing. {} = none.
+## The card you're acting on right now (drawn / being asked), kept big
+## above the dialog so you can read what it does while choosing. {} = none.
 var _context_card := {}
+## That card's popup while a dialog asks about it (see CardView.hold).
+var _held_card: CardView
 ## Whether the open dialog is the location offer (closed when the turn ends).
 var _offer_open := false
 ## Values offered by the open choice panel (empty when closed).
@@ -171,20 +171,12 @@ func _ready():
 	choice_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	choice_title.custom_minimum_size = Vector2(560, 0)
 	choice_column.add_child(choice_title)
-	# [the card it's about] [the choices]
-	var choice_row := HBoxContainer.new()
-	choice_row.add_theme_constant_override("separation", 16)
-	choice_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	choice_column.add_child(choice_row)
-	choice_card_slot = CenterContainer.new()
-	choice_row.add_child(choice_card_slot)
 	choice_buttons = HFlowContainer.new()
 	choice_buttons.alignment = FlowContainer.ALIGNMENT_CENTER
 	choice_buttons.custom_minimum_size = Vector2(420, 0)
-	choice_buttons.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_buttons.add_theme_constant_override("h_separation", 10)
 	choice_buttons.add_theme_constant_override("v_separation", 8)
-	choice_row.add_child(choice_buttons)
+	choice_column.add_child(choice_buttons)
 
 	prompt_label = Label.new()
 	prompt_label.position = Vector2(560, 446)
@@ -203,9 +195,10 @@ func _ready():
 	# Signals are connected, so we're ready for the server's messages.
 	# Attack button, next to End Turn.
 	attack_button = Button.new()
-	attack_button.position = Vector2(640, 702)
-	attack_button.custom_minimum_size = Vector2(205, 44)
-	attack_button.add_theme_color_override("font_color", Color("ff8a7a"))
+	attack_button.position = Vector2(640, 700)
+	_style_turn_button(attack_button, Color(0.32, 0.04, 0.05), Color("e8402e"), Color("ffd6cc"))
+	_style_turn_button(end_turn_button, Color(0.1, 0.11, 0.24), Color("7d8fd8"), Color("dfe5ff"))
+	end_turn_button.position = Vector2(863, 700)
 	attack_button.hide()
 	attack_button.pressed.connect(func():
 		attack_used_this_turn = true
@@ -580,6 +573,51 @@ func _ability_blocked_reason(me: Dictionary, my_turn: bool, waiting: bool) -> St
 	return ""
 
 
+## Attack (blood red) and End Turn (night blue): a dark fill in the
+## button's colour, a bright edge and a soft glow that breathes while it
+## can be pressed; greyed and flat when it can't.
+func _style_turn_button(button: Button, fill: Color, edge: Color, text: Color) -> void:
+	button.custom_minimum_size = Vector2(205, 50)
+	button.add_theme_font_size_override("font_size", 22)
+	button.add_theme_color_override("font_color", text)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", text.darkened(0.15))
+	button.add_theme_color_override("font_disabled_color", Color(0.55, 0.55, 0.58))
+	button.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	button.add_theme_constant_override("outline_size", 6)
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var style := StyleBoxFlat.new()
+		style.set_corner_radius_all(12)
+		style.set_border_width_all(2)
+		style.set_content_margin_all(8)
+		match state:
+			"normal":
+				style.bg_color = fill
+				style.border_color = edge
+				style.shadow_color = Color(edge, 0.45)
+				style.shadow_size = 6
+			"hover":
+				style.bg_color = fill.lightened(0.15)
+				style.border_color = edge.lightened(0.3)
+				style.shadow_color = Color(edge, 0.7)
+				style.shadow_size = 12
+			"pressed":
+				style.bg_color = fill.darkened(0.3)
+				style.border_color = edge
+				style.set_border_width_all(3)
+			"disabled":
+				style.bg_color = Color(0.12, 0.12, 0.14, 0.9)
+				style.border_color = Color(0.35, 0.35, 0.38)
+		button.add_theme_stylebox_override(state, style)
+	# The glow breathes (only the normal look has one).
+	var normal: StyleBoxFlat = button.get_theme_stylebox("normal")
+	var breathe := button.create_tween().set_loops()
+	breathe.tween_method(func(v: float): normal.shadow_size = roundi(v), 4.0, 12.0, 0.9).set_trans(Tween.TRANS_SINE)
+	breathe.tween_method(func(v: float): normal.shadow_size = roundi(v), 12.0, 4.0, 0.9).set_trans(Tween.TRANS_SINE)
+
+
 func _set_enabled(button: Button, on: bool, reason := "") -> void:
 	button.disabled = not on
 	button.tooltip_text = "" if on else reason
@@ -633,6 +671,7 @@ func _clear_action_bar() -> void:
 	if _offer_open:
 		_offer_open = false
 		choice_panel.hide()
+		_release_held_card()
 	for deck in decks.values():
 		deck.set_highlight(false)
 
@@ -861,7 +900,7 @@ func _end_pick() -> void:
 
 ## The black dialog. Options become deck packs (value = a deck),
 ## whole cards (value = an equipment uid) or buttons. `context` = the card
-## this is about, shown on the left so you can read it while choosing.
+## this is about, kept big above the dialog so you can read it while choosing.
 ## `compact`: a small bar at the top (picking a player on the board).
 func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Callable, context := {},
 		compact := false) -> void:
@@ -874,15 +913,12 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 	choice_buttons.custom_minimum_size = Vector2(0 if compact else 420, 0)
 	for child in choice_buttons.get_children():
 		child.queue_free()
-	for child in choice_card_slot.get_children():
-		child.queue_free()
+	_release_held_card()
 	choice_title.text = prompt
 	asked_options = options.map(func(o): return o.value)
 
 	if not context.is_empty():
-		_close_card_views_of(context)  # the dialog shows it now: no OK needed
-		choice_card_slot.add_child(CardView.card_face(context, 230.0, 80.0))
-	choice_card_slot.visible = not context.is_empty()
+		_hold_card(context)
 
 	var entries := options.duplicate()
 	if allow_skip:
@@ -891,6 +927,7 @@ func _open_choice(prompt: String, options: Array, allow_skip: bool, on_pick: Cal
 		var value = option.value
 		var pick := func():
 			choice_panel.hide()
+			_release_held_card()
 			asked_options = []
 			on_pick.call(value)
 		var equipment := _equipment_card(value)
@@ -927,7 +964,7 @@ func _card_button(card: Dictionary, on_click: Callable) -> Button:
 	button.flat = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var face := CardView.card_face(card, 190.0, 0.0)
+	var face := CardView.card_face(card, 190.0, false)
 	face.position = Vector2(4, 4)
 	button.add_child(face)
 	face.resized.connect(func(): button.custom_minimum_size = face.size + Vector2(8, 8))
@@ -937,11 +974,22 @@ func _card_button(card: Dictionary, on_click: Callable) -> Button:
 	return button
 
 
-func _close_card_views_of(card: Dictionary) -> void:
+## Keep `card` big above the dialog that asks about it: an "OK" popup of it
+## gives way to one without buttons (the dialog answers now).
+func _hold_card(card: Dictionary) -> void:
 	for child in get_children():
-		if child is CardView and child.shown_card.get("uid", "?") == card.get("uid", "!") \
-				and child.dismissable:
+		if child is CardView and not child._closing \
+				and child.shown_card.get("uid", "?") == card.get("uid", "!"):
 			child.close()
+	_held_card = CardView.open(self, card, "", [])
+	if _held_card:
+		_held_card.hold()
+
+
+func _release_held_card() -> void:
+	if is_instance_valid(_held_card):
+		_held_card.close()
+	_held_card = null
 
 
 ## A message only for you, with an OK button.
@@ -1005,6 +1053,7 @@ func _on_game_over(faction: String, winners: Array) -> void:
 	_clear_action_bar()
 	status_label.hide()
 	choice_panel.hide()
+	_release_held_card()
 	CardView._queue.clear()
 	for node in [roll_button, end_turn_button, attack_button, playing_label]:
 		node.hide()

@@ -4,6 +4,11 @@ class_name Rules extends RefCounted
 ## grey out buttons the server would refuse anyway.
 ## Pure functions over player dicts (see GameState.new_player()).
 
+## Seconds between an attack being announced and its blow landing: the
+## attacker winds up on every screen (PawnLayer.play_attack), then the
+## server sends the damage, the log line and any death.
+const ATTACK_WINDUP := 1.1
+
 
 ## All of a player's equipment modifiers combined: numbers add up, flags OR.
 static func mods(player: Dictionary) -> Dictionary:

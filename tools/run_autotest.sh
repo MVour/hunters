@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # Headless smoke test: a host bot and a client bot play a match.
 # Usage: tools/run_autotest.sh [path-to-godot-console-exe]
-# Env: MAX_TURNS=N makes the host leave mid-match after N turns.
+# Fast by default (--fast: no pauses, no thinking time, 4x clock).
+# Env: REAL=1 plays at real speed with every pause (as players see it).
+#      MAX_TURNS=N makes the host leave mid-match after N turns.
 #      AUTOTEST_ARGS for both bots (--ui, --slow, --show-status), CLIENT_ARGS for the client only (--lang=el).
 # Exit 0 only if both bots PASS and no script errors were logged.
 set -u
 cd "$(dirname "$0")/.."
 GODOT="${1:-${GODOT:-/c/Program Files (x86)/Godot/Godot_v4.3-stable_mono_win64_console.exe}}"
 OUT="${AUTOTEST_OUT:-.godot/autotest}"
+if [ "${REAL:-0}" = 1 ]; then SPEED=""; LIMIT=600; else SPEED="--fast"; LIMIT=240; fi
 mkdir -p "$OUT"
-timeout 240 "$GODOT" --headless --path . -- --autotest=host --max-turns=${MAX_TURNS:-30} ${AUTOTEST_ARGS:-} > "$OUT/host.log" 2>&1 &
+timeout $LIMIT "$GODOT" --headless --path . -- --autotest=host --max-turns=${MAX_TURNS:-30} $SPEED ${AUTOTEST_ARGS:-} > "$OUT/host.log" 2>&1 &
 HOST=$!
 sleep 2
-timeout 240 "$GODOT" --headless --path . -- --autotest=client ${CLIENT_ARGS:-} ${AUTOTEST_ARGS:-} > "$OUT/client.log" 2>&1 &
+timeout $LIMIT "$GODOT" --headless --path . -- --autotest=client $SPEED ${CLIENT_ARGS:-} ${AUTOTEST_ARGS:-} > "$OUT/client.log" 2>&1 &
 CLIENT=$!
 wait $HOST; H=$?
 wait $CLIENT; C=$?

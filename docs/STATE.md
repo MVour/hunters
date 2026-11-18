@@ -17,6 +17,15 @@ _Last updated: 2026-11-18_
 - Classic art toggle: only for the user to look at their past work.
 
 ## Most recent milestone
+2026-11-18: released **v0.1.4** (everything below). The user's feedback on
+it, fixed in C027, not released and not yet seen in a browser: no web
+music (BUG-011: web playback set to Stream), a card you decide on stays
+big above the dialog (BUG-012), whole cards, not cut strips (BUG-013), the
+site installable as a full-screen phone app (BUG-014). Three new ideas
+are in IDEAS (revealed figures, who's involved). Then C028: attacks in
+three beats (wind-up, blow, settle; the server waits 1.1 s before the
+damage), heals and steals in three beats, Attack / End Turn redrawn
+(blood red / night blue).
 2026-11-18: hit/heal/steal effects and an ending that lets the last blow play
 out (C025); the lobby laid out again, fits Greek (C026). All playtest
 feedback is done; next is a release and a new playtest.
@@ -51,16 +60,18 @@ Before that: player list + click to pick (C006/C007).
 Before that: clearer match screen (C005), network/state refactor (C004).
 
 ## Next
-- **Live at https://play.mvrtz.com**, release v0.1.3 (2026-11-17),
-  confirmed in a real game.
+- **Live at https://play.mvrtz.com**, release v0.1.4 (2026-11-18; v0.1.3
+  was confirmed in a real game).
   - Ubuntu server 46.225.188.241, behind its existing Caddy (C012);
   - GitHub repo MVour/hunters;
   - deploys only for `v*` tags, made with `bash tools/release.sh` from WSL
     (C013). Only WSL has the user's GitHub key.
-- **Unreleased:** bots (C019), hits + gentle ending (C025), game log (C020), play again (C021), turn
-  cards / narrator / Who's who / drawer (C022), turn steps (C023),
-  music and rain (C024), lobby redraw (C026). Release with
-  `bash tools/release.sh`; then check Play again online.
+- **Unreleased:** C027 (web music, whole cards, card over the dialog,
+  installable site), C028 (three-beat attacks, new turn buttons), C029
+  (tests skip pauses with --fast; REAL=1 for real speed, CI does one real
+  match per release). Release with `bash tools/release.sh`; then check in a
+  browser: music plays (and doesn't crackle on a phone), cards look whole,
+  "Install app" works on a phone; and Play again online (BUG-009).
 - **Music:** the user listens and adjusts the track lists (`MUSIC` /
   `MATCH_OPENING` in `autoload/audio.gd`). New tracks: re-encode with
   ffmpeg in WSL (`-c:a libvorbis -q:a 1`); licenses in
@@ -81,7 +92,8 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   no Docker engine yet; the user installs one or runs it on the server.
 
 ## Open bugs
-BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
+BUG-011..014 (web music, card in dialog, cut cards, phone install): fixed
+in C027, to verify after release. BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
 after a network session, harmless). BUG-009 (play again) fixed, to verify
 online after release. BUG-001, 003, 006, 007, 010 fixed and
 verified. See BUGS.md.

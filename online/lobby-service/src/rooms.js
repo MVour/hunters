@@ -103,7 +103,8 @@ export class RoomManager extends EventEmitter {
 
   start(room) {
     const { command, args } = this.config.godot;
-    const argv = [...args, '--', '--server', `--port=${room.port}`, `--room=${room.code}`, `--max-players=${room.maxPlayers}`];
+    const argv = [...args, '--', '--server', `--port=${room.port}`, `--room=${room.code}`, `--max-players=${room.maxPlayers}`,
+      ...(this.config.godot.gameArgs ?? [])];
     // A minimal environment: no service secrets leak into the game process.
     const env = {
       PATH: process.env.PATH ?? '/usr/bin:/bin',

@@ -11,6 +11,8 @@ extends Node
 
 var max_turns := 30             # host leaves after this many turns (--max-turns=N)
 const STALL_SECONDS := 40.0     # no new turn for this long = stuck
+## --fast (run_autotest.sh's default): the clock runs this much faster and
+## nobody waits. Without it (REAL=1): real speed, real pauses.
 const TIME_SCALE := 4.0
 ## Not the default, so a running game is left alone (--port=N for a second test at once).
 var port := 18080
@@ -57,7 +59,7 @@ func _init(p_role: String) -> void:
 
 
 func _ready() -> void:
-	Engine.time_scale = TIME_SCALE
+	Engine.time_scale = TIME_SCALE if Global.fast_mode else 1.0
 	_last_progress = Time.get_ticks_msec()
 	_connect_signals()
 	await get_tree().process_frame
@@ -427,6 +429,8 @@ func _find_button(node: Node, text_start: String) -> Button:
 func _think() -> void:
 	if "--slow" in OS.get_cmdline_user_args():
 		await get_tree().create_timer(3.0).timeout  # long enough to see "waiting for…"
+	elif Global.fast_mode:
+		await get_tree().process_frame
 	elif randf() < 0.5:
 		await get_tree().create_timer(0.15).timeout
 
