@@ -47,6 +47,7 @@ const FOREST_BED := "res://assets/audio/ambience/forest.ogg"
 const RAIN_TRACK := "res://assets/audio/ambience/rain_night.ogg"
 
 const FADE_SECONDS := 4.0
+const SKIP_FADE_SECONDS := 1.0     # "Next track": quick crossfade
 const GAP_SECONDS := 1.0           # only if a track ends without crossfading
 const FOREST_GAIN := 0.35          # forest bed loudness, relative to music
 ## Weather (seconds): how long it stays dry / rains, and the fade between.
@@ -121,6 +122,12 @@ func set_music_on(on: bool) -> void:
 	_changed()
 
 
+## The Sound popup's Next track: crossfade quickly into the next one.
+func skip_track() -> void:
+	if _enabled and music_on:
+		_next_track(SKIP_FADE_SECONDS)
+
+
 func set_music_volume(v: float) -> void:
 	music_volume = clampf(v, 0.0, 1.0)
 	_apply_volumes()
@@ -141,7 +148,7 @@ func set_rain_volume(v: float) -> void:
 
 # --- Music ----------------------------------------------------------------
 
-func _next_track() -> void:
+func _next_track(fade := FADE_SECONDS) -> void:
 	_gap = null
 	var list: Array = MUSIC.get(_context, [])
 	if not music_on or list.is_empty():
@@ -165,9 +172,9 @@ func _next_track() -> void:
 	p.set_meta("gain", 0.0)
 	p.volume_db = -80.0
 	p.play()
-	_fade(p, 1.0)
+	_fade(p, 1.0, false, fade)
 	if old.playing:
-		_fade(old, 0.0, true)
+		_fade(old, 0.0, true, fade)
 
 
 ## Near the end of the current track, start the next one: they crossfade.
@@ -194,7 +201,7 @@ func _on_track_finished(p: AudioStreamPlayer) -> void:
 
 
 ## Fades a music player's gain (0..1) on top of the Music bus volume.
-func _fade(p: AudioStreamPlayer, to: float, stop_after := false) -> void:
+func _fade(p: AudioStreamPlayer, to: float, stop_after := false, seconds := FADE_SECONDS) -> void:
 	var previous: Tween = p.get_meta("tween") if p.has_meta("tween") else null
 	if previous and previous.is_valid():
 		previous.kill()  # a player reused mid fade-out: only the new fade counts
@@ -203,7 +210,7 @@ func _fade(p: AudioStreamPlayer, to: float, stop_after := false) -> void:
 	tween.tween_method(func(g: float):
 		p.set_meta("gain", g)
 		p.volume_db = linear_to_db(maxf(g, 0.0001)),
-		float(p.get_meta("gain", 0.0)), to, FADE_SECONDS)
+		float(p.get_meta("gain", 0.0)), to, seconds)
 	if stop_after:
 		tween.tween_callback(p.stop)
 

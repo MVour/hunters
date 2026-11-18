@@ -78,8 +78,9 @@ Before that: clearer match screen (C005), network/state refactor (C004).
     (C013). Only WSL has the user's GitHub key.
 - **Unreleased:** C030 (focus, death scene, hub + cheat sheet, bot
   difficulty, small-card art fix), C031 (character cards, bot level line,
-  BUG-015), C032 (keyword icons in card text), C033 (must draw, draw animation). Release with `bash tools/release.sh`; then check in a
-  browser: music plays (and doesn't crackle on a phone), cards look whole,
+  BUG-015), C032 (keyword icons in card text), C033 (must draw, draw
+  animation), C034 (Next track button). Release with `bash tools/release.sh`; then check in a
+  browser: cards look whole,
   "Install app" works on a phone; and Play again online (BUG-009).
 - **Music:** the user listens and adjusts the track lists (`MUSIC` /
   `MATCH_OPENING` in `autoload/audio.gd`). New tracks: re-encode with
@@ -101,7 +102,9 @@ Before that: clearer match screen (C005), network/state refactor (C004).
   no Docker engine yet; the user installs one or runs it on the server.
 
 ## Open bugs
-BUG-011..014 (web music, card in dialog, cut cards, phone install): fixed
+BUG-016 (music crackles a bit on a phone; low priority, fix ideas in
+BUGS). BUG-011 (web music) verified on a phone. BUG-012..014 (card in
+dialog, cut cards, phone install): fixed
 in C027, to verify after release. BUG-002 (GUIDE button), BUG-005 (rare bot click flake), BUG-004 (exit crash
 after a network session, harmless). BUG-009 (play again) fixed, to verify
 online after release. BUG-001, 003, 006, 007, 010 fixed and

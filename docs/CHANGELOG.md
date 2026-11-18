@@ -7,6 +7,17 @@ Past ~800 lines, move the oldest entries verbatim to docs/archive/.
 
 ---
 
+### C034 — Next track button (2026-11-18)
+- **What:** the Sound popup has **Next track** beside the music volume
+  (greyed while music is off): `Audio.skip_track()` crossfades into the
+  next track of the screen's playlist in 1 s instead of the usual 4 s.
+  Logged BUG-016 (music crackles a bit on a phone) and closed BUG-011.
+- **Why:** the user asked for one.
+- **Rejected:** showing the track's name (titles are file names, not
+  translated text; not asked for).
+
+---
+
 ### C033 — Drawing is a must, and a drawn card flies out of its deck and turns over (2026-11-18)
 User's call after C032 (D011): drawing at a location can't be skipped,
 but the player still clicks the deck ("even a drawing animation / card

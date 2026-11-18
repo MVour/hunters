@@ -1,12 +1,13 @@
 class_name SoundButton extends Button
 ## Bottom-left, next to the language button, on every screen. Opens a small
-## popup: music on/off + volume, rain on/off + volume (Audio autoload).
+## popup: music on/off + Next track + volume, rain on/off + volume (Audio).
 
 const POPUP_WIDTH := 300
 
 var _popup: PopupPanel
 var _music_toggle: CheckButton
 var _music_slider: HSlider
+var _next_button: Button
 var _rain_toggle: CheckButton
 var _rain_slider: HSlider
 
@@ -39,7 +40,30 @@ func _build_popup() -> void:
 	_popup.add_child(column)
 
 	_music_toggle = _toggle(column, Audio.set_music_on)
-	_music_slider = _slider(column, Audio.set_music_volume)
+	# Volume, with Next track beside it.
+	var music_row := HBoxContainer.new()
+	music_row.add_theme_constant_override("separation", 10)
+	column.add_child(music_row)
+	_music_slider = _slider(music_row, Audio.set_music_volume)
+	_music_slider.custom_minimum_size.x = 0
+	_music_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_music_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_next_button = Button.new()
+	_next_button.add_theme_font_size_override("font_size", 15)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var box := StyleBoxFlat.new()
+		box.bg_color = {"normal": Color(1, 1, 1, 0.08), "hover": Color(1, 1, 1, 0.16),
+			"pressed": Color(1, 1, 1, 0.24), "disabled": Color(1, 1, 1, 0.03)}[state]
+		box.border_color = Color(1, 1, 1, 0.22)
+		box.set_border_width_all(1)
+		box.set_corner_radius_all(6)
+		box.content_margin_left = 10
+		box.content_margin_right = 10
+		box.content_margin_top = 4
+		box.content_margin_bottom = 4
+		_next_button.add_theme_stylebox_override(state, box)
+	_next_button.pressed.connect(Audio.skip_track)
+	music_row.add_child(_next_button)
 	column.add_child(HSeparator.new())
 	_rain_toggle = _toggle(column, Audio.set_rain_on)
 	_rain_slider = _slider(column, Audio.set_rain_volume)
@@ -75,6 +99,7 @@ func _apply_language() -> void:
 	tooltip_text = Global.text("sound.tooltip")
 	_music_toggle.text = Global.text("sound.music")
 	_rain_toggle.text = Global.text("sound.rain")
+	_next_button.text = Global.text("sound.next")
 	_music_slider.tooltip_text = Global.text("sound.volume")
 	_rain_slider.tooltip_text = Global.text("sound.volume")
 
@@ -86,4 +111,5 @@ func _sync() -> void:
 	_music_slider.set_value_no_signal(Audio.music_volume)
 	_rain_slider.set_value_no_signal(Audio.rain_volume)
 	_music_slider.editable = Audio.music_on
+	_next_button.disabled = not Audio.music_on
 	_rain_slider.editable = Audio.rain_on

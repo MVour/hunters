@@ -7,6 +7,24 @@ that sit open for more than ~2 weeks.
 
 ---
 
+### BUG-016 — Music crackles a bit on a phone
+- **Logged:** 2026-11-18 (user; "not serious now, just feedback")
+- **Area:** `project.godot` (audio), web build, `autoload/audio.gd`
+- **What happens:** in the browser game on a phone, the music crackles now
+  and then. (It plays, so BUG-011's fix works.)
+- **Root cause (likely):** the one BUG-011 warned about: the web build
+  mixes sound in Godot's own mixer (Stream mode) on the browser's main
+  thread (no threads in this export); when a phone is busy drawing the
+  board, the sound buffer runs dry for a moment.
+- **Fix ideas, cheapest first:** raise `audio/driver/output_latency.web`
+  (default 50 ms → 100-150 ms: a bigger buffer, the delay doesn't matter
+  for music); fewer players mixing at once (the forest bed, two music
+  players in a crossfade, rain); lighter rain drawing on phones; last,
+  sample mode for music only with fades reworked for it.
+- **Status:** open (low priority, per the user)
+
+---
+
 ### BUG-015 — Dialog buttons over the player hub can't be clicked
 - **Logged:** 2026-11-18 (user, testing C030 locally)
 - **Area:** `match/play_scene.gd` (the order of its children)
@@ -78,7 +96,8 @@ that sit open for more than ~2 weeks.
   web build mixes through Godot's own mixer, like the desktop.
 - **Watch for:** crackles on slow phones (the known cost of Stream mode
   without threads). If so: bigger output latency, or rework the fades.
-- **Status:** fix implemented, not verified (needs a release).
+- **Status:** fix verified (2026-11-18: the user hears music in the browser
+  on a phone; it crackles a little: BUG-016).
 
 ---
 
